@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import HvacWsTable from './components/HvacWsTable.tsx'
 import Header from './components/Header/Header.tsx'
+import { HvacConfigForm } from './components/Forms/HvacConfigForm.tsx'
 
 const App:FC = () => (
 
@@ -10,6 +11,7 @@ const App:FC = () => (
         <Header />
         <div className='my-4 w-full border-b border-gray-600'></div>
         <HvacWsTable />
+        <HvacConfigForm />
       </div>
     </div>
 )
