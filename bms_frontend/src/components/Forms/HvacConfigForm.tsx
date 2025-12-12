@@ -2,7 +2,7 @@ import { useState, type ChangeEvent, type FC, type FormEvent } from "react";
 import type { HvacUnitConfig, Protocol } from "../../types/HvacUnitConfig";
 import { createHvacConfig } from "../../api/hvacConfigApi";
 
-const numericFields: (keyof HvacUnitConfig)[] = [
+const numericFieldSet: Set<keyof HvacUnitConfig> = new Set([
     'modbusPort',
     'modbusUnitId',
     'regTemp',
@@ -12,7 +12,7 @@ const numericFields: (keyof HvacUnitConfig)[] = [
     'regFlowRate',
     'regFault', 
     'bacnetDeviceInstance',
-];
+]);
 
 const defaultConfig: HvacUnitConfig = {
     deviceId: '',
@@ -37,16 +37,26 @@ export const HvacConfigForm:FC = () => {
     const handleChange = (field: keyof HvacUnitConfig) => 
         (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
 
-            const value = e.target.value;
+           // const value = e.target.value;
+            
+            if (numericFieldSet.has(field)) {
+
+                const input = e.target as HTMLInputElement;
+                const n = input.valueAsNumber
+
+                setForm(prev => ({
+                    ...prev,
+                    [field]: Number.isFinite(n) ? n : undefined,
+                }));
+
+                return;
+            } 
+
             setForm(prev => ({
                 ...prev,
-                [field]:
-                    field === 'modbusPort' ||
-                    field === 'modbusUnitId' ||
-                    field.startsWith('reg')
-                        ? (value === '' ? undefined: Number(value))
-                        : value,
+                [field]: e.target.value,
             }));
+        
 
     };
 
@@ -144,6 +154,7 @@ export const HvacConfigForm:FC = () => {
                                     type="number"
                                     className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
                                     value={form.bacnetDeviceInstance ?? ''}
+                                    onChange={handleChange('bacnetDeviceInstance')}
                                 />
                             </div>
                         </div>
@@ -191,6 +202,71 @@ export const HvacConfigForm:FC = () => {
                                     className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
                                     value={form.regTemp ?? ''}
                                     onChange={handleChange('regTemp')}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-200">
+                                    Setpoint Reg
+                                </label>
+                                <input
+                                   type="number"
+                                   min={0}
+                                   step={1}
+                                   className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
+                                   value={form.regSetpoint ?? ''}
+                                   onChange={handleChange('regSetpoint')}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-200">
+                                    On/Off Reg
+                                </label>
+                                <input
+                                   type="number"
+                                   min={0}
+                                   step={1}
+                                   className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
+                                   value={form.regOnoff ?? ''}
+                                   onChange={handleChange('regOnoff')}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-200">
+                                    Fan Speed Reg
+                                </label>
+                                <input
+                                   type="number"
+                                   min={0}
+                                   step={1}
+                                   className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
+                                   value={form.regFanSpeed ?? ''}
+                                   onChange={handleChange('regFanSpeed')}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-200">
+                                    Flow Rate Reg
+                                </label>
+                                <input
+                                   type="number"
+                                   min={0}
+                                   step={1}
+                                   className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
+                                   value={form.regFlowRate ?? ''}
+                                   onChange={handleChange('regFlowRate')}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-slate-200">
+                                    Fault Reg
+                                </label>
+                                <input
+                                   type="number"
+                                   min={0}
+                                   step={1}
+                                   className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
+                                   value={form.regFault ?? ''}
+                                   onChange={handleChange('regFault')}
                                 />
                             </div>
                             
