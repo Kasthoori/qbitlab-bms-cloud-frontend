@@ -2,6 +2,18 @@ import { useState, type ChangeEvent, type FC, type FormEvent } from "react";
 import type { HvacUnitConfig, Protocol } from "../../types/HvacUnitConfig";
 import { createHvacConfig } from "../../api/hvacConfigApi";
 
+const numericFields: (keyof HvacUnitConfig)[] = [
+    'modbusPort',
+    'modbusUnitId',
+    'regTemp',
+    'regSetpoint',
+    'regOnoff',
+    'regFanSpeed',
+    'regFlowRate',
+    'regFault', 
+    'bacnetDeviceInstance',
+];
+
 const defaultConfig: HvacUnitConfig = {
     deviceId: '',
     unitName: '',
@@ -10,6 +22,8 @@ const defaultConfig: HvacUnitConfig = {
     room: '',
     protocol: 'SIMULATOR',
     enabled: true,
+
+    bacnetDeviceInstance: undefined
 };
 
 export const HvacConfigForm:FC = () => {
@@ -49,8 +63,8 @@ export const HvacConfigForm:FC = () => {
             await createHvacConfig(form);
             setSuccess('HVAC Unit configuration saved successfully.');
             setForm(defaultConfig);
-        }catch (err: any) {
-            setError(err.message ?? "Unknown error");
+        }catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Unknown error");
         }finally {
             setSaving(false);
         }
@@ -115,6 +129,27 @@ export const HvacConfigForm:FC = () => {
                     </select>
                 </div>
                 </div>
+                {/* BACnet fields if BACnet selected */}
+                {form.protocol === 'BACNET' && (
+                    <div className="border-t border-slate-700 pt-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-slate-200">
+                            BACnet Configuration
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm text-slate-200">
+                                    Device Instance
+                                </label>
+                                <input
+                                    type="number"
+                                    className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
+                                    value={form.bacnetDeviceInstance ?? ''}
+                                />
+                            </div>
+                        </div>
+                        
+                    </div>
+                )}
 
                 {/* Modbus fields (optional now, required later for real HVAC units) */}
                 {form.protocol === 'MODBUS' && (

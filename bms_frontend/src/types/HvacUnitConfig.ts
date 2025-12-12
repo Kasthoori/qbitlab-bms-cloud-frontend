@@ -5,7 +5,7 @@ export interface HvacUnitConfig {
     deviceId: string;
     unitName: string;
     building?: string;
-    floor?: String;
+    floor?: string;
     room?: string;
     protocol: Protocol;
     minTemp?: number;
@@ -21,4 +21,5 @@ export interface HvacUnitConfig {
     regFlowRate?: number;
     regFault?: number;
     enabled: boolean;
+    bacnetDeviceInstance?: number;
 }
