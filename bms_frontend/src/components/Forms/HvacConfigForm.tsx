@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type FC, type FormEvent } from "react";
 import type { HvacUnitConfig, Protocol } from "../../types/HvacUnitConfig";
 import { createHvacConfig } from "../../api/hvacConfigApi";
+import HvacDeviceIdField from "../DeviceIdFiled/HvacDeviceIdField";
 
 const numericFieldSet: Set<keyof HvacUnitConfig> = new Set([
     'modbusPort',
@@ -32,6 +33,7 @@ export const HvacConfigForm:FC = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [canSubmit, setCanSubmit] = useState(true);
 
 
     const handleChange = (field: keyof HvacUnitConfig) => 
@@ -66,6 +68,7 @@ export const HvacConfigForm:FC = () => {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        if (!canSubmit) return;
         setSaving(true);
         setError(null);
         setSuccess(null);
@@ -90,11 +93,17 @@ export const HvacConfigForm:FC = () => {
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm text-slate-200">Device ID</label>
-                    <input
+                    {/* <input
                        className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
                        value={form.deviceId}
                        onChange={handleChange('deviceId')}
                        required 
+                    /> */}
+                    <HvacDeviceIdField
+                        protocol={form.protocol}
+                        deviceId={form.deviceId}
+                        onDeviceIdChange={(v) => setForm(prev => ({...prev, deviceId: v}))}
+                        onCanSaveChange={setCanSubmit}
                     />
                 </div>
                 <div>
