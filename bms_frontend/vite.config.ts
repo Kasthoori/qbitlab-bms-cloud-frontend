@@ -8,7 +8,18 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:8084",
+        changeOrigin: true,
+      }
+    }
+  },
   define: {
     global: "window"
+  },
+  build: {
+    sourcemap: true
   }
 })

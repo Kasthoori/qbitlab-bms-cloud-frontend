@@ -29,6 +29,7 @@ const HvacDeviceIdField: FC<HvacDeviceIdFieldProps> = ({
     return (
         <div>
             <input
+                className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
                 value={deviceId}
                 onChange={(e) => onDeviceIdChange(e.target.value)}
                 placeholder="BACnet Device Instance (e.g., 12345)"

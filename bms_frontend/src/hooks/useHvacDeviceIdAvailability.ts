@@ -32,19 +32,27 @@ export function useHvacDeviceIdAvailability(params: {
         const controller = new AbortController();
         setStatus("checking");
 
+        const url = `/api/hvac/config/exists?protocol=${encodeURIComponent(protocol)}&deviceId=${encodeURIComponent(id)}`;
+
+        console.log("[availability] request", {protocol, id, url});
+
         fetch(
             `/api/hvac/config/exists?protocol=${encodeURIComponent(protocol)}&deviceId=${encodeURIComponent(id)}`,
-            {signal: controller.signal}
+            {signal: controller.signal},
         )
             .then( async (r) => {
+
                 if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                
                 return r.json() as Promise<{exists: boolean}>
             })
             .then((data) => {
                 setStatus(data.exists ? "exists" : "available");
             })
             .catch((error) => {
-                if (error?.name === "AbortError") return;
+                if (error?.name === "AbortError"){
+                    return;
+                }
                 setStatus("error");
             });
 
