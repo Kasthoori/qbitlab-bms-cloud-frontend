@@ -2,6 +2,7 @@ import { useEffect, type FC } from "react";
 import { useHvacDeviceIdAvailability } from "../../hooks/useHvacDeviceIdAvailability";
 
 type HvacDeviceIdFieldProps = {
+    id?: string;
     protocol: string;
     deviceId: string;
     onDeviceIdChange: (v: string) => void;
@@ -9,6 +10,7 @@ type HvacDeviceIdFieldProps = {
 };
 
 const HvacDeviceIdField: FC<HvacDeviceIdFieldProps> = ({
+    id,
     protocol,
     deviceId,
     onDeviceIdChange,
@@ -29,10 +31,11 @@ const HvacDeviceIdField: FC<HvacDeviceIdFieldProps> = ({
     return (
         <div>
             <input
+                id={id}
                 className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
                 value={deviceId}
                 onChange={(e) => onDeviceIdChange(e.target.value)}
-                placeholder="BACnet Device Instance (e.g., 12345)"
+                placeholder="__MOCK_DEVICE_ID__"
             />
 
             {status === "checking" && <div>Checking...</div>}

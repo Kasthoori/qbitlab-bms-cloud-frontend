@@ -1,9 +1,10 @@
+import { defineConfig as testConfig, mergeConfig } from 'vitest/config';
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
-export default defineConfig({
+const viteConfig = defineConfig({
   plugins: [
     react(),
     tailwindcss(),
@@ -22,4 +23,17 @@ export default defineConfig({
   build: {
     sourcemap: true
   }
-})
+ 
+});
+
+const vitestConfig = testConfig({
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setupTests.ts',
+    css: true,
+    silent: false,
+  }
+});
+
+export default mergeConfig(viteConfig, vitestConfig);
