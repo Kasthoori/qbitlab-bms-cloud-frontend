@@ -1,6 +1,7 @@
 import { keycloak } from "../auth/keycloak";
+import { CONFIG } from "../config/env";
 
-const API_BASE = "http://localhost:8084";
+const API_BASE = CONFIG.apiBaseUrl;
 
 export async function apiGet(path: string) {
 

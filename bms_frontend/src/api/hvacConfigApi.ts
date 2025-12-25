@@ -1,6 +1,7 @@
 import type { HvacUnitConfig } from "../types/HvacUnitConfig";
+import { CONFIG } from "../config/env";
 
-const BASE_URL = `http://${window.location.hostname}:8084`; // Spring Boot IP
+const BASE_URL = CONFIG.apiBaseUrl;
 
 export async function fetchHvacConfigs(): Promise<HvacUnitConfig[]> {
 

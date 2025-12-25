@@ -1,7 +1,8 @@
 import Keycloak from "keycloak-js";
+import { CONFIG } from "../config/env";
 
 export const keycloak = new Keycloak({
-  url: `http://${window.location.hostname}:8081`,
-  realm: "bms",
-  clientId: "bms-frontend",
+  url: CONFIG.keycloakUrl,
+  realm: CONFIG.keycloakRealm,
+  clientId: CONFIG.keycloakClientId,
 });
