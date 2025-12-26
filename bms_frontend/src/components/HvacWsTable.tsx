@@ -70,7 +70,6 @@ const HvacWsTable:FC = () => {
     console.log("Connected:", connected);
     return (
         <><div>
-            <h1 className="text-2xl font-bold mb-4">HVAC Live (WebSocket)</h1>
         </div><div className="p-4">
                 <div className="mb-2 flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-white">HVAC Live (WebSocket)</h2>
@@ -128,13 +127,14 @@ const HvacWsTable:FC = () => {
                                             className={
                                                 'rounded px-2 py-1 text-sm font-semibold' +
                                                 (row.onState
-                                                    ? 'bg-green-700 text-gray-50'
-                                                    : 'bg-gray-700 text-gray-200'
+                                                    ? 'bg-green-700 text-gray-50 ring-1 ring-green-400 shadow-green-500/20'
+                                                    : 'bg-gray-700 text-gray-200 ring-1 ring-gray-300 shadow-gray-500/20'
 
                                                 )
                                             }
                                         >
                                             {row.onState ? 'ON' : 'OFF'}
+                                            
                                         </span>
                                     </td>
                                     <td className="whitespace-nowrap px-4 py-2 text-sm text-gray-100">
@@ -148,8 +148,8 @@ const HvacWsTable:FC = () => {
                                             className={
                                                 'rounced px-2 py-1 text-sm font-semibold' +
                                                 (row.fault
-                                                    ? 'bg-red-700 text-red-50'
-                                                    : 'bg-emerald-700 text-emerald-50'
+                                                    ? 'bg-red-700 text-red-50 ring-1 ring-red-400 shadow-red-500/20'
+                                                    : 'bg-emerald-700 text-emerald-50 ring-1 ring-emerald-400 shadow-emerald-500/20'
 
                                                 )
                                             }
