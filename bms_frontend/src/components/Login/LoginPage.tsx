@@ -2,7 +2,9 @@ import { useState, type FC } from "react";
 import Rectangle from "./imports/Rectangle";
 import { Building2, Mail, Lock } from "lucide-react";
 import { Label } from "../ui/label";
-import { Button } from "../ui/button";
+// Update the import path below if Button is located elsewhere
+// import { Button } from "../ui/button";
+import { Button } from "../ui/Button";
 
 interface LoginPageProps {
     onLogin: () => void;
