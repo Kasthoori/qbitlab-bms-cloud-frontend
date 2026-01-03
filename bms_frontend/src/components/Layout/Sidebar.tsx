@@ -13,7 +13,7 @@ import {
 const navItems = [
     {label: "Dashboard", path: "/", icon: LayoutDashboard },
     {label: "HVAC", path: "/hvac", icon: Wind},
-    { label: "Lighting", path: "/lighting", icon: Lightbulb },
+    { label: "Lighting", path: "/onboarding", icon: Lightbulb },
     { label: "Energy", path: "/energy", icon: Zap },
     { label: "Alarms", path: "/alarms", icon: Bell },
     { label: "Users", path: "/users", icon: Users },

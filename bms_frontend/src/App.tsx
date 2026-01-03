@@ -1,9 +1,10 @@
 
 import type { FC } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import AppLayout from './components/Layout/AppLayout'
 import Dashboard from './components/Pages/Dashboard'
 import Hvac from './components/Pages/Hvac'
+import Onboarding from './components/Forms/TenantRegistration/Onboarding'
 // import HvacWsTable from './components/HvacWsTable.tsx'
 // import Header from './components/Header/Header.tsx'
 // import { HvacConfigForm } from './components/Forms/HvacConfigForm.tsx'
@@ -24,6 +25,7 @@ const App:FC = () => (
         <Routes>
           <Route path='/' element={<Dashboard />} />
           <Route path='/hvac' element={<Hvac />} />
+          <Route path='/onboarding' element={<Onboarding />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>
