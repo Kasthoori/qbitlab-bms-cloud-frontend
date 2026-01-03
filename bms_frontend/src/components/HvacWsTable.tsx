@@ -5,7 +5,7 @@ import SockJS from "sockjs-client";
 
 
 
-const WE_ENDPOINT = "http://192.168.68.63:8084/ws";
+const WE_ENDPOINT = "http://192.168.68.58:8084/ws";
 const TOPIC = "/topic/hvac";
 
 const HvacWsTable:FC = () => {
