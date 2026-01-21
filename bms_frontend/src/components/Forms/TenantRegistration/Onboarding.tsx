@@ -3,6 +3,7 @@ import { z } from "zod";
 import TenantForm  from "./TenantForm";
 import SiteForm from "./SiteForm";
 import HvacForm from "./HvacForm";
+import { api } from "../../../api/http";
 
 // Types
 
@@ -28,25 +29,25 @@ export type HvacResponse = {
 
 // API client (BASE URL)
 
-const BASE_URL = import.meta.env.SPRING_API_BASE_URL ?? "http://localhost:8084";
+// const BASE_URL = import.meta.env.SPRING_API_BASE_URL ?? "http://192.168.68.58:8084";
 
-async function api<T>(path: string, options?:RequestInit): Promise<T> {
+// async function api<T>(path: string, options?:RequestInit): Promise<T> {
 
-    const res = await fetch(`${BASE_URL}${path}`, {
-        headers: {
-            "Content-Type": "application/json",
-            ...(options?.headers ?? {}),
-        },
-        ...options,
-    });
+//     const res = await fetch(`${BASE_URL}${path}`, {
+//         headers: {
+//             "Content-Type": "application/json",
+//             ...(options?.headers ?? {}),
+//         },
+//         ...options,
+//     });
 
-    if(!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(text || `Request failed (${res.status})`)
-    }
+//     if(!res.ok) {
+//         const text = await res.text().catch(() => "");
+//         throw new Error(text || `Request failed (${res.status})`)
+//     }
 
-    return (await res.json()) as T;
-}
+//     return (await res.json()) as T;
+// }
 
 // Schemas (Validations)
 
@@ -64,7 +65,7 @@ export const siteSchema = z.object({
     siteName: z.string().min(2, "Site name is required"),
     addressLine1: z.string().min(2, "Address line 1 is required"),
     city: z.string().min(2, "City is required"),
-    postCode: z.string().min(2, "Post code is required"),
+    postcode: z.string().min(2, "Post code is required"),
     timezone: z.string().min(2, "Timezone is required"),
 });
 
@@ -336,9 +337,10 @@ export default function Onboarding() {
                                 setBusy(true);
                                 try {
                                     // Adjust to backend route + response shape
-                                    const created = await api<TenantResponse>("/api/tenant", {
+                                    const created = await api<TenantResponse>("/api/tenants", {
                                         method: "POST",
                                         body: JSON.stringify(values),
+                                        auth: true, // if backend keeps POST /api/tenants/** as permitAll 
                                     });
                                     setTenant(created);
                                     setStep("SITE");
@@ -364,9 +366,13 @@ export default function Onboarding() {
                                     const created = await api<SiteResponse>(`/api/tenants/${tenant.tenantId}/sites`, {
                                         method: "POST",
                                         body: JSON.stringify(values),
+                                        auth: true, // or false depending on backend policy
                                     });
                                     setSite(created);
+                                    console.log("CREATED", created);
+                                    console.log("BODY", values);
                                     setStep("HVAC");
+                                    debugger;
                                 } catch(e: any) {
                                     setError(e?.message ?? "Failed to create site");
                                 } finally {
@@ -389,7 +395,8 @@ export default function Onboarding() {
                                 try{
                                     const created = await api<HvacResponse>(`/api/sites/${site.siteId}/hvacs`, {
                                         method: "POST",
-                                        body: JSON.stringify(values)
+                                        body: JSON.stringify(values),
+                                        auth: true,
                                     });
 
                                     setHvacs((prev) => [created, ...prev]);

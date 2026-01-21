@@ -5,8 +5,14 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "types": ["vite/client"],
+    "types": [],
+    "typeRoots": ["./node_modules/@types", "/types"],
     "skipLibCheck": true,
+    "baseUrl": "/",
+    "paths": {
+      "keycloak-theme/*": ["src/keycloak-theme/*"]
+    },
+    "resolveJsonModule": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { navItems, type NavItem } from "./nav.config";
 import { useLocation, NavLink } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";

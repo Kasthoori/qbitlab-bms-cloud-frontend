@@ -1,10 +1,35 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy} from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
+import Keycloak from 'keycloak-js';
 
-createRoot(document.getElementById('root')!).render(
+
+
+
+const App = lazy(() => import('./App.tsx'))
+
+
+// const keycloak = new Keycloak({
+//   url: 'https://your-keycloak-server/auth',
+//   realm: 'your-realm',
+//   clientId: 'your-client-id'
+// });
+
+const keycloak = new Keycloak({
+  url: 'http://192.168.68.55:8081',
+  realm: 'bms',
+  clientId: 'bms-frontend'
+});
+keycloak.init({ onLoad: "login-required", pkceMethod: "S256", checkLoginIframe: false }).then(() => {
+
+  createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+        <App />
   </StrictMode>,
 )
+
+})
+
+.catch((err) => {
+    console.error("Keycloak init failed", err);
+  });

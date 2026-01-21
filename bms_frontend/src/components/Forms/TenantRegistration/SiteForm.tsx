@@ -20,7 +20,7 @@ export default function SiteForm({
             siteName: "",
             addressLine1: "",
             city: "",
-            postCode: "",
+            postcode: "",
             timezone: "Pacific/Auckland",
         },
     });
@@ -56,8 +56,8 @@ export default function SiteForm({
                         <Input placeholder="e.g., Auckland" {...register("city")} />
                     </Field>
 
-                    <Field label="Postcode" error={errors.postCode?.message}>
-                        <Input placeholder="e.g., 1010" {...register("postCode")} />
+                    <Field label="Postcode" error={errors.postcode?.message}>
+                        <Input placeholder="e.g., 1010" {...register("postcode")} />
                     </Field>
                 </div>
 
