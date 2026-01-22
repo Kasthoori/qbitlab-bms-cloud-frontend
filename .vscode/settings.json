@@ -3,6 +3,7 @@
         "BACNET",
         "Cnet",
         "Hvac",
-        "modbus"
+        "modbus",
+        "VITE"
     ]
 }
