@@ -16,7 +16,7 @@ const App = lazy(() => import('./App.tsx'))
 // });
 
 const keycloak = new Keycloak({
-  url: 'http://192.168.68.50:8081',
+  url: 'http://192.168.68.63:8081',
   realm: 'bms',
   clientId: 'bms-frontend'
 });
