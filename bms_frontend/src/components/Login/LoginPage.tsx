@@ -1,16 +1,16 @@
 import { useState, type FC } from "react";
-import Rectangle from "./imports/Rectangle";
+import Rectangle from "../../ui/Rectangle";
 import { Building2, Mail, Lock } from "lucide-react";
-import { Label } from "../ui/label";
+import { Label } from "../../ui/Label";
 // Update the import path below if Button is located elsewhere
 // import { Button } from "../ui/button";
-import { Button } from "../ui/Button";
+import { Button } from "../../ui/Button";
 
 interface LoginPageProps {
     onLogin: () => void;
 }
 
-const LoginPage: FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: FC<LoginPageProps> = ({ }) => {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");   

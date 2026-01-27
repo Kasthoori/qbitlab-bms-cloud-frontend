@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type FC } from "react";
 import type { HvacCurrentState } from "../types/hvac";
 import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import { BACKEND_URL } from "../utils/config";
 
 
-
-const WE_ENDPOINT = "http://192.168.68.58:8084/ws";
+const WE_ENDPOINT = `${BACKEND_URL}/ws`;
 const TOPIC = "/topic/hvac";
 
 const HvacWsTable:FC = () => {

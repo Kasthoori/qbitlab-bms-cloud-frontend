@@ -1,0 +1,87 @@
+import { defineConfig as testConfig, mergeConfig } from 'vitest/config';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+//import { keycloakify } from "keycloakify/vite-plugin";
+
+// https://vite.dev/config/
+const viteConfig = defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+    // keycloakify({
+    //   themeName: "bms-theme" // Replace "my-theme" with your desired theme name or other required parameters
+    //   ,
+    //   accountThemeImplementation: 'Multi-Page'
+    // })
+  ],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:8084",
+        changeOrigin: true,
+      }
+    }
+  },
+  define: {
+    global: "window"
+  },
+  build: {
+    sourcemap: true
+  }
+ 
+});
+
+const vitestConfig = testConfig({
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setupTests.ts',
+    css: true,
+    silent: false,
+  }
+});
+
+export default mergeConfig(viteConfig, vitestConfig);
+
+
+// import { defineConfig } from "vitest/config";
+// import react from "@vitejs/plugin-react";
+// import tailwindcss from "@tailwindcss/vite";
+// import { keycloakify } from "keycloakify/vite-plugin";
+
+// export default defineConfig({
+//   plugins: [
+//     react(),
+//     tailwindcss(),
+//     keycloakify({
+//       themeName: "bms-theme",
+//       accountThemeImplementation: "Multi-Page",
+//     }),
+//   ],
+
+//   server: {
+//     proxy: {
+//       "/api": {
+//         target: "http://localhost:8084",
+//         changeOrigin: true,
+//       },
+//     },
+//   },
+
+//   define: {
+//     global: "window",
+//   },
+
+//   build: {
+//     sourcemap: true,
+//   },
+
+//   test: {
+//     environment: "jsdom",
+//     globals: true,
+//     setupFiles: "./src/test/setupTests.ts",
+//     css: true,
+//     silent: false,
+//   },
+// });

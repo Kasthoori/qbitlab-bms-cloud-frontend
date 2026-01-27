@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FC, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FC, type FormEvent } from "react";
 import type { HvacUnitConfig, Protocol } from "../../types/HvacUnitConfig";
 import { createHvacConfig } from "../../api/hvacConfigApi";
 import HvacDeviceIdField from "../DeviceIdFiled/HvacDeviceIdField";
