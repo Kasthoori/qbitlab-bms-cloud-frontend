@@ -3,6 +3,8 @@ import { BACKEND_URL } from "../utils/config";
 
 const BASE_URL = BACKEND_URL
  
+console.log("KEYCLOAK IMPORT IN http.ts:", keycloak);
+
 
 type ApiOptions = RequestInit & {
   auth?: boolean; // default true
@@ -12,6 +14,12 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   const { auth = true, headers, ...rest } = options;
 
   if (auth) {
+
+    if (!keycloak) {
+      throw new Error(
+        "Keycloak is undefined in http.ts. This usually means wrong import path or circular dependency."
+      );
+    }
     try {
       await keycloak.updateToken(30);
     } catch (e) {

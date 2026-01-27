@@ -5,7 +5,6 @@ import SockJS from "sockjs-client";
 import { BACKEND_URL } from "../utils/config";
 
 
-
 const WE_ENDPOINT = `${BACKEND_URL}/ws`;
 const TOPIC = "/topic/hvac";
 
