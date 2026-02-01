@@ -16,6 +16,7 @@ keycloak
     //redirectUri: "http://localhost:5173", // Ensure it matches where the app is opened
   })
   .then(() => {
+    (window as any).keycloak = keycloak; // for debugging purposes
     createRoot(document.getElementById("root")!).render(
       <StrictMode>
         <App />
