@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { keycloak } from "./keycloak";   // ✅ shared instance
 
+
+
 const App = lazy(() => import("./App.tsx"));
 
 keycloak
@@ -10,8 +12,11 @@ keycloak
     onLoad: "login-required",
     pkceMethod: "S256",
     checkLoginIframe: false,
+    //redirectUri: window.location.origin, // Ensure it matches where the app is opened
+    //redirectUri: "http://localhost:5173", // Ensure it matches where the app is opened
   })
   .then(() => {
+    (window as any).keycloak = keycloak; // for debugging purposes
     createRoot(document.getElementById("root")!).render(
       <StrictMode>
         <App />
