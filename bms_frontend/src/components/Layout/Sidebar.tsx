@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { navItems, type NavItem } from "./nav.config";
 import { useLocation, NavLink } from "react-router-dom";
