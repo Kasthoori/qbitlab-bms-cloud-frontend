@@ -5,7 +5,8 @@ import AppLayout from './components/Layout/AppLayout'
 import Dashboard from './components/Pages/Dashboard'
 import Hvac from './components/Pages/Hvac'
 import Onboarding from './components/Forms/TenantRegistration/Onboarding'
-import UpdateTenants from './components/Forms/UpdateTenants/UpdateTenants'
+import TenantsPage from './components/Forms/UpdateTenants/TenantsPage'
+import SitesPage from './components/Forms/UpdateTenants/SitesPage'
 // import HvacWsTable from './components/HvacWsTable.tsx'
 // import Header from './components/Header/Header.tsx'
 // import { HvacConfigForm } from './components/Forms/HvacConfigForm.tsx'
@@ -27,7 +28,9 @@ const App:FC = () => (
           <Route path='/' element={<Dashboard />} />
           <Route path='/hvac' element={<Hvac />} />
           <Route path='/onboarding' element={<Onboarding />} />
-          <Route path='/admin/update-tenant' element={<UpdateTenants />} />
+          <Route path='/admin/update-tenant' element={<TenantsPage />} />
+          <Route path="/admin/tenants/query/:tenantId/sites" element={<SitesPage />} />
+          {/* <Route path="/api/tenants/query/:tenantId/sites/:siteId/hvacs" element={<HvacsPage />} /> */}
         </Routes>
       </AppLayout>
     </BrowserRouter>
