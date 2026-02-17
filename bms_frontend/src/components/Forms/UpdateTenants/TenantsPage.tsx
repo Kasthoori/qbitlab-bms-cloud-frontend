@@ -1,80 +1,142 @@
-import { type Page, type TenantDto } from "@/api/bms"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { BmsApi, type TenantDto } from "@/api/bms"
 import { useEffect, useState, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import BmsCard from "./BmsCard";
-import { api } from "@/api/http";
+import AddSiteModal from "./AddSiteModal";
+
 
 const TenantsPage:FC = () => {
 
     const nav = useNavigate();
     const [tenants, setTenants] = useState<TenantDto[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+
+    //model state
+    const [addSiteTenantId, setAddSiteTenantId] = useState<string>("");
+    const [addSiteTenantTitle, setAddSiteTenantTitle] = useState<string>("");
+
+    const refetch = async () => {
+
+        try{
+            setLoading(true);
+            const data = await BmsApi.getMyTenants();
+
+            console.log("Get Tenants: ", data);
+
+            const list = 
+                    Array.isArray(data) ? data :
+                    
+                    Array.isArray((data as any)?.data) ? (data as any).data :
+                    Array.isArray((data as any)?.content) ? (data as any).content :
+                    Array.isArray((data as any)?.tenants) ? (data as any).tenants :
+                    [];
+
+                    setTenants(list);
+
+        } catch (e) {
+
+            console.log("Failed to fetch tenants:", e);
+            setTenants([]);
+
+        } finally {
+
+            setLoading(false);
+
+        }
+    }
 
     useEffect(() => {
-        let alive = true;
-
-        (async () => {
-            try {
-                 setLoading(true);
-                 setError(null);
-                 const page = await api<Page<TenantDto>>("/api/tenants/search");
-
-                 if (!alive) return;
-                 setTenants(page.content);
-                 console.log("Fetched tenants:", page);
-
-            }catch (e: unknown) {
-                if (!alive) return;
-                setError(e instanceof Error ? e.message : "An unknown error occurred");
-            }finally {
-                if (alive) setLoading(false);
-            }
-
-        })();
-
-        return () => {
-            alive = false;
-        };
+           refetch();     
     }, []);
 
+    const onDeleteTenant = async (t: TenantDto) => {
+
+        const name = t.tenantName ?? t.name ?? t.tenantId;
+
+        const ok = window.confirm(`Delete tenant "${name}"?`);
+
+        if(!ok) return;
+
+        try {
+            await BmsApi.deleteTenant(t.tenantId);
+
+        }catch (err: any){
+            alert(err instanceof Error ? err.message : "Delete failed");
+        }
+    };
+
+    const openAddSite = (t: TenantDto) => {
+
+        setAddSiteTenantId(t.tenantId);
+        setAddSiteTenantTitle(t.tenantName ?? t.name ?? "Unnamed Tenant");
+    };
+
+    const closeAddSite = () => {
+        setAddSiteTenantId("");
+        setAddSiteTenantTitle("");
+    }
+
+    if (loading) {
+        return <div className="p-6 text-slate-600">Loading tenants....</div>
+    }
+
+    if (tenants.length === 0) {
+        return <div className="p-6 text-slate-600">No tenants found</div>
+    }
+
+
+
     return (
-        <div className="p-6">
-            <div className="mb-5">
-                <h1 className="text-2xl font-bold text-slate-900">Tenants</h1>
-                <p className="mt-1 text-slate-600">Tenants you own / have access to</p>
-            </div>
+        <><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {tenants.map((t) => {
+                const tenantTitle = t.tenantName ?? t.name ?? "Unnamed Tenant";
 
-            {loading && <p className="text-slate-600">Loading...</p>}
-            {error && <p className="text-red-600 whitespace-pre-wrap">Error: {error}</p>}
+                return (
+                    <BmsCard
+                        key={t.tenantId}
+                        title="Update Information"
+                        subtitle={tenantTitle}
+                        meta={`Tenant ID: ${t.tenantId}`}
+                        actions={[
+                            {
+                                label: "Sites",
+                                variant: "secondary",
+                                onClick: () => nav(`/admin/tenants/query/${t.tenantId}/sites`),
+                            },
+                            {
+                                label: "Add Site",
+                                variant: "primary",
+                                onClick: () => openAddSite(t)
+                            },
+                            {
+                                label: "Edit",
+                                variant: "primary",
+                                onClick: () => nav(`/admin/tenants/${t.tenantId}/edit`),
+                            },
+                            {
+                                label: "Delete",
+                                variant: "danger",
+                                onClick: () => onDeleteTenant(t),
+                            },
+                        ]} />
+                );
 
-            {!loading && !error && tenants.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-                    <div className="font-semibold text-slate-900">No Tenants Found</div>
-                    <div className="mt-1 text-sm text-slate-600">
-                        Create a tenant or ask admin to assign access
-                    </div>
-                </div>
-            )}
-
-            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {tenants.map((t) => {
-                    const title = t.tenantName ?? t.name ?? "Unnamed Tenant";
-
-                    return (
-                        <BmsCard 
-                            key={t.tenantId}
-                            title={title}
-                            subtitle={`Tenant ID: ${t.tenantId}`}
-                            meta={t.createdAt ? `Created: ${new Date(t.createdAt).toLocaleString()}` : undefined}
-                            badge="Open"
-                            onClick={() => nav(`/admin/tenants/query/${t.tenantId}/sites`)}
-                        />
-                    );
-                })}
-            </div>
+            })}
         </div>
-    );
+            // Animated modal
+            <AddSiteModal 
+                open={!!addSiteTenantId}
+                tenantId={addSiteTenantId}
+                tenantTitle={addSiteTenantTitle}
+                onClose={closeAddSite}
+                onCreated={() => {
+                    refetch();
+                }}
+            />
+            
+      </>
+    )
 
 
 }

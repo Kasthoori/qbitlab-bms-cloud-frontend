@@ -1,8 +1,9 @@
-import type { SiteDto } from "@/api/bms";
+import { type SiteDto } from "@/api/bms";
 import { api } from "@/api/http";
 import {useEffect, useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BmsCard from "./BmsCard";
+import AddHvacModal from "./AddHvacModal";
 
 const SitesPage:FC = () => {
 
@@ -15,39 +16,52 @@ const SitesPage:FC = () => {
     const [error, setError] = useState<string | null>(null);
 
 
+    const [openAddHvac, setOpenAddHvac] = useState(false);
+    const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+    const [selectedSiteTitle, setSelectedSiteTitle] = useState<string | undefined>();
+
+    const loadSites = async () => {
+
+        if (!tenantId) return;
+
+        setLoading(true);
+        setError(null);
+
+        try {
+            const data = await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`);
+
+            setSites(Array.isArray(data) ? data : []);
+
+        } catch (e: unknown) {
+
+            setError(e instanceof Error ? e.message : "An unknown error occurred");
+            setSites([]);
+
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
     useEffect(() => {
-
-        let alive = true;
-
-        (async () => {
-            try {
-
-                setLoading(true);
-                setError(null);
-
-                const data = await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`);
-                if (!alive) return;
-                setSites(data);
-                console.log("Fetched sites:", data);
-
-
-            }catch (e: unknown) {
-
-                if (!alive) return;
-                setError(e instanceof Error ? e.message : "An unknown error occurred");
-
-            } finally {
-
-                if (!alive) setLoading(false);
-            }
-        })();
-
-        return () => {
-            alive = false;
-        };
-
-        
+         loadSites();    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tenantId]);
+
+    const onDeleteSite = async (s: SiteDto) => {
+        const ok = window.confirm(`Delete site "${s.siteName}"?`);
+
+        if (!ok) return;
+
+        try {
+
+            await api<void>(`/api/sites/${s.siteId}`, {method: "DELETE"});
+            await loadSites();
+
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : "Delete failed");
+        }
+    }
 
     return (
         <div className="p-6">
@@ -62,7 +76,7 @@ const SitesPage:FC = () => {
 
             <div className="mb-5">
                 <h1 className="text-2xl font-bold text-slate-900">Sites</h1>
-                <p className="mt-1 text-slate-600">Tenant: {tenantId}</p>
+                <p className="mt-1 text-slate-600"><b>Tenant:</b> {tenantId}</p>
             </div>
 
             {loading && <p className="text-slate-600">Loading Sites.....</p>}
@@ -78,14 +92,55 @@ const SitesPage:FC = () => {
             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {sites.map((s) => (
                     <BmsCard 
-                        key={s.id}
-                        title={s.siteName}
-                        subtitle={[s.addressLine1, s.city, s.postcode].filter(Boolean).join(",")}
-                        meta={s.timezone ? `Timezone: ${s.timezone}` : undefined}
-                        badge="HVACs"
-                        onClick={() => nav(`/tenants/${tenantId}/sites/${s.id}/hvacs`)}
+                        key={s.siteId}
+                        title="Sites"
+                        subtitle={s.siteName}
+                        meta={[
+                            [s.addressLine1, s.city, s.postcode].filter(Boolean).join(", "),
+                            s.timezone ? `Timezone: ${s.timezone}` : null,
+                            `Site ID: ${s.siteId}`,
+                        ]
+                        .filter(Boolean)
+                        .join("\n")}
+                        actions={[
+                            {
+                                label: "HVACs",
+                                variant: "secondary",
+                                onClick: () => nav(`/admin/tenants/query/${tenantId}/sites/${s.siteId}/hvacs`),
+                            },
+                            {
+                                label: "Add HVAC",
+                                variant: "secondary",
+                                onClick: () => {
+                                    setSelectedSiteId(s.siteId);
+                                    setSelectedSiteTitle(s.siteName);
+                                    setOpenAddHvac(true);
+                                },
+                            },
+                            {
+                                label: "Edit",
+                                variant: "primary",
+                                onClick: () => nav(`/admin/sites/${s.siteId}/edit`),
+                            },
+                            {
+                                label: "Delete",
+                                variant: "danger",
+                                onClick: () => onDeleteSite(s),
+                            }
+                        ]}
+                        
+                        //onClick={() => nav(`/admin/tenants/query/${tenantId}/sites/${s.siteId}/hvacs`)}
                     />
                 ))}
+
+                <AddHvacModal
+                    open={openAddHvac}
+                    tenantId={tenantId!}
+                    siteId={selectedSiteId!}
+                    siteTitle={selectedSiteTitle}
+                    onClose={() => setOpenAddHvac(false)}
+                    onCreated={loadSites}
+                />
             </div>
         </div>
     );
