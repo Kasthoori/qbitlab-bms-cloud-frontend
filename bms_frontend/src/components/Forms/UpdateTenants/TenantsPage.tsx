@@ -4,6 +4,7 @@ import { useEffect, useState, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import BmsCard from "./BmsCard";
 import AddSiteModal from "./AddSiteModal";
+import UpdateTenantModel from "./UpdateTenantModel";
 
 
 const TenantsPage:FC = () => {
@@ -15,6 +16,8 @@ const TenantsPage:FC = () => {
     //model state
     const [addSiteTenantId, setAddSiteTenantId] = useState<string>("");
     const [addSiteTenantTitle, setAddSiteTenantTitle] = useState<string>("");
+    const [editTenantId, setEditTenantId] = useState<string>("");
+    const [editTenantTitle, setEditTenantTitle] = useState<string>("");
 
     const refetch = async () => {
 
@@ -72,6 +75,16 @@ const TenantsPage:FC = () => {
         setAddSiteTenantTitle(t.tenantName ?? t.name ?? "Unnamed Tenant");
     };
 
+    const openEditTenant = (t: TenantDto) => {
+        setEditTenantId(t.tenantId);
+        setEditTenantTitle(t.tenantName ?? t.name ?? "Unnamed Tenant");
+    }
+
+    const closeEditTenant = () => {
+        setEditTenantId("");
+        setEditTenantTitle("");
+    }    
+
     const closeAddSite = () => {
         setAddSiteTenantId("");
         setAddSiteTenantTitle("");
@@ -112,7 +125,7 @@ const TenantsPage:FC = () => {
                             {
                                 label: "Edit",
                                 variant: "primary",
-                                onClick: () => nav(`/admin/tenants/${t.tenantId}/edit`),
+                                onClick: () => openEditTenant(t),
                             },
                             {
                                 label: "Delete",
@@ -133,6 +146,14 @@ const TenantsPage:FC = () => {
                 onCreated={() => {
                     refetch();
                 }}
+            />
+
+            <UpdateTenantModel 
+               open={!!editTenantId} 
+               tenantId={editTenantId} 
+               tenantTitle={editTenantTitle}
+               onClose={closeEditTenant}
+               onCreated={() => { refetch(); }}
             />
             
       </>

@@ -4,6 +4,7 @@ import {useEffect, useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BmsCard from "./BmsCard";
 import AddHvacModal from "./AddHvacModal";
+import UpdateSiteModel from "./UpdateSiteModel";
 
 const SitesPage:FC = () => {
 
@@ -18,7 +19,10 @@ const SitesPage:FC = () => {
 
     const [openAddHvac, setOpenAddHvac] = useState(false);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-    const [selectedSiteTitle, setSelectedSiteTitle] = useState<string | undefined>();
+    const [selectedSiteTitle, setSelectedSiteTitle] = useState<string>();
+
+    const [openUpdateSite, setOpenUpdateSite] = useState(false);
+
 
     const loadSites = async () => {
 
@@ -120,13 +124,18 @@ const SitesPage:FC = () => {
                             {
                                 label: "Edit",
                                 variant: "primary",
-                                onClick: () => nav(`/admin/sites/${s.siteId}/edit`),
+                                onClick: () => {
+                                    setSelectedSiteId(s.siteId);
+                                    setSelectedSiteTitle(s.siteName);
+                                    setOpenUpdateSite(true);
+                                },
                             },
                             {
                                 label: "Delete",
                                 variant: "danger",
                                 onClick: () => onDeleteSite(s),
-                            }
+                            },
+                           
                         ]}
                         
                         //onClick={() => nav(`/admin/tenants/query/${tenantId}/sites/${s.siteId}/hvacs`)}
@@ -139,6 +148,15 @@ const SitesPage:FC = () => {
                     siteId={selectedSiteId!}
                     siteTitle={selectedSiteTitle}
                     onClose={() => setOpenAddHvac(false)}
+                    onCreated={loadSites}
+                />
+
+                <UpdateSiteModel 
+                    open={openUpdateSite}
+                    siteId={selectedSiteId!}
+                    siteName={selectedSiteTitle || ""}
+                    tenantId={tenantId!}
+                    onClose={() => setOpenUpdateSite(false)}
                     onCreated={loadSites}
                 />
             </div>

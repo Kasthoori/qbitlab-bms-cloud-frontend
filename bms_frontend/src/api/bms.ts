@@ -2,11 +2,16 @@ import type { Key } from "react";
 import { api }  from "./http";
 
 export type TenantDto = {
-    tenantName: string;
+    tenantName?: string;
     id: Key | null | undefined;
     createdAt: string;
     tenantId: string;
     name: string;
+    country?: string;
+    addressLine1?: string;
+    city?: string;
+    postcode?: string;
+    timezone?: string;
     // tenantName?: string;
     // name?: string;
     // createdAt?: string;
@@ -26,6 +31,9 @@ export type HvacDto = {
     hvacId: string;
     id?: string;              // optional
     hvacName?: string;
+    deviceId?: string;
+    protocol?: string;
+    unitType?: string;
     name?: string;
     model?: string;
     status?: string;
@@ -41,6 +49,15 @@ export type Page<T> = {
     number: number; // Page index
     size: number;
 
+};
+
+export type CreateTenantRequest = {
+    name: string;
+    country: string;
+    addressLine1: string;
+    city: string;
+    postcode: string;
+    timezone: string;
 };
 
 export type CreateSiteRequest = {
@@ -81,9 +98,26 @@ export const BmsApi = {
                 headers: {"Content-Type": "application/json"},
             }),
 
+    // Add HVAC to existing Site
     addHvacToExistingSite: async (tenantId: string, siteId: string, req: CreateHvacRequest) =>
             await api<HvacDto>(`/api/hvacs/${tenantId}/sites/${siteId}/hvacs`, {
                 method: "POST",
+                body: JSON.stringify(req),
+                headers: {"Content-Type": "application/json"},
+            }),
+
+    // Update Tenant Details
+    updateTenantInfo: async (tenantId: string, req: CreateTenantRequest) =>
+            await api<TenantDto>(`/api/update-tenant/${tenantId}`, {
+                method: "PUT",
+                body: JSON.stringify(req),
+                headers: {"Content-Type": "application/json"},
+            }),
+
+    // Update Site Details /api/update-site/{tenantId}/sites/{siteId}
+    updateSite: async (tenantId: string, siteId: string, req: CreateSiteRequest) =>
+            await api<SiteDto>(`/api/update-site/${tenantId}/sites/${siteId}`, {
+                method: "PUT",
                 body: JSON.stringify(req),
                 headers: {"Content-Type": "application/json"},
             }),
