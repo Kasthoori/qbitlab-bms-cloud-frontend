@@ -15,6 +15,7 @@ const SitesPage:FC = () => {
     const [sites, setSites] = useState<SiteDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedSite, setSelectedSite] = useState<SiteDto | undefined>(undefined);
 
 
     const [openAddHvac, setOpenAddHvac] = useState(false);
@@ -128,6 +129,7 @@ const SitesPage:FC = () => {
                                     setSelectedSiteId(s.siteId);
                                     setSelectedSiteTitle(s.siteName);
                                     setOpenUpdateSite(true);
+                                    setSelectedSite(s);
                                 },
                             },
                             {
@@ -150,7 +152,8 @@ const SitesPage:FC = () => {
                     onClose={() => setOpenAddHvac(false)}
                     onCreated={loadSites}
                 />
-
+            
+            {selectedSite && (
                 <UpdateSiteModel 
                     open={openUpdateSite}
                     siteId={selectedSiteId!}
@@ -158,7 +161,9 @@ const SitesPage:FC = () => {
                     tenantId={tenantId!}
                     onClose={() => setOpenUpdateSite(false)}
                     onCreated={loadSites}
+                    site={selectedSite}
                 />
+            )}
             </div>
         </div>
     );

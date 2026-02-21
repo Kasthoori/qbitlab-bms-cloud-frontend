@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { BmsApi, type CreateSiteRequest } from "@/api/bms";
+import { BmsApi, type CreateSiteRequest, type SiteDto } from "@/api/bms";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { useMemo, useState, type FC, type SubmitEventHandler } from "react";
+import { useEffect, useMemo, useRef, useState, type FC, type SubmitEventHandler } from "react";
 
 type UpdateSiteModelProps = {
     open: boolean;
     siteId: string;
     siteName: string;
     tenantId: string;
+    site: SiteDto;
     onClose: () => void;
     onCreated: () => void;
 }
@@ -17,6 +18,7 @@ const UpdateSiteModel:FC<UpdateSiteModelProps> = ({
     siteId,
     siteName,
     tenantId,
+    site,
     onClose,
     onCreated
 }) => {
@@ -36,6 +38,37 @@ const UpdateSiteModel:FC<UpdateSiteModelProps> = ({
     }), []);
 
     const [form, setForm] = useState<CreateSiteRequest>(initialForm);
+
+    const hydratedRef = useRef<{ open: boolean; siteId: string } | null>(null);
+
+    useEffect(() => {
+
+       // When closed, clear the hydration marker
+            if (!open) {
+                hydratedRef.current = null;
+                return;
+            }
+
+            // Hydrate only once per open+siteId (prevents overwrite while typing)
+            if (hydratedRef.current?.open === true && hydratedRef.current?.siteId === siteId) {
+                return;
+            }
+
+       
+        setForm({
+            siteName: site.siteName ?? "",
+            addressLine1: site.addressLine1 ?? "",
+            city: site.city ?? "",
+            postcode: site.postcode ?? "",
+            timezone: site.timezone ?? "",
+        });
+
+        setErr(null);
+        setSuccess(false);
+
+        hydratedRef.current = { open: true, siteId };
+
+    }, [open, site, siteId]);
 
     const resetLocalState = () => {
 
