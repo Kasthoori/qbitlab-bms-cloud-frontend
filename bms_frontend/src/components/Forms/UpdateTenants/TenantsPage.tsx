@@ -16,13 +16,21 @@ const TenantsPage:FC = () => {
     //model state
     const [addSiteTenantId, setAddSiteTenantId] = useState<string>("");
     const [addSiteTenantTitle, setAddSiteTenantTitle] = useState<string>("");
-    const [editTenantId, setEditTenantId] = useState<string>("");
-    const [editTenantTitle, setEditTenantTitle] = useState<string>("");
+    //const [editTenantId, setEditTenantId] = useState<string>("");
+    //const [editTenantTitle, setEditTenantTitle] = useState<string>("");
+
+    const [openUpdateTenant, setOpenUpdateTenant] = useState(false);
+
+    const [selectedTenant, setSelectedTenant] = useState<TenantDto | undefined>(undefined);
+    const [, setRefreshing] = useState(false);
+    
 
     const refetch = async () => {
 
         try{
-            setLoading(true);
+            if (tenants.length === 0) setLoading(true);
+            else setRefreshing(true);
+
             const data = await BmsApi.getMyTenants();
 
             console.log("Get Tenants: ", data);
@@ -45,7 +53,7 @@ const TenantsPage:FC = () => {
         } finally {
 
             setLoading(false);
-
+            setRefreshing(false);
         }
     }
 
@@ -75,14 +83,28 @@ const TenantsPage:FC = () => {
         setAddSiteTenantTitle(t.tenantName ?? t.name ?? "Unnamed Tenant");
     };
 
-    const openEditTenant = (t: TenantDto) => {
-        setEditTenantId(t.tenantId);
-        setEditTenantTitle(t.tenantName ?? t.name ?? "Unnamed Tenant");
-    }
+   const openEditTenant = async(t: TenantDto) => {
+        
+            setOpenUpdateTenant(true);
+            setSelectedTenant(t);
+
+            try {
+
+                const fullTenant = await BmsApi.getTenantById(t.tenantId);
+                setSelectedTenant(fullTenant);
+
+            } catch (e) {
+
+                alert(`Failed to fetch tenant details: ${e instanceof Error ? e.message : ""}`);
+                setOpenUpdateTenant(false);
+                setSelectedTenant(undefined);
+
+            }
+    };
 
     const closeEditTenant = () => {
-        setEditTenantId("");
-        setEditTenantTitle("");
+       setOpenUpdateTenant(false);
+        setSelectedTenant(undefined);
     }    
 
     const closeAddSite = () => {
@@ -125,7 +147,9 @@ const TenantsPage:FC = () => {
                             {
                                 label: "Edit",
                                 variant: "primary",
-                                onClick: () => openEditTenant(t),
+                                onClick: () => {
+                                    openEditTenant(t);
+                                },
                             },
                             {
                                 label: "Delete",
@@ -137,7 +161,7 @@ const TenantsPage:FC = () => {
 
             })}
         </div>
-            // Animated modal
+            
             <AddSiteModal 
                 open={!!addSiteTenantId}
                 tenantId={addSiteTenantId}
@@ -147,15 +171,16 @@ const TenantsPage:FC = () => {
                     refetch();
                 }}
             />
-
+           {selectedTenant && (
             <UpdateTenantModel 
-               open={!!editTenantId} 
-               tenantId={editTenantId} 
-               tenantTitle={editTenantTitle}
-               onClose={closeEditTenant}
-               onCreated={() => { refetch(); }}
+               open={openUpdateTenant} 
+               tenantId={selectedTenant.tenantId} 
+               tenantTitle={selectedTenant.tenantName ?? selectedTenant.name}
+               onClose={() => closeEditTenant()}
+               onCreated={refetch}
+               tenant={selectedTenant}
             />
-            
+           )}
       </>
     )
 

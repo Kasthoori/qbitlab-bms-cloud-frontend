@@ -153,17 +153,17 @@ const SitesPage:FC = () => {
                     onCreated={loadSites}
                 />
             
-            {selectedSite && (
-                <UpdateSiteModel 
-                    open={openUpdateSite}
-                    siteId={selectedSiteId!}
-                    siteName={selectedSiteTitle || ""}
-                    tenantId={tenantId!}
-                    onClose={() => setOpenUpdateSite(false)}
-                    onCreated={loadSites}
-                    site={selectedSite}
-                />
-            )}
+                {selectedSite && (
+                    <UpdateSiteModel 
+                        open={openUpdateSite}
+                        siteId={selectedSiteId!}
+                        siteName={selectedSiteTitle || ""}
+                        tenantId={tenantId!}
+                        onClose={() => setOpenUpdateSite(false)}
+                        onCreated={loadSites}
+                        site={selectedSite}
+                    />
+                )}
             </div>
         </div>
     );

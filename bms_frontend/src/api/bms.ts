@@ -7,11 +7,11 @@ export type TenantDto = {
     createdAt: string;
     tenantId: string;
     name: string;
-    country?: string;
-    addressLine1?: string;
-    city?: string;
-    postcode?: string;
-    timezone?: string;
+    country: string;
+    addressLine1: string;
+    city: string;
+    postcode: string;
+    timezone: string;
     // tenantName?: string;
     // name?: string;
     // createdAt?: string;
@@ -79,7 +79,9 @@ export const BmsApi = {
 
     getMyTenants: async () => await api<TenantDto[]>("/api/tenants/search"),
     getSitesByTenant: async (tenantId: string) => await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`),
-    getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`), 
+    getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
+    
+    getTenantById: async (tenantId: string) => await api<TenantDto>(`/api/tenants/${tenantId}`),
     
     deleteSite: async (tenantId: string, siteId: string) =>
         await api<void>(`/api/tenant/${tenantId}/sites/${siteId}`, {method: "DELETE"}),
@@ -117,6 +119,13 @@ export const BmsApi = {
     // Update Site Details /api/update-site/{tenantId}/sites/{siteId}
     updateSite: async (tenantId: string, siteId: string, req: CreateSiteRequest) =>
             await api<SiteDto>(`/api/update-site/${tenantId}/sites/${siteId}`, {
+                method: "PUT",
+                body: JSON.stringify(req),
+                headers: {"Content-Type": "application/json"},
+            }),
+
+    updateHvac: async (tenantId: string, siteId: string, hvacId: string, req: CreateHvacRequest) =>
+            await api<HvacDto>(`/api/update-hvac/${tenantId}/sites/${siteId}/hvacs/${hvacId}`, {
                 method: "PUT",
                 body: JSON.stringify(req),
                 headers: {"Content-Type": "application/json"},

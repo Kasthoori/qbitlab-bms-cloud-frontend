@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { BmsApi, type CreateTenantRequest } from "@/api/bms";
+import { BmsApi, type CreateTenantRequest, type TenantDto } from "@/api/bms";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { useMemo, useState, type FC, type SubmitEventHandler } from "react";
+import { useEffect, useMemo, useRef, useState, type FC, type SubmitEventHandler } from "react";
 
 type UpdateTenantModelProps = {
     open: boolean;
     tenantId: string;
     tenantTitle?: string;
+    tenant: TenantDto;
     onClose: () => void;
     onCreated?: () => void;
 }
@@ -15,6 +16,7 @@ const UpdateTenantModel:FC<UpdateTenantModelProps> = ({
    open,
    tenantId,
    tenantTitle,
+   tenant,
    onClose,
    onCreated
 }) => {
@@ -23,6 +25,8 @@ const UpdateTenantModel:FC<UpdateTenantModelProps> = ({
 
     const [saving, setSaving] = useState<boolean>(false);
     const [err, setErr] = useState<string | null>(null);
+    const [success, setSuccess] = useState<boolean>(false);
+
 
     const initialForm = useMemo<CreateTenantRequest>(() => ({
         name: "",
@@ -42,10 +46,43 @@ const UpdateTenantModel:FC<UpdateTenantModelProps> = ({
     }
 
     const handleClose = () => {
-        if(saving) return; // optional: don't allow closing while saving
+        if (saving) return;
         resetLocalState();
+        setErr(null);
+        setSuccess(false);
         onClose();
-    }
+    };
+
+    const hydratedRef = useRef<{open: boolean, tenantId: string | null}>(null);
+
+    useEffect(() => {
+
+        if (!open) {
+            hydratedRef.current = null;
+            return;
+        }
+
+      const hasDetails =
+                !!tenant.country || !!tenant.addressLine1 || !!tenant.city || !!tenant.postcode;
+
+            const key = `${tenantId}:${hasDetails ? "full" : "basic"}`;
+
+            if (hydratedRef.current?.tenantId === key) return;
+
+            setForm({
+                name: tenant.name ?? tenant.tenantName ?? "",
+                country: tenant.country ?? "",
+                addressLine1: tenant.addressLine1 ?? "",
+                city: tenant.city ?? "",
+                postcode: tenant.postcode ?? "",
+                timezone: tenant.timezone ?? "Pacific/Auckland",
+            });
+
+            setErr(null);
+
+            hydratedRef.current = { open: true, tenantId: key };
+
+    }, [open, tenantId, tenant]);
 
     const setField = <K extends keyof CreateTenantRequest>(key: K, value: CreateTenantRequest[K]) =>
             setForm(p => ({...p, [key]: value}));
@@ -64,35 +101,40 @@ const UpdateTenantModel:FC<UpdateTenantModelProps> = ({
         e.preventDefault();
 
         const v = validate();
+            if (v) {
+                setErr(v);
+                return;
+            }
 
-        if(v){
-            setErr(v);
-            return;
-        }
+                try {
+                    setSaving(true);
+                    setErr(null);
+                    setSuccess(false);
 
-        try{
+                    await BmsApi.updateTenantInfo(tenantId, form);
 
-            setSaving(true);
-            setErr(null);
+                    setSuccess(true);
 
-            await BmsApi.updateTenantInfo(tenantId, form);
+                    // refresh parent list AFTER success is shown
+                    //onCreated?.();
 
-            onCreated?.();
-            resetLocalState();
-            onClose();
+                    setTimeout(() => {
+                        setSuccess(false);
+                        setErr(null);
+                        onClose();
+                        onCreated?.();
+                    }, 2000);
 
-        } catch (err: any) {
-
-            const msg =
-            err?.response?.data?.message ||
-            err?.message ||
-            "Failed to create site. Please try again.";
-            setErr(String(msg));
-
-        } finally {
-            setSaving(false);
-        }
-    }
+                } catch (err: any) {
+                    const msg =
+                    err?.response?.data?.message ||
+                    err?.message ||
+                    "Failed to update tenant. Please try again.";
+                    setErr(String(msg));
+                } finally {
+                    setSaving(false);
+            }
+};
 
     return (
         <AnimatePresence>
@@ -163,6 +205,18 @@ const UpdateTenantModel:FC<UpdateTenantModelProps> = ({
                                         {err}
                                     </motion.div>
                                 )}
+
+                            {success && (
+                                <motion.div>
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700"
+                                    >
+                                        <div>Successfully updated</div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
                                 <div className="grid grid-cols-1 gap-3">
                                     <label className="text-sm">
                                         <div className="mb-1 text-slate-700">Tenant Name</div>
@@ -230,7 +284,7 @@ const UpdateTenantModel:FC<UpdateTenantModelProps> = ({
 
                                     <div className="mt-5 flex items-center justify-end gap-2.5">
                                         <button
-                                            type="submit"
+                                            type="button"
                                             onClick={handleClose}
                                             className="h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60"
                                             disabled={saving}
