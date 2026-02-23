@@ -84,13 +84,13 @@ export const BmsApi = {
     getTenantById: async (tenantId: string) => await api<TenantDto>(`/api/tenants/${tenantId}`),
     
     deleteSite: async (tenantId: string, siteId: string) =>
-        await api<void>(`/api/tenant/${tenantId}/sites/${siteId}`, {method: "DELETE"}),
+        await api<void>(`/api/tenants/deleteSite/${tenantId}/sites/${siteId}`, {method: "DELETE"}),
 
     deleteHvac: async (tenantId: string, siteId: string, hvacId: string) =>
-        await api<void>(`/api/hvacs/${tenantId}/sites/${siteId}/hvacs/${hvacId}`, {method: "DELETE"}),
+        await api<void>(`/api/tenants/deleteHvac/${tenantId}/sites/${siteId}/hvacs/${hvacId}`, {method: "DELETE"}),
 
     deleteTenant: async (tenantId: string) => 
-       await api<void>(`/api/tenant/${tenantId}`, {method: "DELETE"}),
+       await api<void>(`/api/tenants/delete/${tenantId}`, {method: "DELETE"}),
 
     // Add Site to existing Tenant
     addSiteToExistingTenant: async (tenantId: string, req: CreateSiteRequest) =>
