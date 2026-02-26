@@ -1,10 +1,11 @@
-import { type SiteDto } from "@/api/bms";
+import { BmsApi, type SiteDto } from "@/api/bms";
 import { api } from "@/api/http";
 import {useEffect, useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BmsCard from "./BmsCard";
 import AddHvacModal from "./AddHvacModal";
 import UpdateSiteModel from "./UpdateSiteModel";
+import ConfirmDeleteSiteModel from "./ConfirmDeleteSiteModel";
 
 const SitesPage:FC = () => {
 
@@ -23,6 +24,16 @@ const SitesPage:FC = () => {
     const [selectedSiteTitle, setSelectedSiteTitle] = useState<string>();
 
     const [openUpdateSite, setOpenUpdateSite] = useState(false);
+
+    
+    // Delete Site modal
+    const [openDeleteSite, setOpenDeleteSite] = useState(false);
+    const [siteToDelete, setSiteToDelete] = useState<SiteDto | null>(null);
+    const [deletingSite, setDeletingSite] = useState(false);
+    const [deleteSiteError, setDeleteSiteError] = useState<string | null>(null);
+    const [deleteSiteSuccess, setDeleteSiteSuccess] = useState(false);
+
+
 
 
     const loadSites = async () => {
@@ -53,20 +64,41 @@ const SitesPage:FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tenantId]);
 
-    const onDeleteSite = async (s: SiteDto) => {
-        const ok = window.confirm(`Delete site "${s.siteName}"?`);
+     // --- Delete flow (open modal)
+    const onAskDeleteSite = (s: SiteDto) => {
+        setSiteToDelete(s);
+        setDeleteSiteError(null);
+        setDeleteSiteSuccess(false);
+        setOpenDeleteSite(true);
+    };
 
-        if (!ok) return;
+  // --- Delete flow (confirm)
+  const onConfirmDeleteSite = async () => {
+    if (!siteToDelete) return;
 
-        try {
+    setDeletingSite(true);
+    setDeleteSiteError(null);
+    setDeleteSiteSuccess(false);
 
-            await api<void>(`/api/sites/${s.siteId}`, {method: "DELETE"});
-            await loadSites();
+    try {
 
-        } catch (err: unknown) {
-            alert(err instanceof Error ? err.message : "Delete failed");
-        }
+      await BmsApi.deleteSite(tenantId!, siteToDelete.siteId);
+
+      setDeleteSiteSuccess(true);
+      await loadSites();
+
+      // keep success visible briefly, then close
+      setTimeout(() => {
+        setOpenDeleteSite(false);
+        setSiteToDelete(null);
+        setDeleteSiteSuccess(false);
+      }, 700);
+    } catch (err: unknown) {
+      setDeleteSiteError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeletingSite(false);
     }
+  };
 
     return (
         <div className="p-6">
@@ -135,7 +167,7 @@ const SitesPage:FC = () => {
                             {
                                 label: "Delete",
                                 variant: "danger",
-                                onClick: () => onDeleteSite(s),
+                                onClick: () => onAskDeleteSite(s),
                             },
                            
                         ]}
@@ -164,6 +196,26 @@ const SitesPage:FC = () => {
                         site={selectedSite}
                     />
                 )}
+
+                {tenantId && siteToDelete && (
+                <ConfirmDeleteSiteModel
+                    open={openDeleteSite}
+                    tenantId={tenantId}
+                    siteId={siteToDelete.siteId}
+                    siteName={siteToDelete.siteName}
+                    deleting={deletingSite}
+                    error={deleteSiteError}
+                    success={deleteSiteSuccess}
+                    onClose={() => {
+                        if (deletingSite) return;
+                        setOpenDeleteSite(false);
+                        setSiteToDelete(null);
+                        setDeleteSiteError(null);
+                        setDeleteSiteSuccess(false);
+                    }}
+                    onConfirmDelete={onConfirmDeleteSite}
+                />
+            )}
             </div>
         </div>
     );

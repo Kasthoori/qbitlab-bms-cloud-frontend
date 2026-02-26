@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BmsCard from "./BmsCard";
 import UpdateHvacModal from "./UpdateHvacModal";
+import ConfirmDeleteHvacModal from "./ConfirmDeleteHvacModal";
 
 // --- type guards (safe enum handling) ---
 type Protocol = CreateHvacRequest["protocol"];
@@ -29,12 +30,20 @@ const HvacsPages: FC = () => {
   const [hvacs, setHvacs] = useState<HvacDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  // const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // --- edit modal state (Fix3) ---
   const [openUpdateHvac, setOpenUpdateHvac] = useState(false);
   const [selectedHvac, setSelectedHvac] = useState<HvacDto | null>(null);
   const [hvacForm, setHvacForm] = useState<CreateHvacRequest>(EMPTY_HVAC_FORM);
+
+  // --- delete modal state (NEW) ---
+  const [openDeleteHvac, setOpenDeleteHvac] = useState(false);
+  const [hvacToDelete, setHvacToDelete] = useState<HvacDto | null>(null);
+  const [deletingHvac, setDeletingHvac] = useState(false);
+  const [deleteHvacError, setDeleteHvacError] = useState<string | null>(null);
+  const [deleteHvacSuccess, setDeleteHvacSuccess] = useState(false);
+
 
   const loadHvacs = useCallback(async () => {
     if (!tenantId || !siteId) return;
@@ -56,27 +65,6 @@ const HvacsPages: FC = () => {
     void loadHvacs();
   }, [loadHvacs]);
 
-  const onDeleteHvac = useCallback(
-    async (h: HvacDto) => {
-      if (!tenantId || !siteId) return;
-
-      const hvacId = (h as any).hvacId ?? (h as any).id; // support both shapes if your DTO differs
-      const name = (h as any).hvacName ?? (h as any).name ?? hvacId;
-      const ok = window.confirm(`Delete HVAC "${name}"?`);
-      if (!ok) return;
-
-      try {
-        setDeletingId(hvacId);
-        await BmsApi.deleteHvac(tenantId, siteId, hvacId);
-        await loadHvacs();
-      } catch (e: unknown) {
-        alert(e instanceof Error ? e.message : "Delete failed");
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [tenantId, siteId, loadHvacs]
-  );
 
   // ✅ Fix3: hydrate form here (parent) BEFORE opening modal
   const onEditHvac = (h: HvacDto) => {
@@ -98,6 +86,44 @@ const HvacsPages: FC = () => {
     setSelectedHvac(null);
     setHvacForm(EMPTY_HVAC_FORM);
   };
+
+  // ✅ Delete flow: open confirm modal (NEW)
+  const onAskDeleteHvac = (h: HvacDto) => {
+    setHvacToDelete(h);
+    setDeleteHvacError(null);
+    setDeleteHvacSuccess(false);
+    setOpenDeleteHvac(true);
+  };
+
+  // ✅ Delete flow: confirm delete (NEW)
+  const onConfirmDeleteHvac = async () => {
+    if (!tenantId || !siteId || !hvacToDelete) return;
+
+    const hvacId = (hvacToDelete as any).hvacId ?? (hvacToDelete as any).id;
+
+    setDeletingHvac(true);
+    setDeleteHvacError(null);
+    setDeleteHvacSuccess(false);
+
+    try {
+      await BmsApi.deleteHvac(tenantId, siteId, hvacId);
+
+      setDeleteHvacSuccess(true);
+      await loadHvacs();
+
+      // show success briefly then close
+      setTimeout(() => {
+        setOpenDeleteHvac(false);
+        setHvacToDelete(null);
+        setDeleteHvacSuccess(false);
+      }, 700);
+    } catch (e: unknown) {
+      setDeleteHvacError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingHvac(false);
+    }
+  };
+
 
   return (
     <div className="p-6">
@@ -153,12 +179,16 @@ const HvacsPages: FC = () => {
                   onClick: () => onEditHvac(h),
                 },
                 {
-                  label: deletingId === hvacId ? "Deleting..." : "Delete",
-                  variant: "danger",
-                  disabled: deletingId === hvacId,
-                  onClick: () => onDeleteHvac(h),
-                },
-              ]}
+                label:
+                  deletingHvac && ((hvacToDelete as any)?.hvacId ?? (hvacToDelete as any)?.id) === hvacId
+                    ? "Deleting..."
+                    : "Delete",
+                    variant: "danger",
+                    disabled:
+                      deletingHvac && ((hvacToDelete as any)?.hvacId ?? (hvacToDelete as any)?.id) === hvacId,
+                    onClick: () => onAskDeleteHvac(h),
+                  },
+               ]}
             />
           );
         })}
@@ -176,6 +206,28 @@ const HvacsPages: FC = () => {
           setForm={setHvacForm}
           onClose={closeEditModal}
           onUpdated={loadHvacs}
+        />
+      )}
+
+      {/* ✅ Delete confirm modal (NEW) */}
+      {tenantId && siteId && hvacToDelete && (
+        <ConfirmDeleteHvacModal
+          open={openDeleteHvac}
+          tenantId={tenantId}
+          siteId={siteId}
+          hvacId={(hvacToDelete as any).hvacId ?? (hvacToDelete as any).id}
+          hvacName={(hvacToDelete as any).hvacName ?? (hvacToDelete as any).name}
+          deleting={deletingHvac}
+          error={deleteHvacError}
+          success={deleteHvacSuccess}
+          onClose={() => {
+            if (deletingHvac) return;
+            setOpenDeleteHvac(false);
+            setHvacToDelete(null);
+            setDeleteHvacError(null);
+            setDeleteHvacSuccess(false);
+          }}
+          onConfirmDelete={onConfirmDeleteHvac}
         />
       )}
     </div>
