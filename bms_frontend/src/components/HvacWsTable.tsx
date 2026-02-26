@@ -19,6 +19,7 @@ const HvacWsTable:FC = () => {
         const socketFactory = () => new SockJS(WE_ENDPOINT);
 
         const client = new Client({
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 webSocketFactory: socketFactory as any,
                 reconnectDelay: 5000, // auto-reconnect delay 5sec
 
