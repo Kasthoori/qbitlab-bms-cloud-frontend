@@ -6,6 +6,7 @@
         "Hvac",
         "Hvacs",
         "modbus",
+        "stompjs",
         "VITE"
     ]
 }
