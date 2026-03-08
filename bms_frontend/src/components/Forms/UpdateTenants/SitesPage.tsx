@@ -139,9 +139,9 @@ const SitesPage:FC = () => {
                         ]
                         .filter(Boolean)
                         .join("\n")}
-                        actions={[
+                       actions={[
                             {
-                                label: "HVACs",
+                                label: "View HVACs",
                                 variant: "secondary",
                                 onClick: () => nav(`/admin/tenants/query/${tenantId}/sites/${s.siteId}/hvacs`),
                             },
@@ -149,29 +149,39 @@ const SitesPage:FC = () => {
                                 label: "Add HVAC",
                                 variant: "secondary",
                                 onClick: () => {
-                                    setSelectedSiteId(s.siteId);
-                                    setSelectedSiteTitle(s.siteName);
-                                    setOpenAddHvac(true);
+                                setSelectedSiteId(s.siteId);
+                                setSelectedSiteTitle(s.siteName);
+                                setOpenAddHvac(true);
                                 },
                             },
                             {
-                                label: "Edit",
+                                label: "Add Floor Plan",
+                                variant: "secondary",
+                                onClick: () =>
+                                nav(`/admin/tenants/${tenantId}/sites/${s.siteId}/floor-plans/upload`),
+                            },
+                            {
+                                label: "View Floor Plans",
+                                variant: "secondary",
+                                onClick: () =>
+                                nav(`/admin/tenants/${tenantId}/sites/${s.siteId}/floor-plans/view`),
+                            },
+                            {
+                                label: "Edit Site",
                                 variant: "primary",
                                 onClick: () => {
-                                    setSelectedSiteId(s.siteId);
-                                    setSelectedSiteTitle(s.siteName);
-                                    setOpenUpdateSite(true);
-                                    setSelectedSite(s);
+                                setSelectedSiteId(s.siteId);
+                                setSelectedSiteTitle(s.siteName);
+                                setOpenUpdateSite(true);
+                                setSelectedSite(s);
                                 },
                             },
                             {
-                                label: "Delete",
+                                label: "Delete Site",
                                 variant: "danger",
                                 onClick: () => onAskDeleteSite(s),
                             },
-                           
-                        ]}
-                        
+                            ]}                        
                         //onClick={() => nav(`/admin/tenants/query/${tenantId}/sites/${s.siteId}/hvacs`)}
                     />
                 ))}

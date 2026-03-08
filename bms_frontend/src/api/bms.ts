@@ -1,5 +1,6 @@
 import type { Key } from "react";
 import { api }  from "./http";
+import { BACKEND_URL as API_BASE_URL } from "@/utils/config";
 
 export type TenantDto = {
     tenantName?: string;
@@ -75,6 +76,32 @@ export type CreateHvacRequest = {
     unitType: "AHU" | "VRF" | "FCU" | "CHILLER" | "OTHER";
 };
 
+export type FloorPlanDto = {
+    floorPlanId?: string;
+    id?: string;
+    name: string;
+    siteId?: string;
+    storagePath?: string;
+    contentType?: string;
+    originalFileName?: string;
+    createdAt?: string;
+};
+
+export type FloorPlanUploadResponse = {
+    floorPlanId?: string;
+    id?: string;
+    name: string;
+    siteId?: string;
+    storagePath?: string;
+    contentType?: string;
+    originalFileName?: string;
+    createdAt?: string;
+};
+
+export type UpdateFloorPlanRequest = {
+    name: string;
+};
+
 export const BmsApi = {
 
     getMyTenants: async () => await api<TenantDto[]>("/api/tenants/search"),
@@ -130,4 +157,77 @@ export const BmsApi = {
                 body: JSON.stringify(req),
                 headers: {"Content-Type": "application/json"},
             }),
+
+
+    // ============= Floor Plan APIs =============
+
+    UploadFloorPlan: async (
+        tenantId: string,
+        siteId: string,
+        file: File,
+        name: string
+    ) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", name);
+
+        return await api<FloorPlanUploadResponse>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans`,
+            {
+                method: "POST",
+                body: formData,
+            }
+        );
+    },
+
+    getFloorPlansByTenantSite: async (tenantId: string, siteId: string) => {
+        return await api<FloorPlanDto[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans`
+        );
+    },
+
+    getFloorPlanById: async (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string
+    ) => {
+        return await api<FloorPlanDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}`
+        );
+    },
+
+    updateFloorPlanMetaData: async (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string,
+        req: UpdateFloorPlanRequest
+    ) => {
+        return await api<FloorPlanDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}`,
+            {
+                method: "PUT",
+                body: JSON.stringify(req),
+                headers: { "Content-Type": "application/json" },
+            }
+        );
+    },
+
+     deleteFloorPlan: async (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string
+    ) =>
+        await api<void>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}`,
+            {
+                method: "DELETE",
+            }
+        ),
+
+    getFloorPlanFileUrl: (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string
+    ) =>
+        `${API_BASE_URL}/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}/file`,
 };

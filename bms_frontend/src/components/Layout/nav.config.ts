@@ -1,24 +1,15 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, Building2, Building2Icon, LayoutDashboard, Shield, User, UserPlus, Wind, Zap } from "lucide-react";
+import { Bell, Building2, Building2Icon, FileImage, LayoutDashboard, Shield, Upload, User, UserPlus, Wind, Zap } from "lucide-react";
 
 
 export type NavItem = 
 
 | {
     label: string;
-    path: string;
+    path?: string;
+    children?: NavItem[];
     icon: LucideIcon
   }
-
-| {
-    label: string;
-    icon: LucideIcon;
-    children: Array<{
-        label: string;
-        path: string;
-        icon?: LucideIcon;
-    }>;
-  };
 
   export const navItems: NavItem[] = [
       { label: "Dashboard", path: "/", icon: LayoutDashboard},
@@ -30,6 +21,13 @@ export type NavItem =
         children: [
             { label: "Onboarding Tenants", path:"/onboarding", icon: Building2},
             {label: "Update Tenant Info", path: "admin/update-tenant", icon: Building2Icon},
+            { label: "Floor Plans",
+              icon: FileImage,
+              children: [
+                { label: "Upload Floor Plan", path: "/admin/floor-plans/floor-1", icon: Upload},
+                { label: "View Floor Plan", path: "/admin/floor-plans/floor-2", icon: FileImage},
+              ],
+            },
             { label: "Create User", path: "/admin/create-user", icon: UserPlus}
         ],
       },
