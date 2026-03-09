@@ -3,6 +3,7 @@ import { Fan, Lock, Unlock, Trash2 } from "lucide-react";
 import { keycloak } from "@/keycloak";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
+import { useNavigate, useParams } from "react-router-dom";
 
 type Props = {
   imageUrl: string;
@@ -29,6 +30,7 @@ export default function FloorPlanCanvas({
   onToggleLock,
   onRemoveItem,
 }: Props) {
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [dragState, setDragState] = useState<DragState>(null);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
@@ -151,6 +153,7 @@ export default function FloorPlanCanvas({
   }
 
   return (
+   
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div
         ref={containerRef}
