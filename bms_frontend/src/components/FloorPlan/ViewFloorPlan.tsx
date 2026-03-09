@@ -155,6 +155,15 @@ export default function ViewFloorPlan() {
     persist(next);
   }
 
+
+  function handleRemoveItem(itemId: string) {
+      const next = placements.filter((placement) => placement.itemId !== itemId);
+      persist(next);
+      if (selectedItemId === itemId) {
+        setSelectedItemId(null);
+      }
+  }
+
   if (loading) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -232,6 +241,7 @@ export default function ViewFloorPlan() {
           selectedItemId={selectedItemId}
           onSelectItem={setSelectedItemId}
           onToggleLock={handleToggleLock}
+          onRemoveItem={handleRemoveItem}
         />
 
         <FloorPlanCanvas
@@ -242,6 +252,7 @@ export default function ViewFloorPlan() {
           onPlaceItem={handlePlaceItem}
           onMoveItem={handleMoveItem}
           onToggleLock={handleToggleLock}
+          onRemoveItem={handleRemoveItem}
         />
       </div>
     </div>

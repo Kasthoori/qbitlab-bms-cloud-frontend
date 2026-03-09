@@ -1,4 +1,4 @@
-import { Fan, Lock, Unlock } from "lucide-react";
+import { Fan, Lock, Unlock, Trash2 } from "lucide-react";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
 
@@ -8,6 +8,7 @@ type Props = {
   selectedItemId: string | null;
   onSelectItem: (itemId: string | null) => void;
   onToggleLock: (itemId: string) => void;
+  onRemoveItem: (itemId: string) => void;
 };
 
 export default function FloorPlanItemsPanel({
@@ -16,6 +17,7 @@ export default function FloorPlanItemsPanel({
   selectedItemId,
   onSelectItem,
   onToggleLock,
+  onRemoveItem,
 }: Props) {
   const placedIds = new Set(placements.map((p) => p.itemId));
 
@@ -132,6 +134,14 @@ export default function FloorPlanItemsPanel({
                     ) : (
                       <Unlock className="h-4 w-4" />
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveItem(hvacId)}
+                    className="rounded-lg bg-red-100 p-2 text-red-700 hover:bg-red-200"
+                    title="Remove from floor plan"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               );

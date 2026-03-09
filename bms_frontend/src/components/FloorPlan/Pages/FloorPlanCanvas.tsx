@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Fan, Lock, Unlock } from "lucide-react";
+import { Fan, Lock, Unlock, Trash2 } from "lucide-react";
 import { keycloak } from "@/keycloak";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
@@ -12,6 +12,7 @@ type Props = {
   onPlaceItem: (hvac: HvacDto, x: number, y: number) => void;
   onMoveItem: (itemId: string, x: number, y: number) => void;
   onToggleLock: (itemId: string) => void;
+  onRemoveItem: (itemId: string) => void;
 };
 
 type DragState = {
@@ -26,6 +27,7 @@ export default function FloorPlanCanvas({
   onPlaceItem,
   onMoveItem,
   onToggleLock,
+  onRemoveItem,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [dragState, setDragState] = useState<DragState>(null);
@@ -217,6 +219,21 @@ export default function FloorPlanCanvas({
                     <Unlock className="h-3.5 w-3.5" />
                   )}
                 </button>
+                <button
+                    type="button"
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onRemoveItem(placement.itemId);
+                    }}
+                    className="rounded-full bg-red-500/80 p-1 hover:bg-red-500"
+                    title="Remove from floor plan"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
               </div>
             </div>
           ))}
