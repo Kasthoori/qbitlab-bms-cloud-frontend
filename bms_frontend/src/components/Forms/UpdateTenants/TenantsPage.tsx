@@ -172,12 +172,12 @@ const TenantsPage:FC = () => {
                 return (
                     <BmsCard
                         key={t.tenantId}
-                        title="Update Information"
+                        title="Tenanat"
                         subtitle={tenantTitle}
                         meta={`Tenant ID: ${t.tenantId}`}
                         actions={[
                             {
-                                label: "Sites",
+                                label: "Site",
                                 variant: "secondary",
                                 onClick: () => nav(`/admin/tenants/query/${t.tenantId}/sites`),
                             },

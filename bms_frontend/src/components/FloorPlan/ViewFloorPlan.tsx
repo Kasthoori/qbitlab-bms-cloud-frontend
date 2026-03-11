@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  BmsApi,
-  type FloorPlanDto,
-  type HvacDto,
-} from "@/api/bms";
+import { BmsApi, type FloorPlanDto, type HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "./types/floorplan.types";
 import {
   loadPlacements,
@@ -16,7 +12,6 @@ import FloorPlanToolbar from "./Pages/FloorPlanToolbar";
 
 export default function ViewFloorPlan() {
   const navigate = useNavigate();
-
   const { tenantId, siteId } = useParams<{ tenantId: string; siteId: string }>();
 
   const [loading, setLoading] = useState(true);
@@ -30,13 +25,11 @@ export default function ViewFloorPlan() {
   const [placements, setPlacements] = useState<FloorPlanPlacement[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
-  // Update floor plan states
   const [openUpdateModal, setOpenUpdateModal] = useState(false);
   const [updateName, setUpdateName] = useState("");
   const [updatingFloorPlan, setUpdatingFloorPlan] = useState(false);
   const [updateFloorPlanError, setUpdateFloorPlanError] = useState<string | null>(null);
 
-  // Delete floor plan states
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [deletingFloorPlan, setDeletingFloorPlan] = useState(false);
   const [deleteFloorPlanError, setDeleteFloorPlanError] = useState<string | null>(null);
@@ -83,8 +76,8 @@ export default function ViewFloorPlan() {
         ? safePlans.find((p) => (p.floorPlanId ?? p.id ?? "") === preferredFloorPlanId)
         : undefined;
 
-        const targetPlan = preferred ?? safePlans[0];
-        const targetPlanId = targetPlan?.floorPlanId ?? targetPlan?.id ?? "";
+      const targetPlan = preferred ?? safePlans[0];
+      const targetPlanId = targetPlan?.floorPlanId ?? targetPlan?.id ?? "";
 
       if (!targetPlanId) {
         setErrorMessage("Selected floor plan does not contain an id.");
@@ -96,7 +89,9 @@ export default function ViewFloorPlan() {
       }
 
       setSelectedFloorPlanId(targetPlanId);
-      setFloorPlanImageUrl(BmsApi.getFloorPlanFileUrl(tenantId, siteId, targetPlanId));
+      setFloorPlanImageUrl(
+        BmsApi.getFloorPlanFileUrl(tenantId, siteId, targetPlanId)
+      );
       setPlacements(loadPlacements(tenantId, siteId, targetPlanId));
       setSelectedItemId(null);
     } catch (error) {
@@ -179,6 +174,7 @@ export default function ViewFloorPlan() {
   function handleRemoveItem(itemId: string) {
     const next = placements.filter((placement) => placement.itemId !== itemId);
     persist(next);
+
     if (selectedItemId === itemId) {
       setSelectedItemId(null);
     }
@@ -235,6 +231,7 @@ export default function ViewFloorPlan() {
       const remainingPlans = floorPlans.filter(
         (p) => (p.floorPlanId ?? p.id ?? "") !== deletingId
       );
+
       const nextSelectedId =
         remainingPlans.length > 0
           ? remainingPlans[0].floorPlanId ?? remainingPlans[0].id ?? null
@@ -242,11 +239,9 @@ export default function ViewFloorPlan() {
 
       await BmsApi.deleteFloorPlan(tenantId, siteId, deletingId);
 
-      // clear current UI first
       setOpenDeleteModal(false);
       setSelectedItemId(null);
 
-      // load next available plan if exists
       await loadData(nextSelectedId);
     } catch (error) {
       console.error(error);
@@ -385,7 +380,6 @@ export default function ViewFloorPlan() {
         </div>
       </div>
 
-      {/* Update Floor Plan Modal */}
       {openUpdateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
@@ -435,7 +429,6 @@ export default function ViewFloorPlan() {
         </div>
       )}
 
-      {/* Delete Floor Plan Modal */}
       {openDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
