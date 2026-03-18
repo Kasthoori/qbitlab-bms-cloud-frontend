@@ -1,4 +1,5 @@
-import { Fan, Lock, Unlock, Trash2 } from "lucide-react";
+import { Fan, Lock, Unlock, Trash2, Loader2 } from "lucide-react";
+import { useState } from "react";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
 
@@ -7,8 +8,8 @@ type Props = {
   placements: FloorPlanPlacement[];
   selectedItemId: string | null;
   onSelectItem: (itemId: string | null) => void;
-  onToggleLock: (itemId: string) => void;
-  onRemoveItem: (itemId: string) => void;
+  onToggleLock: (itemId: string, locked: boolean) => Promise<void> | void;
+  onRemoveItem: (itemId: string) => Promise<void> | void;
 };
 
 export default function FloorPlanItemsPanel({
@@ -19,6 +20,9 @@ export default function FloorPlanItemsPanel({
   onToggleLock,
   onRemoveItem,
 }: Props) {
+  const [savingItemId, setSavingItemId] = useState<string | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+
   const placedIds = new Set(placements.map((p) => p.itemId));
 
   const placedHvacs = hvacs.filter((h) =>
@@ -31,6 +35,26 @@ export default function FloorPlanItemsPanel({
 
   const getPlacement = (itemId: string) =>
     placements.find((p) => p.itemId === itemId);
+
+  async function handleToggleLock(itemId: string, currentlyLocked: boolean) {
+    const nextLocked = !currentlyLocked;
+
+    try {
+      setSavingItemId(itemId);
+      await onToggleLock(itemId, nextLocked);
+    } finally {
+      setSavingItemId(null);
+    }
+  }
+
+  async function handleRemove(itemId: string) {
+    try {
+      setDeletingItemId(itemId);
+      await onRemoveItem(itemId);
+    } finally {
+      setDeletingItemId(null);
+    }
+  }
 
   return (
     <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -103,6 +127,9 @@ export default function FloorPlanItemsPanel({
 
               if (!placement) return null;
 
+              const isSaving = savingItemId === hvacId;
+              const isDeleting = deletingItemId === hvacId;
+
               return (
                 <div
                   key={hvacId}
@@ -121,27 +148,36 @@ export default function FloorPlanItemsPanel({
 
                   <button
                     type="button"
-                    onClick={() => onToggleLock(hvacId)}
-                    className={`rounded-lg p-2 ${
+                    onClick={() => handleToggleLock(hvacId, placement.locked)}
+                    disabled={isSaving || isDeleting}
+                    className={`rounded-lg p-2 disabled:cursor-not-allowed disabled:opacity-60 ${
                       placement.locked
                         ? "bg-slate-700 text-white hover:bg-slate-800"
                         : "bg-amber-100 text-amber-700 hover:bg-amber-200"
                     }`}
                     title={placement.locked ? "Unlock item" : "Lock item"}
                   >
-                    {placement.locked ? (
-                      <Lock className="h-4 w-4" />
-                    ) : (
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : placement.locked ? (
                       <Unlock className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
                     )}
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => onRemoveItem(hvacId)}
-                    className="rounded-lg bg-red-100 p-2 text-red-700 hover:bg-red-200"
+                    onClick={() => handleRemove(hvacId)}
+                    disabled={isSaving || isDeleting}
+                    className="rounded-lg bg-red-100 p-2 text-red-700 hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-60"
                     title="Remove from floor plan"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {isDeleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               );

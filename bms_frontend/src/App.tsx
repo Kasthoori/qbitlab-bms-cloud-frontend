@@ -10,6 +10,9 @@ import SitesPage from './components/Forms/UpdateTenants/SitesPage'
 import HvacsPages from './components/Forms/UpdateTenants/HvacsPages'
 import ViewFloorPlan from './components/FloorPlan/ViewFloorPlan'
 import UploadFloorPlanPage from './components/FloorPlan/UploadFloorPlanPage'
+import UserViewFloorPlan from './components/Buildings/FloorPlans/UserViewFloorPlan'
+import UserViewTenants from './components/Buildings/Tenants/UserViewTenants'
+import UserViewSites from './components/Buildings/Sites/UserViewSites'
 // import HvacWsTable from './components/HvacWsTable.tsx'
 // import Header from './components/Header/Header.tsx'
 // import { HvacConfigForm } from './components/Forms/HvacConfigForm.tsx'
@@ -42,6 +45,12 @@ const App:FC = () => (
             path="/admin/tenants/:tenantId/sites/:siteId/floor-plans/view"
             element={<ViewFloorPlan />}
           />
+          <Route
+            path="/buildings/user/tenants/:tenantId/sites/:siteId/floor-plans/view"
+            element={<UserViewFloorPlan />}
+          />
+          <Route path="/buildings/user/tenants" element={<UserViewTenants />} />
+          <Route path="/user/tenants/:tenantId/sites" element={<UserViewSites />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>

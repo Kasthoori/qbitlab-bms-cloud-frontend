@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Fan, Lock, Unlock, Trash2 } from "lucide-react";
+import { Fan, Lock, Unlock, Trash2, Loader2 } from "lucide-react";
 import { keycloak } from "@/keycloak";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
@@ -11,8 +11,8 @@ type Props = {
   selectedItemId: string | null;
   onPlaceItem: (hvac: HvacDto, x: number, y: number) => void;
   onMoveItem: (itemId: string, x: number, y: number) => void;
-  onToggleLock: (itemId: string) => void;
-  onRemoveItem: (itemId: string) => void;
+  onToggleLock: (itemId: string, locked: boolean) => Promise<void> | void;
+  onRemoveItem: (itemId: string) => Promise<void> | void;
 };
 
 type DragState = {
@@ -34,6 +34,8 @@ export default function FloorPlanCanvas({
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
   const [imageLoadError, setImageLoadError] = useState<string | null>(null);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  const [savingItemId, setSavingItemId] = useState<string | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
 
   const selectedHvac =
     hvacs.find((h) => (h.hvacId ?? h.id ?? "") === selectedItemId) ?? null;
@@ -126,7 +128,9 @@ export default function FloorPlanCanvas({
     e: React.PointerEvent<HTMLDivElement>,
     placement: FloorPlanPlacement
   ) {
-    if (placement.locked || !resolvedImageUrl) return;
+    if (placement.locked || !resolvedImageUrl || savingItemId === placement.itemId) {
+      return;
+    }
 
     e.stopPropagation();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
@@ -136,9 +140,13 @@ export default function FloorPlanCanvas({
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (!dragState || !resolvedImageUrl) return;
 
+    const activePlacement = placements.find((p) => p.itemId === dragState.itemId);
+    if (!activePlacement || activePlacement.locked) return;
+
     const point = clientToPercent(e.clientX, e.clientY);
     if (!point) return;
 
+    // local only, no backend save here
     onMoveItem(dragState.itemId, point.x, point.y);
   }
 
@@ -151,6 +159,37 @@ export default function FloorPlanCanvas({
       }
     }
     setDragState(null);
+  }
+
+  async function handleToggleLock(
+    e: React.MouseEvent<HTMLButtonElement>,
+    placement: FloorPlanPlacement
+  ) {
+    e.stopPropagation();
+
+    const nextLocked = !placement.locked;
+
+    try {
+      setSavingItemId(placement.itemId);
+      await onToggleLock(placement.itemId, nextLocked);
+    } finally {
+      setSavingItemId(null);
+    }
+  }
+
+  async function handleRemove(
+    e: React.MouseEvent<HTMLButtonElement>,
+    placement: FloorPlanPlacement
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      setDeletingItemId(placement.itemId);
+      await onRemoveItem(placement.itemId);
+    } finally {
+      setDeletingItemId(null);
+    }
   }
 
   function formatLastSeen(value?: string) {
@@ -209,6 +248,9 @@ export default function FloorPlanCanvas({
             const hvacName =
               hvac?.hvacName ?? hvac?.name ?? placement.itemName ?? "Unnamed HVAC";
 
+            const isSaving = savingItemId === placement.itemId;
+            const isDeleting = deletingItemId === placement.itemId;
+
             return (
               <div
                 key={placement.itemId}
@@ -233,7 +275,7 @@ export default function FloorPlanCanvas({
                       placement.locked
                         ? "border-slate-700 bg-slate-800 text-white"
                         : "border-blue-500 bg-white text-slate-900"
-                    }`}
+                    } ${isSaving ? "opacity-80" : ""}`}
                   >
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded-lg ${
@@ -271,18 +313,18 @@ export default function FloorPlanCanvas({
                     <button
                       type="button"
                       onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleLock(placement.itemId);
-                      }}
-                      className={`rounded-full p-1 transition ${
+                      onClick={(e) => handleToggleLock(e, placement)}
+                      disabled={isSaving || isDeleting}
+                      className={`rounded-full p-1 transition disabled:cursor-not-allowed disabled:opacity-60 ${
                         placement.locked
                           ? "bg-white/15 hover:bg-white/25"
                           : "bg-slate-100 hover:bg-slate-200"
                       }`}
                       title={placement.locked ? "Unlock item" : "Lock item"}
                     >
-                      {placement.locked ? (
+                      {isSaving ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : placement.locked ? (
                         <Lock className="h-3.5 w-3.5" />
                       ) : (
                         <Unlock className="h-3.5 w-3.5" />
@@ -292,15 +334,16 @@ export default function FloorPlanCanvas({
                     <button
                       type="button"
                       onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onRemoveItem(placement.itemId);
-                      }}
-                      className="rounded-full bg-red-500/90 p-1 text-white transition hover:bg-red-600"
+                      onClick={(e) => handleRemove(e, placement)}
+                      disabled={isSaving || isDeleting}
+                      className="rounded-full bg-red-500/90 p-1 text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
                       title="Remove from floor plan"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      {isDeleting ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
                     </button>
                   </div>
 

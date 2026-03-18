@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Bell, Building2, Building2Icon, FileImage, LayoutDashboard, Shield, Upload, User, UserPlus, Wind, Zap } from "lucide-react";
+import { Bell, Building2, Building2Icon, BuildingIcon, FileImage, LayoutDashboard, Shield, Upload, User, UserPlus, Wind, Zap } from "lucide-react";
 
 
 export type NavItem = 
@@ -29,6 +29,14 @@ export type NavItem =
               ],
             },
             { label: "Create User", path: "/admin/create-user", icon: UserPlus}
+        ],
+      },
+      {
+        label: "Buildings",
+        icon: Building2,
+        children: [
+          { label: "Tenants", path: "/buildings/user/tenants", icon: BuildingIcon},
+          { label: "Building 2", path: "/buildings/building-2", icon: Building2},
         ],
       },
 

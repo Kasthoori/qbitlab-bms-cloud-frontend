@@ -2,10 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BmsApi, type FloorPlanDto, type HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "./types/floorplan.types";
-import {
-  loadPlacements,
-  savePlacements,
-} from "./utils/FloorPlanPlacementStorage";
 import FloorPlanCanvas from "./Pages/FloorPlanCanvas";
 import FloorPlanItemsPanel from "./Pages/FloorPlanItemsPanel";
 import FloorPlanToolbar from "./Pages/FloorPlanToolbar";
@@ -89,10 +85,15 @@ export default function ViewFloorPlan() {
       }
 
       setSelectedFloorPlanId(targetPlanId);
-      setFloorPlanImageUrl(
-        BmsApi.getFloorPlanFileUrl(tenantId, siteId, targetPlanId)
+      setFloorPlanImageUrl(BmsApi.getFloorPlanFileUrl(tenantId, siteId, targetPlanId));
+
+      const placementData = await BmsApi.getFloorPlanPlacements(
+        tenantId,
+        siteId,
+        targetPlanId
       );
-      setPlacements(loadPlacements(tenantId, siteId, targetPlanId));
+
+      setPlacements(Array.isArray(placementData) ? placementData : []);
       setSelectedItemId(null);
     } catch (error) {
       console.error(error);
@@ -107,76 +108,124 @@ export default function ViewFloorPlan() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, siteId]);
 
-  function persist(next: FloorPlanPlacement[], floorPlanId?: string | null) {
-    if (!tenantId || !siteId) return;
+  function handlePlaceItem(hvac: HvacDto, x: number, y: number) {
+    const hvacId = hvac.hvacId ?? hvac.id ?? "";
+    const hvacName = hvac.hvacName ?? hvac.name ?? "Unnamed HVAC";
 
-    const targetFloorPlanId = floorPlanId ?? selectedFloorPlanId;
-    if (!targetFloorPlanId) return;
+    if (!hvacId) return;
 
-    setPlacements(next);
-    savePlacements(tenantId, siteId, targetFloorPlanId, next);
+    setPlacements((prev) => {
+      const existing = prev.find((p) => p.itemId === hvacId);
+
+      if (existing) {
+        return prev.map((p) =>
+          p.itemId === hvacId
+            ? { ...p, x, y, locked: false, itemName: hvacName, itemType: "HVAC" }
+            : p
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          itemId: hvacId,
+          itemType: "HVAC",
+          itemName: hvacName,
+          x,
+          y,
+          locked: false,
+        },
+      ];
+    });
+
+    setSelectedItemId(null);
   }
 
-  function handleFloorPlanChange(floorPlanId: string) {
+  function handleMoveItem(itemId: string, x: number, y: number) {
+    setPlacements((prev) =>
+      prev.map((placement) =>
+        placement.itemId === itemId && !placement.locked
+          ? { ...placement, x, y }
+          : placement
+      )
+    );
+  }
+
+  const handleToggleLock = async (itemId: string) => {
+  if (!tenantId || !siteId || !selectedFloorPlanId) return;
+
+  try {
+    const updatedPlacements = placements.map((placement) =>
+      placement.itemId === itemId
+        ? { ...placement, locked: !placement.locked }
+        : placement
+    );
+
+    setPlacements(updatedPlacements);
+
+    await BmsApi.saveFloorPlanPlacements(
+      tenantId,
+      siteId,
+      selectedFloorPlanId,
+      updatedPlacements
+    );
+
+    setErrorMessage(null);
+  } catch (error) {
+    console.error("Failed to toggle lock", error);
+    setErrorMessage("Failed to save floor plan placement.");
+  }
+};
+
+  async function handleRemoveItem(itemId: string) {
+    if (!tenantId || !siteId || !selectedFloorPlanId) return;
+
+    const placement = placements.find((p) => p.itemId === itemId);
+    if (!placement) return;
+
+    try {
+      setErrorMessage(null);
+
+      await BmsApi.deleteFloorPlanPlacement(
+        tenantId,
+        siteId,
+        selectedFloorPlanId,
+        placement.itemId,
+        placement.itemType
+      );
+
+      setPlacements((prev) => prev.filter((p) => p.itemId !== itemId));
+
+      if (selectedItemId === itemId) {
+        setSelectedItemId(null);
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Failed to remove floor plan placement.");
+    }
+  }
+
+  async function handleFloorPlanChange(floorPlanId: string) {
     if (!tenantId || !siteId) return;
 
     setSelectedFloorPlanId(floorPlanId);
     setFloorPlanImageUrl(
       BmsApi.getFloorPlanFileUrl(tenantId, siteId, floorPlanId)
     );
-    setPlacements(loadPlacements(tenantId, siteId, floorPlanId));
     setSelectedItemId(null);
-  }
 
-  function handlePlaceItem(hvac: HvacDto, x: number, y: number) {
-    if (!selectedFloorPlanId) return;
+    try {
+      const placementData = await BmsApi.getFloorPlanPlacements(
+        tenantId,
+        siteId,
+        floorPlanId
+      );
 
-    const hvacId = hvac.hvacId ?? hvac.id ?? "";
-    const hvacName = hvac.hvacName ?? hvac.name ?? "Unnamed HVAC";
-
-    if (!hvacId) return;
-
-    const alreadyExists = placements.some((p) => p.itemId === hvacId);
-    if (alreadyExists) return;
-
-    const next: FloorPlanPlacement[] = [
-      ...placements,
-      {
-        itemId: hvacId,
-        itemType: "HVAC",
-        itemName: hvacName,
-        x,
-        y,
-        locked: true,
-      },
-    ];
-
-    persist(next, selectedFloorPlanId);
-    setSelectedItemId(null);
-  }
-
-  function handleMoveItem(itemId: string, x: number, y: number) {
-    const next = placements.map((placement) =>
-      placement.itemId === itemId ? { ...placement, x, y } : placement
-    );
-    persist(next);
-  }
-
-  function handleToggleLock(itemId: string) {
-    const next = placements.map((placement) =>
-      placement.itemId === itemId
-        ? { ...placement, locked: !placement.locked }
-        : placement
-    );
-    persist(next);
-  }
-
-  function handleRemoveItem(itemId: string) {
-    const next = placements.filter((placement) => placement.itemId !== itemId);
-    persist(next);
-
-    if (selectedItemId === itemId) {
-      setSelectedItemId(null);
+      setPlacements(Array.isArray(placementData) ? placementData : []);
+    } catch (error) {
+      console.error(error);
+      setPlacements([]);
+      setErrorMessage("Failed to load floor plan placements.");
     }
   }
 

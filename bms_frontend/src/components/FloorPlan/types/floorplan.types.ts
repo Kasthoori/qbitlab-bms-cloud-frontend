@@ -25,6 +25,15 @@ export type FloorPlanPlacement = {
     locked: boolean;
 }
 
+export type UpsertFloorPlanPlacementRequest = {
+  itemId: string;
+  itemType: string;
+  itemName: string;
+  x: number;
+  y: number;
+  locked: boolean;
+};
+
 export type UploadFloorPlanRequest = {
     tenantId: string;
     siteId: string;
