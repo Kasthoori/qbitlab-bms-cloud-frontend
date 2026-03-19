@@ -282,17 +282,20 @@ export const BmsApi = {
         tenantId: string,
         siteId: string,
         floorPlanId: string,
-        placements: FloorPlanPlacementDto[]
+        placement: FloorPlanPlacementDto
     ) => {
-        return await api<FloorPlanPlacementDto[]>(
+        return await api<FloorPlanPlacementDto>(
             `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}/placements`,
             {
                 method: "PUT",
-                body: JSON.stringify(placements),
+                body: JSON.stringify(placement),
                 headers: { "Content-Type": "application/json" },
             }
+
         );
     },
+
+    
     deleteFloorPlanPlacement: async (
             tenantId: string,
             siteId: string,
@@ -309,4 +312,6 @@ export const BmsApi = {
         }
         );
     },
+
+    
 };
