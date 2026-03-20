@@ -3,9 +3,12 @@
         "BACNET",
         "Cnet",
         "Farwood",
+        "floorplan",
         "Hvac",
         "Hvacs",
         "modbus",
+        "qbitlab",
+        "stompjs",
         "VITE"
     ]
 }

@@ -1,51 +1,58 @@
 import { keycloak } from "../keycloak";
 import { BACKEND_URL } from "../utils/config";
 
-const BASE_URL = BACKEND_URL
- 
+const BASE_URL = BACKEND_URL;
+
 console.log("KEYCLOAK IMPORT IN http.ts:", keycloak);
 
-
-type ApiOptions = RequestInit & {
+type ApiOptions = {
+  method?: string;
+  body?: BodyInit | null;
+  headers?: Record<string, string>;
   auth?: boolean; // default true
 };
 
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const { auth = true, headers, ...rest } = options;
+  const { auth = true, headers, body, ...rest } = options;
 
   if (auth) {
-
     if (!keycloak) {
       throw new Error(
         "Keycloak is undefined in http.ts. This usually means wrong import path or circular dependency."
       );
     }
+
     try {
       await keycloak.updateToken(30);
     } catch (e) {
-      // refresh failed -> session likely expired
       await keycloak.login();
       throw e;
     }
 
     if (!keycloak.token) {
-      // IMPORTANT: don't send request without token
       throw new Error("No Keycloak access token available. User is not authenticated.");
     }
   }
 
-  // Build headers so Authorization cannot be overridden
+  const isFormData = body instanceof FormData;
+
   const finalHeaders: Record<string, string> = {
-    ...(headers as Record<string, string> ?? {}),
-    "Content-Type": "application/json",
+    ...(headers ?? {}),
     ...(auth ? { Authorization: `Bearer ${keycloak.token}` } : {}),
   };
 
+  // Only set JSON content type for non-FormData requests
+  if (!isFormData) {
+    finalHeaders["Content-Type"] = "application/json";
+  }
+
   console.log("API CALL:", `${BASE_URL}${path}`);
   console.log("AUTH HEADER EXISTS?", !!finalHeaders.Authorization);
+  console.log("IS FORMDATA?", isFormData);
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
+    body,
     headers: finalHeaders,
   });
 

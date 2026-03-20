@@ -1,5 +1,6 @@
 import type { Key } from "react";
 import { api }  from "./http";
+import { BACKEND_URL as API_BASE_URL } from "@/utils/config";
 
 export type TenantDto = {
     tenantName?: string;
@@ -26,6 +27,15 @@ export type SiteDto = {
     timezone?: string;
 
 };
+
+export type FloorPlanPlacementDto = {
+    itemId: string;
+    itemType: "HVAC",
+    itemName: string;
+    x: number;
+    y: number;
+    locked: boolean;
+}
 
 export type HvacDto = {
     hvacId: string;
@@ -75,9 +85,45 @@ export type CreateHvacRequest = {
     unitType: "AHU" | "VRF" | "FCU" | "CHILLER" | "OTHER";
 };
 
+export type FloorPlanDto = {
+    floorPlanId?: string;
+    id?: string;
+    name: string;
+    siteId?: string;
+    storagePath?: string;
+    contentType?: string;
+    originalFileName?: string;
+    createdAt?: string;
+};
+
+export type FloorPlanUploadResponse = {
+    floorPlanId?: string;
+    id?: string;
+    name: string;
+    siteId?: string;
+    storagePath?: string;
+    contentType?: string;
+    originalFileName?: string;
+    createdAt?: string;
+};
+
+export type UpdateFloorPlanRequest = {
+    name: string;
+};
+
+export type UpsertFloorPlanPlacementRequest = {
+  itemId: string;
+  itemType: "HVAC";
+  itemName: string;
+  x: number;
+  y: number;
+  locked: boolean;
+};
+
+
 export const BmsApi = {
 
-    getMyTenants: async () => await api<TenantDto[]>("/api/tenants/search"),
+    getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
     getSitesByTenant: async (tenantId: string) => await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`),
     getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
     
@@ -130,4 +176,142 @@ export const BmsApi = {
                 body: JSON.stringify(req),
                 headers: {"Content-Type": "application/json"},
             }),
+
+
+    // ============= Floor Plan APIs =============
+
+    UploadFloorPlan: async (
+        tenantId: string,
+        siteId: string,
+        file: File,
+        name: string
+    ) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", name);
+
+        return await api<FloorPlanUploadResponse>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans`,
+            {
+                method: "POST",
+                body: formData,
+            }
+        );
+    },
+
+    getFloorPlansByTenantSite: async (tenantId: string, siteId: string) => {
+        return await api<FloorPlanDto[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans`
+        );
+    },
+
+    getFloorPlanById: async (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string
+    ) => {
+        return await api<FloorPlanDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}`
+        );
+    },
+
+    updateFloorPlanMetaData: async (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string,
+        req: UpdateFloorPlanRequest
+    ) => {
+        return await api<FloorPlanDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}`,
+            {
+                method: "PUT",
+                body: JSON.stringify(req),
+                headers: { "Content-Type": "application/json" },
+            }
+        );
+    },
+
+     deleteFloorPlan: async (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string
+    ) =>
+        await api<void>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}`,
+            {
+                method: "DELETE",
+            }
+        ),
+
+    getFloorPlanFileUrl: (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string
+    ) =>
+        `${API_BASE_URL}/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}/file`,
+
+
+    getFloorPlanPlacements: async (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string
+
+    ) => {
+        return await api<FloorPlanPlacementDto[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}/placements`
+        );
+    },
+
+    // saveFloorPlanPlacements: async (
+    //         tenantId: string,
+    //         siteId: string,
+    //         floorPlanId: string,
+    //         placements: FloorPlanPlacementDto[]
+    //     ) => {
+    //         return await api<FloorPlanPlacementDto[]>(
+    //             `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}/placements`,
+    //             {
+    //                 method: "PUT",
+    //                 body: JSON.stringify(placements),
+    //                 headers: { "Content-Type": "application/json" },
+    //             }
+    //         );
+    //     },
+    
+   saveFloorPlanPlacements: async (
+        tenantId: string,
+        siteId: string,
+        floorPlanId: string,
+        placement: FloorPlanPlacementDto
+    ) => {
+        return await api<FloorPlanPlacementDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}/placements`,
+            {
+                method: "PUT",
+                body: JSON.stringify(placement),
+                headers: { "Content-Type": "application/json" },
+            }
+
+        );
+    },
+
+    
+    deleteFloorPlanPlacement: async (
+            tenantId: string,
+            siteId: string,
+            floorPlanId: string,
+            itemId: string,
+            itemType: string
+    ) => {
+        const query = new URLSearchParams({ itemType }).toString();
+
+        return await api<void>(
+        `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}/placements/${itemId}?${query}`,
+        {
+            method: "DELETE",
+        }
+        );
+    },
+
+    
 };
