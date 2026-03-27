@@ -154,6 +154,11 @@ const SitesPage:FC = () => {
                                 setOpenAddHvac(true);
                                 },
                             },
+                             {
+                                label: "Device Mapping",
+                                variant: "secondary",
+                                onClick: () => nav(`/admin/tenants/${tenantId}/sites/${s.siteId}/hvac-device-mapping`),
+                            },
                             {
                                 label: "Add Floor Plan",
                                 variant: "secondary",
@@ -181,6 +186,7 @@ const SitesPage:FC = () => {
                                 variant: "danger",
                                 onClick: () => onAskDeleteSite(s),
                             },
+
                             ]}                        
                         //onClick={() => nav(`/admin/tenants/query/${tenantId}/sites/${s.siteId}/hvacs`)}
                     />
