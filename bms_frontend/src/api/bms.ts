@@ -37,6 +37,44 @@ export type FloorPlanPlacementDto = {
     locked: boolean;
 }
 
+export type DiscoveredHvacDeviceDto = {
+  discoveredDeviceId?: string;
+  externalDeviceId: string;
+
+  tenantId: string;
+  siteId: string;
+
+  protocol?: string;
+  deviceIdentifier?: string;
+  deviceName?: string;
+  model?: string;
+  manufacturer?: string;
+
+  lastSeenAt?: string;
+  online?: boolean;
+
+  powerState?: string;
+  mode?: string;
+  ambientTemperature?: number | null;
+  setpointTemperature?: number | null;
+};
+
+export type HvacDeviceMappingDto = {
+  mappingId: string;
+  tenantId: string;
+  siteId: string;
+  hvacId: string;
+  hvacName: string;
+  externalDeviceId: string;
+  unitName: string;
+  mappedAt: string;
+};
+
+export type CreateHvacDeviceMappingRequest = {
+  hvacId: string;
+  externalDeviceId: string;
+};
+
 export type HvacDto = {
     hvacId: string;
     id?: string;              // optional
@@ -310,6 +348,72 @@ export const BmsApi = {
         {
             method: "DELETE",
         }
+        );
+    },
+
+
+    //======= Mapping End Points ==============
+
+    getDiscoveredDevices: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<DiscoveredHvacDeviceDto[]> => {
+        return await api<DiscoveredHvacDeviceDto[]> (
+            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/discovered-devices`,
+            {
+                method: "GET"
+            }
+        );
+    },
+
+    getHvacMappings: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<HvacDeviceMappingDto[]> => {
+        return await api<HvacDeviceMappingDto[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
+            {
+                method: "GET"
+            }
+        );
+    },
+
+    createHvacMapping: async (
+        tenantId: string,
+        siteId: string,
+        body: CreateHvacDeviceMappingRequest
+    ): Promise<HvacDeviceMappingDto> => {
+        return await api<HvacDeviceMappingDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
+            {
+                method: "POST",
+                body: JSON.stringify(body),
+                headers: {
+                    "Content-Type": "application/json"
+                },
+            }
+        );
+    },
+
+     unmapByMappingId: async (
+        tenantId: string,
+        siteId: string,
+        mappingId: string
+    ): Promise<void> => {
+        await api<void>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/${mappingId}`,
+        { method: "DELETE" }
+        );
+    },
+
+    unmapByHvacId: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string
+    ): Promise<void> => {
+        await api<void>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/hvac/${hvacId}`,
+        { method: "DELETE" }
         );
     },
 
