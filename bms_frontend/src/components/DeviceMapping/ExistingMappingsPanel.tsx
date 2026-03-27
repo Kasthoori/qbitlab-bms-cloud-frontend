@@ -30,9 +30,9 @@ export default function ExistingMappingsPanel({
             <thead>
               <tr className="bg-slate-100 text-left text-sm text-slate-700">
                 <th className="px-4 py-3 font-semibold">Logical HVAC</th>
-                <th className="px-4 py-3 font-semibold">Discovered Device</th>
-                <th className="px-4 py-3 font-semibold">Protocol</th>
-                <th className="px-4 py-3 font-semibold">Identifier</th>
+                <th className="px-4 py-3 font-semibold">Device Name</th>
+                <th className="px-4 py-3 font-semibold">External Device ID</th>
+                <th className="px-4 py-3 font-semibold">Mapped At</th>
                 <th className="px-4 py-3 font-semibold text-right">Action</th>
               </tr>
             </thead>
@@ -42,16 +42,24 @@ export default function ExistingMappingsPanel({
                   key={mapping.mappingId}
                   className={index % 2 === 0 ? "bg-white" : "bg-slate-50/60"}
                 >
-                  <td className="px-4 py-3 text-sm text-slate-800">{mapping.hvacName}</td>
                   <td className="px-4 py-3 text-sm text-slate-800">
-                    {mapping.discoveredDeviceName || mapping.discoveredDeviceId}
+                    {mapping.hvacName}
                   </td>
+
+                  <td className="px-4 py-3 text-sm text-slate-800">
+                    {mapping.unitName || "Unknown device"}
+                  </td>
+
                   <td className="px-4 py-3 text-sm text-slate-600">
-                    {mapping.protocol || "-"}
+                    {mapping.externalDeviceId}
                   </td>
+
                   <td className="px-4 py-3 text-sm text-slate-600">
-                    {mapping.deviceIdentifier || "-"}
+                    {mapping.mappedAt
+                      ? new Date(mapping.mappedAt).toLocaleString()
+                      : "-"}
                   </td>
+
                   <td className="px-4 py-3 text-right">
                     <button
                       className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
