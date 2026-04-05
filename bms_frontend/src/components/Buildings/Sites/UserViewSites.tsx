@@ -85,10 +85,13 @@ export default function UserViewSites() {
     navigate(`/buildings/user/tenants/${tenantId}/sites/${siteId}/floor-plans/view`);
   }
 
-  function handleViewHvacs(siteId: string) {
-    if (!tenantId) return;
-    navigate(`/user/tenants/${tenantId}/sites/${siteId}/hvacs`);
-  }
+  function handleViewHvacs(siteId: string, siteName?: string) {
+  if (!tenantId) return;
+
+  navigate(`/user/tenants/${tenantId}/sites/${siteId}/hvacs`, {
+    state: { siteName: siteName ?? "Selected Site" },
+  });
+}
 
   if (loading) {
     return (
@@ -262,7 +265,7 @@ export default function UserViewSites() {
 
                           <button
                             type="button"
-                            onClick={() => handleViewHvacs(siteId)}
+                            onClick={() => handleViewHvacs(siteId, site.siteName)}
                             className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                           >
                             <Fan className="h-4 w-4" />

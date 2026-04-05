@@ -10,5 +10,6 @@
         "qbitlab",
         "stompjs",
         "VITE"
-    ]
+    ],
+    "compile-hero.disable-compile-files-on-did-save-code": true
 }
