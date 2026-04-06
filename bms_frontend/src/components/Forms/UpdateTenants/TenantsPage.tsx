@@ -4,6 +4,8 @@ import { useEffect, useState, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import BmsCard from "./BmsCard";
 import AddSiteModal from "./AddSiteModal";
+import UpdateTenantModel from "./UpdateTenantModel";
+import ConfirmDeleteTenantModal from "./ConfirmDeleteTenantModel";
 
 
 const TenantsPage:FC = () => {
@@ -15,11 +17,29 @@ const TenantsPage:FC = () => {
     //model state
     const [addSiteTenantId, setAddSiteTenantId] = useState<string>("");
     const [addSiteTenantTitle, setAddSiteTenantTitle] = useState<string>("");
+    //const [editTenantId, setEditTenantId] = useState<string>("");
+    //const [editTenantTitle, setEditTenantTitle] = useState<string>("");
+
+    const [openUpdateTenant, setOpenUpdateTenant] = useState(false);
+
+    const [selectedTenant, setSelectedTenant] = useState<TenantDto | undefined>(undefined);
+    const [, setRefreshing] = useState(false);
+
+
+    const [openDeleteTenant, setOpenDeleteTenant] = useState(false);
+    const [deleteTenantId, setDeleteTenantId] = useState<string>("");
+    const [deleteTenantName, setDeleteTenantName] = useState<string>("");
+    const [deleteErr, setDeleteErr] = useState<string | null>(null);
+    const [deleteSuccess, setDeleteSuccess] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+        
 
     const refetch = async () => {
 
         try{
-            setLoading(true);
+            if (tenants.length === 0) setLoading(true);
+            else setRefreshing(true);
+
             const data = await BmsApi.getMyTenants();
 
             console.log("Get Tenants: ", data);
@@ -42,35 +62,45 @@ const TenantsPage:FC = () => {
         } finally {
 
             setLoading(false);
-
+            setRefreshing(false);
         }
     }
 
     useEffect(() => {
            refetch();     
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const onDeleteTenant = async (t: TenantDto) => {
-
-        const name = t.tenantName ?? t.name ?? t.tenantId;
-
-        const ok = window.confirm(`Delete tenant "${name}"?`);
-
-        if(!ok) return;
-
-        try {
-            await BmsApi.deleteTenant(t.tenantId);
-
-        }catch (err: any){
-            alert(err instanceof Error ? err.message : "Delete failed");
-        }
-    };
 
     const openAddSite = (t: TenantDto) => {
 
         setAddSiteTenantId(t.tenantId);
         setAddSiteTenantTitle(t.tenantName ?? t.name ?? "Unnamed Tenant");
     };
+
+   const openEditTenant = async(t: TenantDto) => {
+        
+            setOpenUpdateTenant(true);
+            setSelectedTenant(t);
+
+            try {
+
+                const fullTenant = await BmsApi.getTenantById(t.tenantId);
+                setSelectedTenant(fullTenant);
+
+            } catch (e) {
+
+                alert(`Failed to fetch tenant details: ${e instanceof Error ? e.message : ""}`);
+                setOpenUpdateTenant(false);
+                setSelectedTenant(undefined);
+
+            }
+    };
+
+    const closeEditTenant = () => {
+       setOpenUpdateTenant(false);
+        setSelectedTenant(undefined);
+    }    
 
     const closeAddSite = () => {
         setAddSiteTenantId("");
@@ -86,6 +116,53 @@ const TenantsPage:FC = () => {
     }
 
 
+    const handleOpenDeleteTenant = (t: TenantDto) => {
+        setDeleteTenantId(t.tenantId);
+        setDeleteTenantName(t.name ?? "");
+        setDeleteErr(null);
+        setDeleteSuccess(false);
+        setOpenDeleteTenant(true);
+    };
+
+    const handleCloseDeleteTenant = () => {
+        if (deleting) return;
+        setOpenDeleteTenant(false);
+        setDeleteTenantId("");
+        setDeleteTenantName("");
+        setDeleteErr(null);
+        setDeleteSuccess(false);
+    };
+
+    const confirmDeleteTenant = async () => {
+        if (!deleteTenantId) return;
+
+        try {
+            setDeleting(true);
+            setDeleteErr(null);
+
+            await BmsApi.deleteTenant(deleteTenantId); // ✅ ensure this exists in your api client
+
+            setDeleteSuccess(true);
+
+            // refresh list
+            await refetch(); // or refetchTenants() - whatever your function name is
+
+            // auto close after showing success
+            setTimeout(() => {
+            handleCloseDeleteTenant();
+            }, 1200);
+        } catch (e: any) {
+            const msg =
+            e?.response?.data?.message ||
+            e?.message ||
+            "Failed to delete tenant. Please try again.";
+            setDeleteErr(String(msg));
+        } finally {
+            setDeleting(false);
+        }
+     };
+
+
 
     return (
         <><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -95,12 +172,12 @@ const TenantsPage:FC = () => {
                 return (
                     <BmsCard
                         key={t.tenantId}
-                        title="Update Information"
+                        title="Tenanat"
                         subtitle={tenantTitle}
                         meta={`Tenant ID: ${t.tenantId}`}
                         actions={[
                             {
-                                label: "Sites",
+                                label: "Site",
                                 variant: "secondary",
                                 onClick: () => nav(`/admin/tenants/query/${t.tenantId}/sites`),
                             },
@@ -112,19 +189,21 @@ const TenantsPage:FC = () => {
                             {
                                 label: "Edit",
                                 variant: "primary",
-                                onClick: () => nav(`/admin/tenants/${t.tenantId}/edit`),
+                                onClick: () => {
+                                    openEditTenant(t);
+                                },
                             },
                             {
                                 label: "Delete",
                                 variant: "danger",
-                                onClick: () => onDeleteTenant(t),
+                                onClick: () => handleOpenDeleteTenant(t),
                             },
                         ]} />
                 );
 
             })}
         </div>
-            // Animated modal
+            
             <AddSiteModal 
                 open={!!addSiteTenantId}
                 tenantId={addSiteTenantId}
@@ -134,7 +213,27 @@ const TenantsPage:FC = () => {
                     refetch();
                 }}
             />
-            
+           {selectedTenant && (
+            <UpdateTenantModel 
+               open={openUpdateTenant} 
+               tenantId={selectedTenant.tenantId} 
+               tenantTitle={selectedTenant.tenantName ?? selectedTenant.name}
+               onClose={() => closeEditTenant()}
+               onCreated={refetch}
+               tenant={selectedTenant}
+            />
+           )}
+
+           <ConfirmDeleteTenantModal
+                open={openDeleteTenant}
+                tenantId={deleteTenantId}
+                tenantName={deleteTenantName}
+                deleting={deleting}
+                error={deleteErr}
+                success={deleteSuccess}
+                onClose={handleCloseDeleteTenant}
+                onConfirmDelete={confirmDeleteTenant}
+           />
       </>
     )
 
