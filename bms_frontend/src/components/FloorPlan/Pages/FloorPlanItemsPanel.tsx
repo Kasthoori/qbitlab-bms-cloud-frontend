@@ -2,6 +2,7 @@ import { Fan, Lock, Unlock, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
+import { isFailedHvac } from "@/utils/hvac.utils";
 
 type Props = {
   hvacs: HvacDto[];
@@ -26,22 +27,20 @@ export default function FloorPlanItemsPanel({
   const placedIds = new Set(placements.map((p) => p.itemId));
 
   const placedHvacs = hvacs.filter((h) =>
-    placedIds.has(h.hvacId ?? h.id ?? "")
+    placedIds.has(h.hvacId ?? h.externalDeviceId ?? "")
   );
 
   const unplacedHvacs = hvacs.filter(
-    (h) => !placedIds.has(h.hvacId ?? h.id ?? "")
+    (h) => !placedIds.has(h.hvacId ?? h.externalDeviceId ?? "")
   );
 
   const getPlacement = (itemId: string) =>
     placements.find((p) => p.itemId === itemId);
 
   async function handleToggleLock(itemId: string, currentlyLocked: boolean) {
-    const nextLocked = !currentlyLocked;
-
     try {
       setSavingItemId(itemId);
-      await onToggleLock(itemId, nextLocked);
+      await onToggleLock(itemId, !currentlyLocked);
     } finally {
       setSavingItemId(null);
     }
@@ -78,9 +77,10 @@ export default function FloorPlanItemsPanel({
             </div>
           ) : (
             unplacedHvacs.map((hvac) => {
-              const hvacId = hvac.hvacId ?? hvac.id ?? "";
+              const hvacId = hvac.hvacId ?? hvac.externalDeviceId ?? "";
               const hvacName = hvac.hvacName ?? hvac.name ?? "Unnamed HVAC";
               const active = selectedItemId === hvacId;
+              const failed = isFailedHvac(hvac);
 
               return (
                 <button
@@ -89,17 +89,36 @@ export default function FloorPlanItemsPanel({
                   onClick={() => onSelectItem(active ? null : hvacId)}
                   className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
                     active
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-slate-200 bg-white hover:bg-slate-50"
+                      ? failed
+                        ? "border-red-500 bg-red-50"
+                        : "border-blue-500 bg-blue-50"
+                      : failed
+                        ? "border-red-200 bg-red-50 hover:bg-red-100"
+                        : "border-slate-200 bg-white hover:bg-slate-50"
                   }`}
                 >
-                  <Fan className="h-5 w-5 text-slate-600" />
+                  <Fan
+                    className={`h-5 w-5 ${
+                      failed ? "text-red-700" : "text-slate-600"
+                    }`}
+                  />
+
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-slate-900">
+                    <p
+                      className={`truncate font-medium ${
+                        failed ? "text-red-900" : "text-slate-900"
+                      }`}
+                    >
                       {hvacName}
                     </p>
-                    <p className="truncate text-xs text-slate-500">
-                      {hvac.deviceId || "No device id"}
+                    <p
+                      className={`truncate text-xs ${
+                        failed ? "text-red-700" : "text-slate-500"
+                      }`}
+                    >
+                      {failed
+                        ? "Fault detected"
+                        : hvac.externalDeviceId || hvac.deviceId || "No device id"}
                     </p>
                   </div>
                 </button>
@@ -121,9 +140,10 @@ export default function FloorPlanItemsPanel({
             </div>
           ) : (
             placedHvacs.map((hvac) => {
-              const hvacId = hvac.hvacId ?? hvac.id ?? "";
+              const hvacId = hvac.hvacId ?? hvac.externalDeviceId ?? "";
               const hvacName = hvac.hvacName ?? hvac.name ?? "Unnamed HVAC";
               const placement = getPlacement(hvacId);
+              const failed = isFailedHvac(hvac);
 
               if (!placement) return null;
 
@@ -133,16 +153,34 @@ export default function FloorPlanItemsPanel({
               return (
                 <div
                   key={hvacId}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+                  className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${
+                    failed
+                      ? "border-red-200 bg-red-50"
+                      : "border-slate-200 bg-slate-50"
+                  }`}
                 >
-                  <Fan className="h-5 w-5 text-slate-600" />
+                  <Fan
+                    className={`h-5 w-5 ${
+                      failed ? "text-red-700" : "text-slate-600"
+                    }`}
+                  />
 
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-slate-900">
+                    <p
+                      className={`truncate font-medium ${
+                        failed ? "text-red-900" : "text-slate-900"
+                      }`}
+                    >
                       {hvacName}
                     </p>
-                    <p className="truncate text-xs text-slate-500">
-                      X: {placement.x.toFixed(1)}% | Y: {placement.y.toFixed(1)}%
+                    <p
+                      className={`truncate text-xs ${
+                        failed ? "text-red-700" : "text-slate-500"
+                      }`}
+                    >
+                      {failed
+                        ? `Fault | X: ${placement.x.toFixed(1)}% | Y: ${placement.y.toFixed(1)}%`
+                        : `X: ${placement.x.toFixed(1)}% | Y: ${placement.y.toFixed(1)}%`}
                     </p>
                   </div>
 

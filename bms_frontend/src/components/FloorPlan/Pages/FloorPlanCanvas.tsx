@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Fan, Lock, Unlock, Trash2, Loader2 } from "lucide-react";
-import { keycloak } from "@/keycloak";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
+import { isFailedHvac } from "@/utils/hvac.utils";
+import { useProtectedImageUrl } from "@/hooks/useProtectedImageUrl";
 
 type Props = {
   imageUrl: string;
@@ -30,73 +31,21 @@ export default function FloorPlanCanvas({
   onRemoveItem,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+
   const [dragState, setDragState] = useState<DragState>(null);
-  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
-  const [imageLoadError, setImageLoadError] = useState<string | null>(null);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
 
+  const { resolvedImageUrl, imageLoadError, imageLoading } =
+    useProtectedImageUrl(imageUrl);
+
   const selectedHvac =
-    hvacs.find((h) => (h.hvacId ?? h.id ?? "") === selectedItemId) ?? null;
+    hvacs.find((h) => (h.hvacId ?? h.externalDeviceId ?? "") === selectedItemId) ?? null;
 
   const hvacMap = useMemo(() => {
-    return new Map(hvacs.map((h) => [h.hvacId ?? h.id ?? "", h] as const));
+    return new Map(hvacs.map((h) => [h.hvacId ?? h.externalDeviceId ?? "", h] as const));
   }, [hvacs]);
-
-  useEffect(() => {
-    let objectUrl: string | null = null;
-    let cancelled = false;
-
-    async function loadProtectedImage() {
-      setImageLoadError(null);
-      setResolvedImageUrl(null);
-
-      try {
-        if (!keycloak) {
-          throw new Error("Keycloak is not available.");
-        }
-
-        await keycloak.updateToken(30);
-
-        if (!keycloak.token) {
-          throw new Error("No Keycloak access token available.");
-        }
-
-        const res = await fetch(imageUrl, {
-          headers: {
-            Authorization: `Bearer ${keycloak.token}`,
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error(`Failed to load floor plan (${res.status})`);
-        }
-
-        const blob = await res.blob();
-        objectUrl = URL.createObjectURL(blob);
-
-        if (!cancelled) {
-          setResolvedImageUrl(objectUrl);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setImageLoadError(
-            err instanceof Error ? err.message : "Failed to load floor plan"
-          );
-        }
-      }
-    }
-
-    loadProtectedImage();
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [imageUrl]);
 
   function clamp(value: number, min: number, max: number) {
     return Math.max(min, Math.min(max, value));
@@ -128,7 +77,11 @@ export default function FloorPlanCanvas({
     e: React.PointerEvent<HTMLDivElement>,
     placement: FloorPlanPlacement
   ) {
-    if (placement.locked || !resolvedImageUrl || savingItemId === placement.itemId) {
+    if (
+      placement.locked ||
+      !resolvedImageUrl ||
+      savingItemId === placement.itemId
+    ) {
       return;
     }
 
@@ -146,7 +99,6 @@ export default function FloorPlanCanvas({
     const point = clientToPercent(e.clientX, e.clientY);
     if (!point) return;
 
-    // local only, no backend save here
     onMoveItem(dragState.itemId, point.x, point.y);
   }
 
@@ -155,7 +107,7 @@ export default function FloorPlanCanvas({
       try {
         (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
       } catch {
-        // ignore pointer release issues
+        // ignore
       }
     }
     setDragState(null);
@@ -167,11 +119,9 @@ export default function FloorPlanCanvas({
   ) {
     e.stopPropagation();
 
-    const nextLocked = !placement.locked;
-
     try {
       setSavingItemId(placement.itemId);
-      await onToggleLock(placement.itemId, nextLocked);
+      await onToggleLock(placement.itemId, !placement.locked);
     } finally {
       setSavingItemId(null);
     }
@@ -192,12 +142,15 @@ export default function FloorPlanCanvas({
     }
   }
 
+  function formatTemp(value?: number | null) {
+    if (value == null) return "-";
+    return `${value.toFixed(1)}°C`;
+  }
+
   function formatLastSeen(value?: string) {
     if (!value) return "-";
-
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
-
     return date.toLocaleString();
   }
 
@@ -206,6 +159,8 @@ export default function FloorPlanCanvas({
       case "ONLINE":
         return "bg-emerald-500";
       case "OFFLINE":
+      case "FAILED":
+      case "FAULT":
         return "bg-red-500";
       case "WARNING":
         return "bg-amber-500";
@@ -238,13 +193,14 @@ export default function FloorPlanCanvas({
           />
         ) : (
           <div className="flex min-h-[600px] items-center justify-center p-6 text-slate-500">
-            Loading floor plan...
+            {imageLoading ? "Loading floor plan..." : "No floor plan image"}
           </div>
         )}
 
         {resolvedImageUrl &&
           placements.map((placement) => {
             const hvac = hvacMap.get(placement.itemId);
+            const failed = isFailedHvac(hvac);
             const hvacName =
               hvac?.hvacName ?? hvac?.name ?? placement.itemName ?? "Unnamed HVAC";
 
@@ -274,14 +230,18 @@ export default function FloorPlanCanvas({
                     className={`flex min-w-[130px] items-center gap-2 rounded-xl border px-3 py-2 shadow-lg transition ${
                       placement.locked
                         ? "border-slate-700 bg-slate-800 text-white"
-                        : "border-blue-500 bg-white text-slate-900"
+                        : failed
+                          ? "border-red-500 bg-red-50 text-red-900"
+                          : "border-blue-500 bg-white text-slate-900"
                     } ${isSaving ? "opacity-80" : ""}`}
                   >
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                         placement.locked
                           ? "bg-white/15 text-white"
-                          : "bg-blue-100 text-blue-700"
+                          : failed
+                            ? "bg-red-100 text-red-700"
+                            : "bg-blue-100 text-blue-700"
                       }`}
                     >
                       <Fan
@@ -297,16 +257,20 @@ export default function FloorPlanCanvas({
                             hvac?.status
                           )}`}
                         />
-                        <p className="truncate text-xs font-semibold">
-                          {hvacName}
-                        </p>
+                        <p className="truncate text-xs font-semibold">{hvacName}</p>
                       </div>
+
                       <p
                         className={`truncate text-[11px] ${
-                          placement.locked ? "text-slate-300" : "text-slate-500"
+                          placement.locked
+                            ? "text-slate-300"
+                            : failed
+                              ? "text-red-700"
+                              : "text-slate-500"
                         }`}
                       >
-                        {hvac?.deviceId || "No device ID"}
+                        {failed ? "Fault detected" 
+                        : hvac?.externalDeviceId || hvac?.deviceId || "No device ID"}
                       </p>
                     </div>
 
@@ -350,7 +314,13 @@ export default function FloorPlanCanvas({
                   {hoveredItemId === placement.itemId && hvac && (
                     <div className="absolute left-1/2 top-[calc(100%+10px)] z-20 w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl">
                       <div className="mb-3 flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                        <div
+                          className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                            failed
+                              ? "bg-red-100 text-red-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
                           <Fan
                             className="h-5 w-5 animate-spin"
                             style={{ animationDuration: "2s" }}
@@ -362,7 +332,7 @@ export default function FloorPlanCanvas({
                             {hvac.hvacName ?? hvac.name ?? "Unnamed HVAC"}
                           </p>
                           <p className="truncate text-xs text-slate-500">
-                            {hvac.deviceId || "No device ID"}
+                            {hvac.externalDeviceId || hvac.deviceId || "No device ID"}
                           </p>
                         </div>
                       </div>
@@ -373,7 +343,7 @@ export default function FloorPlanCanvas({
                             Protocol
                           </p>
                           <p className="font-medium text-slate-700">
-                            {hvac.protocol || "-"}
+                            {hvac?.protocol || "-"}
                           </p>
                         </div>
 
@@ -382,7 +352,7 @@ export default function FloorPlanCanvas({
                             Unit Type
                           </p>
                           <p className="font-medium text-slate-700">
-                            {hvac.unitType || "-"}
+                            {hvac?.unitType || "-"}
                           </p>
                         </div>
 
@@ -390,8 +360,12 @@ export default function FloorPlanCanvas({
                           <p className="text-xs uppercase tracking-wide text-slate-400">
                             Status
                           </p>
-                          <p className="font-medium text-slate-700">
-                            {hvac.status || "-"}
+                          <p
+                            className={`font-medium ${
+                              failed ? "text-red-700" : "text-slate-700"
+                            }`}
+                          >
+                            {hvac?.status || "-"}
                           </p>
                         </div>
 
@@ -400,9 +374,10 @@ export default function FloorPlanCanvas({
                             Temperature
                           </p>
                           <p className="font-medium text-slate-700">
-                            {typeof hvac.temperature === "number"
+                            {/* {typeof hvac?.temperature === "number"
                               ? `${hvac.temperature}°C`
-                              : "-"}
+                              : "-"} */}
+                            {formatTemp(hvac?.temperature)}
                           </p>
                         </div>
 
@@ -411,7 +386,7 @@ export default function FloorPlanCanvas({
                             Last Seen
                           </p>
                           <p className="font-medium text-slate-700">
-                            {formatLastSeen(hvac.lastSeenAt)}
+                            {formatLastSeen(hvac?.lastSeenAt)}
                           </p>
                         </div>
                       </div>

@@ -18,6 +18,35 @@ export type TenantDto = {
     // createdAt?: string;
 };
 
+export type HvacFloorPlanDetailsDto = {
+  hvacId: string;
+  tenantId?: string;
+  siteId?: string;
+
+  hvacName?: string;
+  unitName?: string;
+  unitType?: string;
+  protocol?: string;
+
+  externalDeviceId?: string;
+
+  temperature?: number | null;
+  setpoint?: number | null;
+  onState?: boolean | null;
+  fanSpeed?: number | null;
+  flowRate?: number | null;
+  fault?: boolean | null;
+
+  online?: boolean | null;
+  telemetryTime?: string;
+  lastSeenAt?: string;
+
+  manufacturer?: string;
+  model?: string;
+
+  status?: string;
+};
+
 export type SiteDto = {
     siteId: string;
     siteName: string;
@@ -76,18 +105,36 @@ export type CreateHvacDeviceMappingRequest = {
 };
 
 export type HvacDto = {
-    hvacId: string;
-    id?: string;              // optional
-    hvacName?: string;
-    deviceId?: string;
-    protocol?: string;
-    unitType?: string;
-    name?: string;
-    model?: string;
-    status?: string;
-    lastSeenAt?: string;
-    temperature?: number;
+  hvacId: string;
+  tenantId?: string;
+  siteId?: string;
 
+  hvacName?: string;
+  name?: string;
+  unitName?: string;
+  unitType?: string;
+  zone?: string;
+
+  externalDeviceId?: string;
+  deviceId?: string;
+
+  mapped?: boolean;
+  protocol?: string;
+  manufacturer?: string;
+  model?: string;
+
+  temperature?: number | null;
+  setpoint?: number | null;
+  onState?: boolean | null;
+  fanSpeed?: number | null;
+  flowRate?: number | null;
+  fault?: boolean | null;
+
+  telemetryTime?: string;
+  online?: boolean | null;
+  lastSeenAt?: string;
+
+  status?: string;
 };
 
 export type Page<T> = {
@@ -164,6 +211,16 @@ export const BmsApi = {
     getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
     getSitesByTenant: async (tenantId: string) => await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`),
     getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
+
+    getHvacSiteDetails: async (tenantId: string, siteId: string) =>
+        await api<HvacDto[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/details`
+        ),
+
+    getHvacFloorPlanDetails: async (tenantId: string, siteId: string) =>
+    await api<HvacFloorPlanDetailsDto[]>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvacs/floor-plan-details`
+    ),
     
     getTenantById: async (tenantId: string) => await api<TenantDto>(`/api/tenants/${tenantId}`),
     

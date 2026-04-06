@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Fan, ArrowLeft, Search } from "lucide-react";
-import { keycloak } from "@/keycloak";
+import { Fan, ArrowLeft } from "lucide-react";
 import { BmsApi, type FloorPlanDto, type HvacDto } from "@/api/bms";
-import type { FloorPlanPlacement } from '../../../types/floorplan.types'
+import type { FloorPlanPlacement } from "../../../types/floorplan.types";
+import { isFailedHvac } from "@/utils/hvac.utils";
+import { useProtectedImageUrl } from "@/hooks/useProtectedImageUrl";
 
 export default function UserViewFloorPlan() {
   const navigate = useNavigate();
@@ -19,9 +20,10 @@ export default function UserViewFloorPlan() {
   const [hvacs, setHvacs] = useState<HvacDto[]>([]);
   const [placements, setPlacements] = useState<FloorPlanPlacement[]>([]);
 
-  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
-  const [imageLoadError, setImageLoadError] = useState<string | null>(null);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+
+  const { resolvedImageUrl, imageLoadError, imageLoading } =
+    useProtectedImageUrl(floorPlanImageUrl);
 
   const selectedFloorPlan = useMemo(() => {
     return (
@@ -32,7 +34,7 @@ export default function UserViewFloorPlan() {
   }, [floorPlans, selectedFloorPlanId]);
 
   const hvacMap = useMemo(() => {
-    return new Map(hvacs.map((h) => [h.hvacId ?? h.id ?? "", h] as const));
+    return new Map(hvacs.map((h) => [h.hvacId ?? h.hvacId ?? "", h] as const));
   }, [hvacs]);
 
   async function loadData(preferredFloorPlanId?: string | null) {
@@ -48,9 +50,8 @@ export default function UserViewFloorPlan() {
     try {
       const [plans, siteHvacs] = await Promise.all([
         BmsApi.getFloorPlansByTenantSite(tenantId, siteId),
-        BmsApi.getHvacsByTenantSite(tenantId, siteId),
+        BmsApi.getHvacFloorPlanDetails(tenantId, siteId),
       ]);
-
       const safePlans = Array.isArray(plans) ? plans : [];
       const safeHvacs = Array.isArray(siteHvacs) ? siteHvacs : [];
 
@@ -103,65 +104,6 @@ export default function UserViewFloorPlan() {
     loadData();
   }, [tenantId, siteId]);
 
-  useEffect(() => {
-    let objectUrl: string | null = null;
-    let cancelled = false;
-
-    async function loadProtectedImage() {
-      if (!floorPlanImageUrl) {
-        setResolvedImageUrl(null);
-        return;
-      }
-
-      setImageLoadError(null);
-      setResolvedImageUrl(null);
-
-      try {
-        if (!keycloak) {
-          throw new Error("Keycloak is not available.");
-        }
-
-        await keycloak.updateToken(30);
-
-        if (!keycloak.token) {
-          throw new Error("No Keycloak access token available.");
-        }
-
-        const res = await fetch(floorPlanImageUrl, {
-          headers: {
-            Authorization: `Bearer ${keycloak.token}`,
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error(`Failed to load floor plan (${res.status})`);
-        }
-
-        const blob = await res.blob();
-        objectUrl = URL.createObjectURL(blob);
-
-        if (!cancelled) {
-          setResolvedImageUrl(objectUrl);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setImageLoadError(
-            err instanceof Error ? err.message : "Failed to load floor plan"
-          );
-        }
-      }
-    }
-
-    loadProtectedImage();
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [floorPlanImageUrl]);
-
   async function handleFloorPlanChange(floorPlanId: string) {
     if (!tenantId || !siteId) return;
 
@@ -185,6 +127,12 @@ export default function UserViewFloorPlan() {
     }
   }
 
+  function formatTemp(value?: number | null) {
+    if (value == null) return "-";
+    return `${value.toFixed(1)}°C`;
+  }
+
+
   function formatLastSeen(value?: string) {
     if (!value) return "-";
 
@@ -199,6 +147,8 @@ export default function UserViewFloorPlan() {
       case "ONLINE":
         return "bg-emerald-500";
       case "OFFLINE":
+      case "FAILED":
+      case "FAULT":
         return "bg-red-500";
       case "WARNING":
         return "bg-amber-500";
@@ -268,7 +218,7 @@ export default function UserViewFloorPlan() {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 p-6 text-white shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-linear-to-r from-slate-900 via-slate-800 to-blue-900 p-6 text-white shadow-sm">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-200">
@@ -311,7 +261,7 @@ export default function UserViewFloorPlan() {
           style={{ minHeight: 600 }}
         >
           {imageLoadError ? (
-            <div className="flex min-h-[600px] items-center justify-center p-6 text-center text-red-600">
+            <div className="flex min-h-150 items-center justify-center p-6 text-center text-red-600">
               {imageLoadError}
             </div>
           ) : resolvedImageUrl ? (
@@ -322,14 +272,15 @@ export default function UserViewFloorPlan() {
               draggable={false}
             />
           ) : (
-            <div className="flex min-h-[600px] items-center justify-center p-6 text-slate-500">
-              Loading floor plan...
+            <div className="flex min-h-150 items-center justify-center p-6 text-slate-500">
+              {imageLoading ? "Loading floor plan..." : "No floor plan image"}
             </div>
           )}
 
           {resolvedImageUrl &&
             placements.map((placement) => {
               const hvac = hvacMap.get(placement.itemId);
+              const failed = isFailedHvac(hvac);
               const hvacName =
                 hvac?.hvacName ?? hvac?.name ?? placement.itemName ?? "Unnamed HVAC";
 
@@ -350,8 +301,20 @@ export default function UserViewFloorPlan() {
                   }
                 >
                   <div className="relative">
-                    <div className="flex min-w-[130px] items-center gap-2 rounded-xl border border-blue-500 bg-white px-3 py-2 text-slate-900 shadow-lg transition hover:scale-[1.02]">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                    <div
+                      className={`flex min-w-32.5 items-center gap-2 rounded-xl border px-3 py-2 shadow-lg transition hover:scale-[1.02] ${
+                        failed
+                          ? "border-red-500 bg-red-50 text-red-900"
+                          : "border-blue-500 bg-white text-slate-900"
+                      }`}
+                    >
+                      <div
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                          failed
+                            ? "bg-red-100 text-red-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
                         <Fan
                           className="h-4 w-4 animate-spin"
                           style={{ animationDuration: "2s" }}
@@ -370,8 +333,12 @@ export default function UserViewFloorPlan() {
                           </p>
                         </div>
 
-                        <p className="truncate text-[11px] text-slate-500">
-                          {hvac?.deviceId || "No device ID"}
+                        <p
+                          className={`truncate text-[11px] ${
+                            failed ? "text-red-700" : "text-slate-500"
+                          }`}
+                        >
+                          {failed ? "Fault detected" : hvac?.deviceId || "No device ID"}
                         </p>
                       </div>
                     </div>
@@ -379,7 +346,13 @@ export default function UserViewFloorPlan() {
                     {hoveredItemId === placement.itemId && hvac && (
                       <div className="absolute left-1/2 top-[calc(100%+10px)] z-20 w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl">
                         <div className="mb-3 flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                          <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                              failed
+                                ? "bg-red-100 text-red-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}
+                          >
                             <Fan
                               className="h-5 w-5 animate-spin"
                               style={{ animationDuration: "2s" }}
@@ -419,7 +392,11 @@ export default function UserViewFloorPlan() {
                             <p className="text-xs uppercase tracking-wide text-slate-400">
                               Status
                             </p>
-                            <p className="font-medium text-slate-700">
+                            <p
+                              className={`font-medium ${
+                                failed ? "text-red-700" : "text-slate-700"
+                              }`}
+                            >
                               {hvac.status || "-"}
                             </p>
                           </div>
@@ -429,9 +406,10 @@ export default function UserViewFloorPlan() {
                               Temperature
                             </p>
                             <p className="font-medium text-slate-700">
-                              {typeof hvac.temperature === "number"
+                              {/* {typeof hvac.temperature === "number"
                                 ? `${hvac.temperature}°C`
-                                : "-"}
+                                : "-"} */}
+                              {formatTemp(hvac.temperature)}
                             </p>
                           </div>
 

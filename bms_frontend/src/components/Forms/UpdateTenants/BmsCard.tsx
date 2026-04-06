@@ -1,71 +1,82 @@
 import type { FC } from "react";
 
-type ActionVariant = "primary" | "secondary" | "danger";
-
-type CardAction = {
+type ActionButton = {
   label: string;
   onClick: () => void;
-  variant?: ActionVariant;
-  fullWidth?: boolean;
+  variant?: "primary" | "secondary" | "danger";
+  disabled?: boolean;
 };
 
 type BmsCardProps = {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   meta?: string;
-  actions?: CardAction[];
-};
-
-function cn(...classes: Array<string | false | undefined | null>) {
-  return classes.filter(Boolean).join(" ");
-}
-
-const variantClasses: Record<ActionVariant, string> = {
-  primary: "border border-slate-900 bg-slate-900 text-white hover:bg-slate-800",
-  secondary: "border border-blue-600 bg-blue-600 text-white hover:bg-blue-700",
-  danger: "border border-red-600 bg-red-600 text-white hover:bg-red-700",
+  badge?: string;
+  actions?: ActionButton[];
 };
 
 const BmsCard: FC<BmsCardProps> = ({
   title,
   subtitle,
   meta,
+  badge,
   actions = [],
 }) => {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="min-w-0">
-        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+  const btnBase =
+    "w-full rounded-2xl px-4 py-3 text-sm font-semibold border transition disabled:opacity-60 disabled:cursor-not-allowed";
 
-        <p className="mt-3 break-words text-2xl font-semibold leading-tight text-slate-900">
-          {subtitle}
-        </p>
+  const btnClass = (v?: ActionButton["variant"]) => {
+    if (v === "primary") {
+      return `${btnBase} bg-slate-900 text-white border-slate-900 hover:bg-slate-800`;
+    }
+    if (v === "secondary") {
+      return `${btnBase} bg-blue-500 text-white border-blue-500 hover:bg-blue-700`;
+    }
+    if (v === "danger") {
+      return `${btnBase} bg-red-600 text-white border-red-600 hover:bg-red-700`;
+    }
+    return `${btnBase} bg-white text-slate-800 border-slate-300 hover:bg-slate-50`;
+  };
+
+  return (
+    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-2xl font-extrabold text-slate-900">{title}</h3>
+
+          {badge && (
+            <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+              {badge}
+            </span>
+          )}
+        </div>
+
+        {subtitle && (
+          <div className="mt-2 text-lg font-semibold text-slate-900">
+            {subtitle}
+          </div>
+        )}
 
         {meta && (
-          <div className="mt-4 whitespace-pre-line break-words text-sm leading-7 text-slate-600">
+          <div className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600">
             {meta}
           </div>
         )}
       </div>
 
       {actions.length > 0 && (
-        <div className="mt-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {actions.map((action) => (
-              <button
-                key={action.label}
-                onClick={action.onClick}
-                className={cn(
-                  "inline-flex min-h-[44px] w-full items-center justify-center rounded-xl px-4 py-2 text-center text-sm font-semibold leading-tight transition",
-                  "break-words",
-                  variantClasses[action.variant ?? "secondary"],
-                  action.fullWidth && "sm:col-span-2"
-                )}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          {actions.map((a, i) => (
+            <button
+              key={`${a.label}-${i}`}
+              type="button"
+              className={btnClass(a.variant)}
+              onClick={a.onClick}
+              disabled={a.disabled}
+            >
+              {a.label}
+            </button>
+          ))}
         </div>
       )}
     </div>
