@@ -21,7 +21,7 @@ export default function HvacForm({
    const form = useForm<HvacFormValues>({
     resolver: zodResolver(hvacSchema),
     defaultValues: {
-      hvacName: "",
+      name: "",
       deviceId: "",
       unitType: "OTHER",
       zone: "",
@@ -43,12 +43,12 @@ export default function HvacForm({
             className="space-y-4"
             onSubmit={handleSubmit(async (v) => {
             await onAdd(v);
-            reset({ ...v, hvacName: "", deviceId: "", zone: "" }); // keep selects, clear text fields
+            reset({ ...v, name: "", deviceId: "", zone: "" }); // keep selects, clear text fields
             })}
         >
             <div className="grid gap-4 md:grid-cols-2">
-                <Field label="HVAC Name" error={errors.hvacName?.message}>
-                    <Input placeholder="e.g., HVAC-1 Lobby" {...register("hvacName")} />
+                <Field label="HVAC Name" error={errors.name?.message}>
+                    <Input placeholder="e.g., HVAC-1 Lobby" {...register("name")} />
                 </Field>
 
                 <Field label="Device ID" error={errors.deviceId?.message}>

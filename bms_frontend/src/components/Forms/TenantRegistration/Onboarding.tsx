@@ -25,7 +25,7 @@ export type SiteResponse = {
 export type HvacResponse = {
     hvacId: UUID;
     siteId: UUID;
-    hvacName: string;
+    name: string;
     deviceId: string;
 };
 
@@ -74,7 +74,7 @@ export const siteSchema = z.object({
 export type SiteFormValues = z.infer<typeof siteSchema>;
 
 export const hvacSchema = z.object({
-    hvacName: z.string().min(2, "HVAC name is required"),
+    name: z.string().min(2, "HVAC name is required"),
     deviceId: z.string().min(2, "Device ID is required"),
     unitType: z.enum(["AHU", "SPLIT", "VRF", "FAN_COIL", "OTHER"]),
     protocol: z.enum(["BACNET", "MODBUS", "SIMULATED"]),
@@ -296,7 +296,7 @@ export default function Onboarding() {
                                     <ul className="mt-1 space-y-2">
                                     {hvacs.map((h) => (
                                         <li key={h.hvacId} className="rounded-xl border border-zinc-200 bg-white p-3">
-                                        <div className="font-medium text-zinc-900">{h.hvacName}</div>
+                                        <div className="font-medium text-zinc-900">{h.name}</div>
                                         <div className="text-zinc-700">deviceId: {h.deviceId}</div>
                                         <div className="break-all text-zinc-500">hvacId: {h.hvacId}</div>
                                         </li>

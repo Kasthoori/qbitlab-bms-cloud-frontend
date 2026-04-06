@@ -1,16 +1,13 @@
-import HvacWsTable from "../ViewHvacDetails/HvacWsTable";
+import HvacWsTable from "../HvacWsTable";
 
-type Props = {
-    tenantId: string;
-    siteId: string;
-};
-
-export default function Dashboard({ tenantId, siteId }: Props) {
+export default function Dashboard() {
     return (
         <div>
             <h2 className="text-xl font-semibold mb-4">Dashboard</h2>
-
-            <HvacWsTable tenantId={tenantId} siteId={siteId} />
+            {/* <p className="text-slate-800">
+                Real time building matrix
+            </p> */}
+            <HvacWsTable />
         </div>
     );
 }

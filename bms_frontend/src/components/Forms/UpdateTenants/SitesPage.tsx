@@ -1,11 +1,9 @@
-import { BmsApi, type SiteDto } from "@/api/bms";
+import { type SiteDto } from "@/api/bms";
 import { api } from "@/api/http";
 import {useEffect, useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import BmsCard from "./BmsCard";
 import AddHvacModal from "./AddHvacModal";
-import UpdateSiteModel from "./UpdateSiteModel";
-import ConfirmDeleteSiteModel from "./ConfirmDeleteSiteModel";
 
 const SitesPage:FC = () => {
 
@@ -16,25 +14,11 @@ const SitesPage:FC = () => {
     const [sites, setSites] = useState<SiteDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [selectedSite, setSelectedSite] = useState<SiteDto | undefined>(undefined);
 
 
     const [openAddHvac, setOpenAddHvac] = useState(false);
     const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-    const [selectedSiteTitle, setSelectedSiteTitle] = useState<string>();
-
-    const [openUpdateSite, setOpenUpdateSite] = useState(false);
-
-    
-    // Delete Site modal
-    const [openDeleteSite, setOpenDeleteSite] = useState(false);
-    const [siteToDelete, setSiteToDelete] = useState<SiteDto | null>(null);
-    const [deletingSite, setDeletingSite] = useState(false);
-    const [deleteSiteError, setDeleteSiteError] = useState<string | null>(null);
-    const [deleteSiteSuccess, setDeleteSiteSuccess] = useState(false);
-
-
-
+    const [selectedSiteTitle, setSelectedSiteTitle] = useState<string | undefined>();
 
     const loadSites = async () => {
 
@@ -64,41 +48,20 @@ const SitesPage:FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tenantId]);
 
-     // --- Delete flow (open modal)
-    const onAskDeleteSite = (s: SiteDto) => {
-        setSiteToDelete(s);
-        setDeleteSiteError(null);
-        setDeleteSiteSuccess(false);
-        setOpenDeleteSite(true);
-    };
+    const onDeleteSite = async (s: SiteDto) => {
+        const ok = window.confirm(`Delete site "${s.siteName}"?`);
 
-  // --- Delete flow (confirm)
-  const onConfirmDeleteSite = async () => {
-    if (!siteToDelete) return;
+        if (!ok) return;
 
-    setDeletingSite(true);
-    setDeleteSiteError(null);
-    setDeleteSiteSuccess(false);
+        try {
 
-    try {
+            await api<void>(`/api/sites/${s.siteId}`, {method: "DELETE"});
+            await loadSites();
 
-      await BmsApi.deleteSite(tenantId!, siteToDelete.siteId);
-
-      setDeleteSiteSuccess(true);
-      await loadSites();
-
-      // keep success visible briefly, then close
-      setTimeout(() => {
-        setOpenDeleteSite(false);
-        setSiteToDelete(null);
-        setDeleteSiteSuccess(false);
-      }, 700);
-    } catch (err: unknown) {
-      setDeleteSiteError(err instanceof Error ? err.message : "Delete failed");
-    } finally {
-      setDeletingSite(false);
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : "Delete failed");
+        }
     }
-  };
 
     return (
         <div className="p-6">
@@ -139,9 +102,9 @@ const SitesPage:FC = () => {
                         ]
                         .filter(Boolean)
                         .join("\n")}
-                       actions={[
+                        actions={[
                             {
-                                label: "View HVACs",
+                                label: "HVACs",
                                 variant: "secondary",
                                 onClick: () => nav(`/admin/tenants/query/${tenantId}/sites/${s.siteId}/hvacs`),
                             },
@@ -149,45 +112,23 @@ const SitesPage:FC = () => {
                                 label: "Add HVAC",
                                 variant: "secondary",
                                 onClick: () => {
-                                setSelectedSiteId(s.siteId);
-                                setSelectedSiteTitle(s.siteName);
-                                setOpenAddHvac(true);
+                                    setSelectedSiteId(s.siteId);
+                                    setSelectedSiteTitle(s.siteName);
+                                    setOpenAddHvac(true);
                                 },
                             },
-                             {
-                                label: "Device Mapping",
-                                variant: "secondary",
-                                onClick: () => nav(`/admin/tenants/${tenantId}/sites/${s.siteId}/hvac-device-mapping`),
-                            },
                             {
-                                label: "Add Floor Plan",
-                                variant: "secondary",
-                                onClick: () =>
-                                nav(`/admin/tenants/${tenantId}/sites/${s.siteId}/floor-plans/upload`),
-                            },
-                            {
-                                label: "View Floor Plans",
-                                variant: "secondary",
-                                onClick: () =>
-                                nav(`/admin/tenants/${tenantId}/sites/${s.siteId}/floor-plans/view`),
-                            },
-                            {
-                                label: "Edit Site",
+                                label: "Edit",
                                 variant: "primary",
-                                onClick: () => {
-                                setSelectedSiteId(s.siteId);
-                                setSelectedSiteTitle(s.siteName);
-                                setOpenUpdateSite(true);
-                                setSelectedSite(s);
-                                },
+                                onClick: () => nav(`/admin/sites/${s.siteId}/edit`),
                             },
                             {
-                                label: "Delete Site",
+                                label: "Delete",
                                 variant: "danger",
-                                onClick: () => onAskDeleteSite(s),
-                            },
-
-                            ]}                        
+                                onClick: () => onDeleteSite(s),
+                            }
+                        ]}
+                        
                         //onClick={() => nav(`/admin/tenants/query/${tenantId}/sites/${s.siteId}/hvacs`)}
                     />
                 ))}
@@ -200,38 +141,6 @@ const SitesPage:FC = () => {
                     onClose={() => setOpenAddHvac(false)}
                     onCreated={loadSites}
                 />
-            
-                {selectedSite && (
-                    <UpdateSiteModel 
-                        open={openUpdateSite}
-                        siteId={selectedSiteId!}
-                        siteName={selectedSiteTitle || ""}
-                        tenantId={tenantId!}
-                        onClose={() => setOpenUpdateSite(false)}
-                        onCreated={loadSites}
-                        site={selectedSite}
-                    />
-                )}
-
-                {tenantId && siteToDelete && (
-                <ConfirmDeleteSiteModel
-                    open={openDeleteSite}
-                    tenantId={tenantId}
-                    siteId={siteToDelete.siteId}
-                    siteName={siteToDelete.siteName}
-                    deleting={deletingSite}
-                    error={deleteSiteError}
-                    success={deleteSiteSuccess}
-                    onClose={() => {
-                        if (deletingSite) return;
-                        setOpenDeleteSite(false);
-                        setSiteToDelete(null);
-                        setDeleteSiteError(null);
-                        setDeleteSiteSuccess(false);
-                    }}
-                    onConfirmDelete={onConfirmDeleteSite}
-                />
-            )}
             </div>
         </div>
     );
