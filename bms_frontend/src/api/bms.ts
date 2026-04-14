@@ -377,7 +377,7 @@ export const BmsApi = {
         tenantId: string,
         siteId: string,
         floorPlanId: string,
-        placement: FloorPlanPlacementDto
+        placement: FloorPlanPlacementDto[]
     ) => {
         return await api<FloorPlanPlacementDto>(
             `/api/tenants/${tenantId}/sites/${siteId}/floor-plans/${floorPlanId}/placements`,

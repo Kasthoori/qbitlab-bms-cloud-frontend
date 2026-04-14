@@ -1,4 +1,4 @@
-import { Fan, Lock, Unlock, Trash2, Loader2 } from "lucide-react";
+import { Fan, Lock, Unlock, Trash2, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
@@ -56,23 +56,22 @@ export default function FloorPlanItemsPanel({
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="space-y-5 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
       <div>
-        <h3 className="text-lg font-semibold text-slate-900">Site HVACs</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Total: {hvacs.length} | Placed: {placedHvacs.length} | Unplaced:{" "}
-          {unplacedHvacs.length}
+        <h3 className="text-xl font-semibold text-white">Site HVACs</h3>
+        <p className="mt-2 text-sm text-slate-400">
+          Total: {hvacs.length} | Placed: {placedHvacs.length} | Unplaced: {unplacedHvacs.length}
         </p>
       </div>
 
       <div>
-        <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
           Unplaced HVACs
         </h4>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {unplacedHvacs.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-slate-400">
               All HVACs are already placed.
             </div>
           ) : (
@@ -87,40 +86,44 @@ export default function FloorPlanItemsPanel({
                   key={hvacId}
                   type="button"
                   onClick={() => onSelectItem(active ? null : hvacId)}
-                  className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                  className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-4 text-left transition ${
                     active
                       ? failed
-                        ? "border-red-500 bg-red-50"
-                        : "border-blue-500 bg-blue-50"
+                        ? "border-rose-500/40 bg-rose-500/10"
+                        : "border-cyan-400/30 bg-cyan-500/10"
                       : failed
-                        ? "border-red-200 bg-red-50 hover:bg-red-100"
-                        : "border-slate-200 bg-white hover:bg-slate-50"
+                      ? "border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10"
+                      : "border-white/10 bg-white/5 hover:bg-white/10"
                   }`}
                 >
-                  <Fan
-                    className={`h-5 w-5 ${
-                      failed ? "text-red-700" : "text-slate-600"
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                      failed
+                        ? "bg-rose-500/10 text-rose-300"
+                        : active
+                        ? "bg-cyan-500/10 text-cyan-300"
+                        : "bg-white/10 text-slate-300"
                     }`}
-                  />
+                  >
+                    <Fan className="h-5 w-5" />
+                  </div>
 
                   <div className="min-w-0 flex-1">
-                    <p
-                      className={`truncate font-medium ${
-                        failed ? "text-red-900" : "text-slate-900"
-                      }`}
-                    >
+                    <p className={`truncate font-medium ${failed ? "text-rose-200" : "text-white"}`}>
                       {hvacName}
                     </p>
-                    <p
-                      className={`truncate text-xs ${
-                        failed ? "text-red-700" : "text-slate-500"
-                      }`}
-                    >
+                    <p className={`truncate text-xs ${failed ? "text-rose-300" : "text-slate-400"}`}>
                       {failed
                         ? "Fault detected"
                         : hvac.externalDeviceId || hvac.deviceId || "No device id"}
                     </p>
                   </div>
+
+                  {active && !failed ? (
+                    <CheckCircle2 className="h-5 w-5 text-cyan-300" />
+                  ) : null}
+
+                  {failed ? <AlertTriangle className="h-5 w-5 text-rose-300" /> : null}
                 </button>
               );
             })
@@ -129,13 +132,13 @@ export default function FloorPlanItemsPanel({
       </div>
 
       <div>
-        <h4 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
           Placed HVACs
         </h4>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {placedHvacs.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-slate-400">
               No HVACs placed yet.
             </div>
           ) : (
@@ -153,31 +156,25 @@ export default function FloorPlanItemsPanel({
               return (
                 <div
                   key={hvacId}
-                  className={`flex items-center gap-3 rounded-xl border px-3 py-3 ${
+                  className={`flex items-center gap-3 rounded-2xl border px-4 py-4 ${
                     failed
-                      ? "border-red-200 bg-red-50"
-                      : "border-slate-200 bg-slate-50"
+                      ? "border-rose-500/20 bg-rose-500/5"
+                      : "border-white/10 bg-white/5"
                   }`}
                 >
-                  <Fan
-                    className={`h-5 w-5 ${
-                      failed ? "text-red-700" : "text-slate-600"
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+                      failed ? "bg-rose-500/10 text-rose-300" : "bg-white/10 text-slate-300"
                     }`}
-                  />
+                  >
+                    <Fan className="h-5 w-5" />
+                  </div>
 
                   <div className="min-w-0 flex-1">
-                    <p
-                      className={`truncate font-medium ${
-                        failed ? "text-red-900" : "text-slate-900"
-                      }`}
-                    >
+                    <p className={`truncate font-medium ${failed ? "text-rose-200" : "text-white"}`}>
                       {hvacName}
                     </p>
-                    <p
-                      className={`truncate text-xs ${
-                        failed ? "text-red-700" : "text-slate-500"
-                      }`}
-                    >
+                    <p className={`truncate text-xs ${failed ? "text-rose-300" : "text-slate-400"}`}>
                       {failed
                         ? `Fault | X: ${placement.x.toFixed(1)}% | Y: ${placement.y.toFixed(1)}%`
                         : `X: ${placement.x.toFixed(1)}% | Y: ${placement.y.toFixed(1)}%`}
@@ -188,10 +185,10 @@ export default function FloorPlanItemsPanel({
                     type="button"
                     onClick={() => handleToggleLock(hvacId, placement.locked)}
                     disabled={isSaving || isDeleting}
-                    className={`rounded-lg p-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    className={`rounded-2xl p-2.5 transition disabled:cursor-not-allowed disabled:opacity-60 ${
                       placement.locked
-                        ? "bg-slate-700 text-white hover:bg-slate-800"
-                        : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                        ? "bg-amber-500/15 text-amber-300 hover:bg-amber-500/20"
+                        : "bg-white/10 text-slate-300 hover:bg-white/15"
                     }`}
                     title={placement.locked ? "Unlock item" : "Lock item"}
                   >
@@ -208,7 +205,7 @@ export default function FloorPlanItemsPanel({
                     type="button"
                     onClick={() => handleRemove(hvacId)}
                     disabled={isSaving || isDeleting}
-                    className="rounded-lg bg-red-100 p-2 text-red-700 hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-2xl bg-rose-500/90 p-2.5 text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
                     title="Remove from floor plan"
                   >
                     {isDeleting ? (

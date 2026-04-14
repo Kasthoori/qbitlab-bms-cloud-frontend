@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { navItems, type NavItem } from "./nav.config";
@@ -177,7 +178,6 @@ export default function Sidebar() {
     };
 
     walk(navItems);
-
     setOpenGroups((prev) => ({ ...prev, ...nextState }));
   }, [pathname]);
 

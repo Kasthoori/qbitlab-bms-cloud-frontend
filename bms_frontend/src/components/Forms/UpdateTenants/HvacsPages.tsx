@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import BmsCard from "./BmsCard";
 import UpdateHvacModal from "./UpdateHvacModal";
 import ConfirmDeleteHvacModal from "./ConfirmDeleteHvacModal";
+import BackButton from "@/components/common/BackButton";
 
 // --- type guards (safe enum handling) ---
 type Protocol = CreateHvacRequest["protocol"];
@@ -127,29 +128,33 @@ const HvacsPages: FC = () => {
 
   return (
     <div className="p-6">
-      <div className="mb-4 flex items-center gap-3">
-        <button
-          className="rounded-xl border px-4 py-2 text-slate-700 hover:bg-slate-50"
-          onClick={() => nav(`/admin/tenants/query/${tenantId}/sites`)}
-        >
-          ← Back
-        </button>
+      <div className="mb-6 space-y-4">
+        <BackButton onClick={() => nav(`/admin/tenants/query/${tenantId}/sites`)} />
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+          <h1 className="text-3xl font-bold text-white">HVAC Units</h1>
+          <p className="mt-2 text-slate-400">
+            <span className="font-medium text-slate-200">Tenant:</span> {tenantId}
+            <span className="mx-2 text-slate-600">•</span>
+            <span className="font-medium text-slate-200">Site:</span> {siteId}
+          </p>
+        </div>
       </div>
+      {loading && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-300 backdrop-blur-xl">
+            Loading HVAC units...
+          </div>
+        )}
 
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-slate-900">HVAC Units</h1>
-        <p className="mt-1 text-slate-600">
-          <b>Tenant:</b> {tenantId} • <b>Site:</b> {siteId}
-        </p>
-      </div>
-
-      {loading && <div className="text-slate-600">Loading HVAC units....</div>}
-      {error && <div className="text-red-600 whitespace-pre-wrap">{error}</div>}
-
+        {error && (
+          <div className="whitespace-pre-wrap rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-rose-300">
+            {error}
+          </div>
+        )}
       {!loading && !error && hvacs.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-          <div className="font-semibold text-slate-900">No HVAC units found</div>
-          <div className="mt-1 text-sm text-slate-600">Onboard an HVAC under this site.</div>
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur-xl">
+          <div className="font-semibold text-white">No HVAC units found</div>
+          <div className="mt-1 text-sm text-slate-400">Onboard an HVAC under this site.</div>
         </div>
       )}
 

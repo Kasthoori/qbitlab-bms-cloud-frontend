@@ -15,6 +15,7 @@ import DashboardWrapper from './components/Pages/DashboardWrapper'
 import TenantsPage from './components/Forms/UpdateTenants/TenantsPage'
 import SitesPage from './components/Forms/UpdateTenants/SitesPage'
 import HvacsPages from './components/Forms/UpdateTenants/HvacsPages'
+import OnboardingPage from './components/Pages/Onboarding/OnboardingPage'
 
 // import HvacWsTable from './components/HvacWsTable.tsx'
 // import Header from './components/Header/Header.tsx'
@@ -39,7 +40,7 @@ const App:FC = () => (
             element={<DashboardWrapper />}
           />
           <Route path='/hvac' element={<Hvac />} />
-          <Route path='/onboarding' element={<Onboarding />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path='/admin/update-tenant' element={<TenantsPage />} />
           <Route path="/admin/tenants/query/:tenantId/sites" element={<SitesPage />} />
           <Route path="/admin/tenants/query/:tenantId/sites/:siteId/hvacs" element={<HvacsPages />} />
