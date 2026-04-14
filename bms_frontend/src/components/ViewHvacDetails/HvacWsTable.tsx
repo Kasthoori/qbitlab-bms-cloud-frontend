@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from "react";
 import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import {
+  Activity,
+  AlertCircle,
+  Fan,
+  Gauge,
+  Thermometer,
+  Wifi,
+  WifiOff,
+  Wind,
+  TriangleAlert,
+  Boxes,
+} from "lucide-react";
 
 import type { HvacCurrentState, HvacSiteDetailsDto } from "../../types/hvac";
 import { BACKEND_URL } from "../../utils/config";
@@ -12,6 +24,9 @@ type HvacWsTableProps = {
 };
 
 const WS_ENDPOINT = `${BACKEND_URL}/ws`;
+
+const glassCard =
+  "rounded-3xl border border-white/10 bg-white/5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl";
 
 const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId }) => {
   const [rows, setRows] = useState<HvacSiteDetailsDto[]>([]);
@@ -222,15 +237,8 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId }) => {
     return () => window.removeEventListener("focus", handleFocus);
   }, [loadMappedRows]);
 
-  const activeUnits = useMemo(
-    () => rows.filter((row) => row.onState).length,
-    [rows]
-  );
-
-  const faultCount = useMemo(
-    () => rows.filter((row) => row.fault).length,
-    [rows]
-  );
+  const activeUnits = useMemo(() => rows.filter((row) => row.onState).length, [rows]);
+  const faultCount = useMemo(() => rows.filter((row) => row.fault).length, [rows]);
 
   const avgTemp = useMemo(() => {
     const values = rows
@@ -258,16 +266,16 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId }) => {
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-slate-600">Loading HVAC details...</p>
+      <div className={`${glassCard} p-6`}>
+        <p className="text-slate-300">Loading HVAC details...</p>
       </div>
     );
   }
 
   if (error && rows.length === 0) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
-        <p className="font-medium text-red-700">{error}</p>
+      <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+        <p className="font-medium text-rose-300">{error}</p>
       </div>
     );
   }
@@ -275,122 +283,187 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId }) => {
   return (
     <div className="space-y-6">
       {error && rows.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
-          <p className="text-sm font-medium text-amber-700">
+        <div className="flex items-start gap-3 rounded-3xl border border-amber-400/20 bg-amber-500/10 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.20)] backdrop-blur-xl">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+          <p className="text-sm font-medium text-amber-300">
             Background refresh failed. Showing last known data.
           </p>
         </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-2 text-sm text-slate-500">Active Units</div>
-          <div className="text-4xl font-bold text-slate-900">{activeUnits}</div>
+        <div className={`${glassCard} p-5`}>
+          <div className="mb-2 flex items-center gap-2 text-sm text-slate-400">
+            <Activity className="h-4 w-4 text-emerald-300" />
+            Active Units
+          </div>
+          <div className="text-4xl font-bold text-white">{activeUnits}</div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-2 text-sm text-slate-500">Faults</div>
-          <div className="text-4xl font-bold text-amber-600">{faultCount}</div>
+        <div className={`${glassCard} p-5`}>
+          <div className="mb-2 flex items-center gap-2 text-sm text-slate-400">
+            <TriangleAlert className="h-4 w-4 text-amber-300" />
+            Faults
+          </div>
+          <div className="text-4xl font-bold text-amber-300">{faultCount}</div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-2 text-sm text-slate-500">Avg Temp</div>
-          <div className="text-4xl font-bold text-slate-900">
+        <div className={`${glassCard} p-5`}>
+          <div className="mb-2 flex items-center gap-2 text-sm text-slate-400">
+            <Thermometer className="h-4 w-4 text-cyan-300" />
+            Avg Temp
+          </div>
+          <div className="text-4xl font-bold text-white">
             {avgTemp === "-" ? "-" : `${avgTemp}°C`}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-2 text-sm text-slate-500">Total Units</div>
-          <div className="text-4xl font-bold text-slate-900">{rows.length}</div>
+        <div className={`${glassCard} p-5`}>
+          <div className="mb-2 flex items-center gap-2 text-sm text-slate-400">
+            <Boxes className="h-4 w-4 text-blue-300" />
+            Total Units
+          </div>
+          <div className="text-4xl font-bold text-white">{rows.length}</div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
+      <div className={`${glassCard} p-6`}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">HVAC Details</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
+              <SparkLine />
+              Live Telemetry
+            </div>
+            <h2 className="mt-3 text-2xl font-bold text-white">HVAC Details</h2>
+            <p className="mt-1 text-sm text-slate-400">
               Live HVAC data for mapped devices only
             </p>
           </div>
 
           <span
-            className={`rounded-full px-4 py-1 text-xs font-semibold ${
-              connected ? "bg-green-700 text-green-50" : "bg-red-700 text-red-50"
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${
+              connected
+                ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
+                : "border border-rose-400/20 bg-rose-500/10 text-rose-300"
             }`}
           >
+            {connected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
             {connected ? "CONNECTED" : "DISCONNECTED"}
           </span>
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200">
+        <div className="overflow-x-auto rounded-3xl border border-white/10">
           <table className="min-w-full border-collapse">
-            <thead className="bg-slate-950">
-              <tr className="text-left text-xs uppercase tracking-wider text-slate-300">
+            <thead className="bg-white/5">
+              <tr className="text-left text-xs uppercase tracking-wider text-slate-400">
                 <th className="px-4 py-3">Unit</th>
-                <th className="px-4 py-3">Temp (°C)</th>
-                <th className="px-4 py-3">Setpoint (°C)</th>
+                <th className="px-4 py-3">Temp</th>
+                <th className="px-4 py-3">Setpoint</th>
                 <th className="px-4 py-3">On/Off</th>
-                <th className="px-4 py-3">Fan (%)</th>
+                <th className="px-4 py-3">Fan</th>
                 <th className="px-4 py-3">Flow</th>
                 <th className="px-4 py-3">Fault</th>
                 <th className="px-4 py-3">Last Update</th>
               </tr>
             </thead>
 
-            <tbody className="bg-[#020817]">
+            <tbody className="bg-slate-950/30">
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-400">
-                    No mapped HVAC devices found for this site.
+                  <td colSpan={8} className="px-4 py-10 text-center">
+                    <div className="mx-auto max-w-md rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-sm text-slate-400">
+                      No mapped HVAC devices found for this site.
+                    </div>
                   </td>
                 </tr>
               ) : (
-                rows.map((row) => (
-                  <tr key={row.hvacId} className="border-t border-slate-800 text-slate-100">
-                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium">
-                      {row.unitName || row.hvacName}
+                rows.map((row, index) => (
+                  <tr
+                    key={row.hvacId ?? row.externalDeviceId ?? `${row.hvacName}-${index}`}
+                    className="border-t border-white/10 text-slate-100 transition hover:bg-white/5"
+                  >
+                    <td className="whitespace-nowrap px-4 py-4 text-sm font-medium">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 ${
+                            row.fault
+                              ? "bg-rose-500/10 text-rose-300"
+                              : row.onState
+                              ? "bg-cyan-500/10 text-cyan-300"
+                              : "bg-white/5 text-slate-400"
+                          }`}
+                        >
+                          <div
+                            className={row.onState ? "animate-spin" : ""}
+                            style={row.onState ? { animationDuration: "1.2s" } : undefined}
+                          >
+                            <Fan className="h-5 w-5" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-white">{row.unitName || row.hvacName}</p>
+                          <p className="text-xs text-slate-500">
+                            {row.externalDeviceId || row.hvacId || "No ID"}
+                          </p>
+                        </div>
+                      </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm">
-                      {formatNumber(row.temperature)}
+
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300">
+                        <Thermometer className="h-3.5 w-3.5" />
+                        {formatNumber(row.temperature)}
+                      </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm">
-                      {formatNumber(row.setpoint)}
+
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300">
+                        <Gauge className="h-3.5 w-3.5" />
+                        {formatNumber(row.setpoint)}
+                      </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
                       <span
-                        className={`rounded px-3 py-1 text-xs font-semibold ${
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                           row.onState
-                            ? "bg-green-700 text-gray-50"
-                            : "bg-gray-700 text-gray-200"
+                            ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
+                            : "border border-white/10 bg-white/5 text-slate-300"
                         }`}
                       >
                         {row.onState ? "ON" : "OFF"}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-200">
                       {row.fanSpeed !== null && row.fanSpeed !== undefined
                         ? `${formatNumber(row.fanSpeed, 0)}%`
                         : "-"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-300">
+                      <Wind className="h-3.5 w-3.5" />
                       {row.flowRate !== null && row.flowRate !== undefined
                         ? `${formatNumber(row.flowRate)} m³/h`
                         : "-"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                    </span>
+                  </td>
+
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
                       <span
-                        className={`rounded px-3 py-1 text-xs font-semibold ${
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
                           row.fault
-                            ? "bg-red-700 text-red-50"
-                            : "bg-emerald-700 text-emerald-50"
+                            ? "border border-rose-400/20 bg-rose-500/10 text-rose-300"
+                            : "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
                         }`}
                       >
+                        <TriangleAlert className="h-3.5 w-3.5" />
                         {row.fault ? "FAULT" : "OK"}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-400">
+
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-400">
                       {formatTime(row.telemetryTime)}
                     </td>
                   </tr>
@@ -403,5 +476,15 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId }) => {
     </div>
   );
 };
+
+function SparkLine() {
+  return (
+    <span className="inline-flex items-center">
+      <span className="h-1.5 w-1.5 rounded-full bg-blue-300" />
+      <span className="mx-1 h-1.5 w-1.5 rounded-full bg-cyan-300" />
+      <span className="h-1.5 w-1.5 rounded-full bg-purple-300" />
+    </span>
+  );
+}
 
 export default HvacWsTable;

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Fan, Lock, Unlock, Trash2, Loader2 } from "lucide-react";
+import { Fan, Lock, Unlock, Trash2, Loader2, ImageIcon, AlertCircle } from "lucide-react";
 import type { HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "../types/floorplan.types";
 import { isFailedHvac } from "@/utils/hvac.utils";
@@ -77,11 +77,7 @@ export default function FloorPlanCanvas({
     e: React.PointerEvent<HTMLDivElement>,
     placement: FloorPlanPlacement
   ) {
-    if (
-      placement.locked ||
-      !resolvedImageUrl ||
-      savingItemId === placement.itemId
-    ) {
+    if (placement.locked || !resolvedImageUrl || savingItemId === placement.itemId) {
       return;
     }
 
@@ -170,10 +166,10 @@ export default function FloorPlanCanvas({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
       <div
         ref={containerRef}
-        className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100"
+        className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40"
         style={{ minHeight: 600 }}
         onClick={handleCanvasClick}
         onPointerMove={handlePointerMove}
@@ -181,8 +177,11 @@ export default function FloorPlanCanvas({
         onPointerLeave={handlePointerUp}
       >
         {imageLoadError ? (
-          <div className="flex min-h-[600px] items-center justify-center p-6 text-center text-red-600">
-            {imageLoadError}
+          <div className="flex min-h-[600px] items-center justify-center p-6 text-center text-rose-300">
+            <div className="flex items-center gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+              <AlertCircle className="h-5 w-5" />
+              {imageLoadError}
+            </div>
           </div>
         ) : resolvedImageUrl ? (
           <img
@@ -192,8 +191,11 @@ export default function FloorPlanCanvas({
             draggable={false}
           />
         ) : (
-          <div className="flex min-h-[600px] items-center justify-center p-6 text-slate-500">
-            {imageLoading ? "Loading floor plan..." : "No floor plan image"}
+          <div className="flex min-h-[600px] items-center justify-center p-6 text-slate-400">
+            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <ImageIcon className="h-5 w-5 text-blue-300" />
+              {imageLoading ? "Loading floor plan..." : "No floor plan image"}
+            </div>
           </div>
         )}
 
@@ -220,28 +222,26 @@ export default function FloorPlanCanvas({
                 onPointerDown={(e) => handlePointerDown(e, placement)}
                 onMouseEnter={() => setHoveredItemId(placement.itemId)}
                 onMouseLeave={() =>
-                  setHoveredItemId((prev) =>
-                    prev === placement.itemId ? null : prev
-                  )
+                  setHoveredItemId((prev) => (prev === placement.itemId ? null : prev))
                 }
               >
                 <div className="relative">
                   <div
-                    className={`flex min-w-[130px] items-center gap-2 rounded-xl border px-3 py-2 shadow-lg transition ${
+                    className={`flex min-w-[140px] items-center gap-2 rounded-2xl border px-3 py-2.5 shadow-2xl backdrop-blur-xl transition ${
                       placement.locked
-                        ? "border-slate-700 bg-slate-800 text-white"
+                        ? "border-amber-400/20 bg-slate-900/85 text-white"
                         : failed
-                          ? "border-red-500 bg-red-50 text-red-900"
-                          : "border-blue-500 bg-white text-slate-900"
+                        ? "border-rose-500/30 bg-rose-500/10 text-rose-100"
+                        : "border-cyan-400/20 bg-slate-950/75 text-white"
                     } ${isSaving ? "opacity-80" : ""}`}
                   >
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl ${
                         placement.locked
-                          ? "bg-white/15 text-white"
+                          ? "bg-white/10 text-white"
                           : failed
-                            ? "bg-red-100 text-red-700"
-                            : "bg-blue-100 text-blue-700"
+                          ? "bg-rose-500/10 text-rose-300"
+                          : "bg-cyan-500/10 text-cyan-300"
                       }`}
                     >
                       <Fan
@@ -253,9 +253,7 @@ export default function FloorPlanCanvas({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`h-2.5 w-2.5 rounded-full ${getStatusDotClass(
-                            hvac?.status
-                          )}`}
+                          className={`h-2.5 w-2.5 rounded-full ${getStatusDotClass(hvac?.status)}`}
                         />
                         <p className="truncate text-xs font-semibold">{hvacName}</p>
                       </div>
@@ -265,12 +263,13 @@ export default function FloorPlanCanvas({
                           placement.locked
                             ? "text-slate-300"
                             : failed
-                              ? "text-red-700"
-                              : "text-slate-500"
+                            ? "text-rose-200"
+                            : "text-slate-400"
                         }`}
                       >
-                        {failed ? "Fault detected" 
-                        : hvac?.externalDeviceId || hvac?.deviceId || "No device ID"}
+                        {failed
+                          ? "Fault detected"
+                          : hvac?.externalDeviceId || hvac?.deviceId || "No device ID"}
                       </p>
                     </div>
 
@@ -279,10 +278,10 @@ export default function FloorPlanCanvas({
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => handleToggleLock(e, placement)}
                       disabled={isSaving || isDeleting}
-                      className={`rounded-full p-1 transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      className={`rounded-full p-1.5 transition disabled:cursor-not-allowed disabled:opacity-60 ${
                         placement.locked
-                          ? "bg-white/15 hover:bg-white/25"
-                          : "bg-slate-100 hover:bg-slate-200"
+                          ? "bg-white/10 hover:bg-white/20"
+                          : "bg-white/10 hover:bg-white/15"
                       }`}
                       title={placement.locked ? "Unlock item" : "Lock item"}
                     >
@@ -300,7 +299,7 @@ export default function FloorPlanCanvas({
                       onPointerDown={(e) => e.stopPropagation()}
                       onClick={(e) => handleRemove(e, placement)}
                       disabled={isSaving || isDeleting}
-                      className="rounded-full bg-red-500/90 p-1 text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-full bg-rose-500/90 p-1.5 text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
                       title="Remove from floor plan"
                     >
                       {isDeleting ? (
@@ -312,13 +311,13 @@ export default function FloorPlanCanvas({
                   </div>
 
                   {hoveredItemId === placement.itemId && hvac && (
-                    <div className="absolute left-1/2 top-[calc(100%+10px)] z-20 w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-2xl">
+                    <div className="absolute left-1/2 top-[calc(100%+10px)] z-20 w-72 -translate-x-1/2 rounded-3xl border border-white/10 bg-slate-950/95 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
                       <div className="mb-3 flex items-center gap-3">
                         <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                          className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
                             failed
-                              ? "bg-red-100 text-red-700"
-                              : "bg-blue-100 text-blue-700"
+                              ? "bg-rose-500/10 text-rose-300"
+                              : "bg-cyan-500/10 text-cyan-300"
                           }`}
                         >
                           <Fan
@@ -331,7 +330,7 @@ export default function FloorPlanCanvas({
                           <p className="truncate text-sm font-semibold">
                             {hvac.hvacName ?? hvac.name ?? "Unnamed HVAC"}
                           </p>
-                          <p className="truncate text-xs text-slate-500">
+                          <p className="truncate text-xs text-slate-400">
                             {hvac.externalDeviceId || hvac.deviceId || "No device ID"}
                           </p>
                         </div>
@@ -339,53 +338,42 @@ export default function FloorPlanCanvas({
 
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-slate-400">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">
                             Protocol
                           </p>
-                          <p className="font-medium text-slate-700">
-                            {hvac?.protocol || "-"}
-                          </p>
+                          <p className="font-medium text-slate-200">{hvac?.protocol || "-"}</p>
                         </div>
 
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-slate-400">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">
                             Unit Type
                           </p>
-                          <p className="font-medium text-slate-700">
-                            {hvac?.unitType || "-"}
-                          </p>
+                          <p className="font-medium text-slate-200">{hvac?.unitType || "-"}</p>
                         </div>
 
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-slate-400">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">
                             Status
                           </p>
-                          <p
-                            className={`font-medium ${
-                              failed ? "text-red-700" : "text-slate-700"
-                            }`}
-                          >
+                          <p className={`font-medium ${failed ? "text-rose-300" : "text-slate-200"}`}>
                             {hvac?.status || "-"}
                           </p>
                         </div>
 
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-slate-400">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">
                             Temperature
                           </p>
-                          <p className="font-medium text-slate-700">
-                            {/* {typeof hvac?.temperature === "number"
-                              ? `${hvac.temperature}°C`
-                              : "-"} */}
+                          <p className="font-medium text-slate-200">
                             {formatTemp(hvac?.temperature)}
                           </p>
                         </div>
 
                         <div className="col-span-2">
-                          <p className="text-xs uppercase tracking-wide text-slate-400">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">
                             Last Seen
                           </p>
-                          <p className="font-medium text-slate-700">
+                          <p className="font-medium text-slate-200">
                             {formatLastSeen(hvac?.lastSeenAt)}
                           </p>
                         </div>
@@ -398,9 +386,8 @@ export default function FloorPlanCanvas({
           })}
 
         {resolvedImageUrl && selectedHvac && (
-          <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-lg">
-            Click on the plan to place:{" "}
-            {selectedHvac.hvacName ?? selectedHvac.name ?? "Unnamed HVAC"}
+          <div className="pointer-events-none absolute bottom-4 left-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-2.5 text-sm font-medium text-white shadow-2xl">
+            Click on the plan to place: {selectedHvac.hvacName ?? selectedHvac.name ?? "Unnamed HVAC"}
           </div>
         )}
       </div>

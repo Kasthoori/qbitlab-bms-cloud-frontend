@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  AlertCircle,
+  CheckSquare,
+  ImageIcon,
+  Pencil,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
 import { BmsApi, type FloorPlanDto, type HvacDto } from "@/api/bms";
 import type { FloorPlanPlacement } from "./types/floorplan.types";
 import FloorPlanCanvas from "./Pages/FloorPlanCanvas";
 import FloorPlanItemsPanel from "./Pages/FloorPlanItemsPanel";
 import FloorPlanToolbar from "./Pages/FloorPlanToolbar";
+
+const glassCard =
+  "rounded-3xl border border-white/10 bg-white/5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl";
+
+const inputClass =
+  "w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-400 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30";
 
 export default function ViewFloorPlan() {
   const navigate = useNavigate();
@@ -32,9 +48,7 @@ export default function ViewFloorPlan() {
 
   const selectedFloorPlan = useMemo(() => {
     return (
-      floorPlans.find(
-        (p) => (p.floorPlanId ?? p.id ?? "") === selectedFloorPlanId
-      ) ?? null
+      floorPlans.find((p) => (p.floorPlanId ?? p.id ?? "") === selectedFloorPlanId) ?? null
     );
   }, [floorPlans, selectedFloorPlanId]);
 
@@ -109,7 +123,7 @@ export default function ViewFloorPlan() {
   }, [tenantId, siteId]);
 
   function handlePlaceItem(hvac: HvacDto, x: number, y: number) {
-    const hvacId = hvac.hvacId ?? hvac.id ?? "";
+    const hvacId = hvac.hvacId ?? "";
     const hvacName = hvac.hvacName ?? hvac.name ?? "Unnamed HVAC";
 
     if (!hvacId) return;
@@ -152,30 +166,33 @@ export default function ViewFloorPlan() {
   }
 
   const handleToggleLock = async (itemId: string) => {
-  if (!tenantId || !siteId || !selectedFloorPlanId) return;
+    if (!tenantId || !siteId || !selectedFloorPlanId) return;
 
-  try {
-    const updatedPlacements = placements.map((placement) =>
-      placement.itemId === itemId
-        ? { ...placement, locked: !placement.locked }
-        : placement
-    );
+    try {
+      const updatedPlacement = placements.find((placement) => placement.itemId === itemId);
+      if (!updatedPlacement) return;
 
-    setPlacements(updatedPlacements);
+      const toggledPlacement = { ...updatedPlacement, locked: !updatedPlacement.locked };
 
-    await BmsApi.saveFloorPlanPlacements(
-      tenantId,
-      siteId,
-      selectedFloorPlanId,
-      updatedPlacements
-    );
+      const updatedPlacements = placements.map((placement) =>
+        placement.itemId === itemId ? toggledPlacement : placement
+      );
 
-    setErrorMessage(null);
-  } catch (error) {
-    console.error("Failed to toggle lock", error);
-    setErrorMessage("Failed to save floor plan placement.");
-  }
-};
+      setPlacements(updatedPlacements);
+
+      await BmsApi.saveFloorPlanPlacements(
+        tenantId,
+        siteId,
+        selectedFloorPlanId,
+        [toggledPlacement]
+      );
+
+      setErrorMessage(null);
+    } catch (error) {
+      console.error("Failed to toggle lock", error);
+      setErrorMessage("Failed to save floor plan placement.");
+    }
+  };
 
   async function handleRemoveItem(itemId: string) {
     if (!tenantId || !siteId || !selectedFloorPlanId) return;
@@ -209,9 +226,7 @@ export default function ViewFloorPlan() {
     if (!tenantId || !siteId) return;
 
     setSelectedFloorPlanId(floorPlanId);
-    setFloorPlanImageUrl(
-      BmsApi.getFloorPlanFileUrl(tenantId, siteId, floorPlanId)
-    );
+    setFloorPlanImageUrl(BmsApi.getFloorPlanFileUrl(tenantId, siteId, floorPlanId));
     setSelectedItemId(null);
 
     try {
@@ -300,9 +315,14 @@ export default function ViewFloorPlan() {
     }
   }
 
+  const selectedItemName =
+    hvacs.find((hvac) => (hvac.hvacId ?? "") === selectedItemId)?.hvacName ??
+    hvacs.find((hvac) => (hvac.hvacId ?? "") === selectedItemId)?.name ??
+    null;
+
   if (loading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className={`${glassCard} p-6 text-slate-300`}>
         Loading floor plans...
       </div>
     );
@@ -310,7 +330,7 @@ export default function ViewFloorPlan() {
 
   if (errorMessage) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
+      <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-6 text-rose-300 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
         {errorMessage}
       </div>
     );
@@ -318,7 +338,7 @@ export default function ViewFloorPlan() {
 
   if (!tenantId || !siteId) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
+      <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-6 text-rose-300 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
         Tenant ID or Site ID is missing in the route.
       </div>
     );
@@ -326,19 +346,21 @@ export default function ViewFloorPlan() {
 
   if (!selectedFloorPlanId || !selectedFloorPlan || !floorPlanImageUrl) {
     return (
-      <div className="space-y-4">
-        <div className="mb-4 flex items-center gap-3">
+      <div className="space-y-6">
+        <div>
           <button
-            className="rounded-xl border px-4 py-2 text-slate-700 hover:bg-slate-50"
+            type="button"
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 shadow-[0_8px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-white/10 hover:text-white"
             onClick={() => navigate(`/admin/tenants/query/${tenantId}/sites`)}
           >
-            ← Back
+            <ArrowLeft className="h-4 w-4" />
+            Back
           </button>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">View Floor Plan</h1>
-          <p className="mt-2 text-slate-500">
+        <div className={`${glassCard} p-6`}>
+          <h1 className="text-3xl font-bold text-white">View Floor Plan</h1>
+          <p className="mt-2 text-slate-400">
             No floor plan found for this site. Upload a floor plan first.
           </p>
         </div>
@@ -346,56 +368,90 @@ export default function ViewFloorPlan() {
     );
   }
 
-  const selectedItemName =
-    hvacs.find((hvac) => (hvac.hvacId ?? hvac.id ?? "") === selectedItemId)
-      ?.hvacName ??
-    hvacs.find((hvac) => (hvac.hvacId ?? hvac.id ?? "") === selectedItemId)
-      ?.name ??
-    null;
-
   return (
     <>
-      <div className="mb-4 flex items-center gap-3">
-        <button
-          className="rounded-xl border px-4 py-2 text-slate-700 hover:bg-slate-50"
-          onClick={() => navigate(`/admin/tenants/query/${tenantId}/sites`)}
-        >
-          ← Back
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="text-sm font-medium text-slate-700">Floor Plan</label>
-
-          <select
-            value={selectedFloorPlanId}
-            onChange={(e) => handleFloorPlanChange(e.target.value)}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 outline-none focus:border-blue-500"
-          >
-            {floorPlans.map((plan) => {
-              const planId = plan.floorPlanId ?? plan.id ?? "";
-              return (
-                <option key={planId} value={planId}>
-                  {plan.name}
-                </option>
-              );
-            })}
-          </select>
-
+      <div className="space-y-6">
+        <div>
           <button
-            className="rounded-xl border border-blue-300 px-4 py-2 text-blue-700 hover:bg-blue-50"
-            onClick={handleOpenUpdateModal}
+            type="button"
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 shadow-[0_8px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-white/10 hover:text-white"
+            onClick={() => navigate(`/admin/tenants/query/${tenantId}/sites`)}
           >
-            Update Floor Plan
+            <ArrowLeft className="h-4 w-4" />
+            Back
           </button>
+        </div>
 
-          <button
-            className="rounded-xl border border-red-300 px-4 py-2 text-red-700 hover:bg-red-50"
-            onClick={handleOpenDeleteModal}
-          >
-            Delete Floor Plan
-          </button>
+        <div className={`${glassCard} p-6`}>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
+                <Sparkles className="h-4 w-4" />
+                Floor Plan Workspace
+              </div>
+
+              <h1 className="mt-3 text-3xl font-bold text-white">
+                View Floor Plan
+              </h1>
+
+              <p className="mt-2 text-slate-400">
+                Manage floor plans, place HVAC devices, and maintain a smart visual layout for this site.
+              </p>
+
+              <p className="mt-3 text-sm text-slate-500">
+                <span className="font-medium text-slate-300">Tenant:</span> {tenantId}
+                <span className="mx-2 text-slate-600">•</span>
+                <span className="font-medium text-slate-300">Site:</span> {siteId}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <div className="min-w-[240px]">
+                <label className="mb-2 block text-sm font-medium text-slate-300">
+                  Floor Plan
+                </label>
+                <select
+                  value={selectedFloorPlanId}
+                  onChange={(e) => handleFloorPlanChange(e.target.value)}
+                  className={inputClass}
+                >
+                  {floorPlans.map((plan) => {
+                    const planId = plan.floorPlanId ?? plan.id ?? "";
+                    return (
+                      <option key={planId} value={planId} className="bg-slate-900 text-white">
+                        {plan.name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-300">
+                  <CheckSquare className="h-4 w-4" />
+                  Active Plan Selected
+                </div>
+
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white"
+                  onClick={handleOpenUpdateModal}
+                >
+                  <Pencil className="h-4 w-4" />
+                  Update
+                </button>
+
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-rose-500/90 px-4 py-3 text-sm font-medium text-white transition hover:bg-rose-500"
+                  onClick={handleOpenDeleteModal}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <FloorPlanToolbar
@@ -430,92 +486,155 @@ export default function ViewFloorPlan() {
       </div>
 
       {openUpdateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-xl font-semibold text-slate-900">Update Floor Plan</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Change the floor plan name.
-            </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-slate-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.12),transparent_24%)]" />
 
-            <div className="mt-4">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
+            <div className="relative border-b border-white/10 px-6 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-blue-300">
+                    <ImageIcon className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
+                      <Sparkles className="h-4 w-4" />
+                      Update Floor Plan
+                    </div>
+                    <h2 className="mt-2 text-2xl font-bold text-white">
+                      Rename Plan
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-400">
+                      Change the floor plan name.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
+                  onClick={() => {
+                    if (updatingFloorPlan) return;
+                    setOpenUpdateModal(false);
+                    setUpdateFloorPlanError(null);
+                  }}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative px-6 py-5">
+              <label className="mb-2 block text-sm font-medium text-slate-200">
                 Floor Plan Name
               </label>
               <input
                 type="text"
                 value={updateName}
                 onChange={(e) => setUpdateName(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-blue-500"
+                className={inputClass}
                 placeholder="Enter floor plan name"
               />
-            </div>
 
-            {updateFloorPlanError && (
-              <p className="mt-3 text-sm text-red-600">{updateFloorPlanError}</p>
-            )}
+              {updateFloorPlanError && (
+                <div className="mt-4 flex items-start gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{updateFloorPlanError}</span>
+                </div>
+              )}
 
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                className="rounded-xl border px-4 py-2 text-slate-700 hover:bg-slate-50"
-                onClick={() => {
-                  if (updatingFloorPlan) return;
-                  setOpenUpdateModal(false);
-                  setUpdateFloorPlanError(null);
-                }}
-              >
-                Cancel
-              </button>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-200 transition hover:bg-white/10"
+                  onClick={() => {
+                    if (updatingFloorPlan) return;
+                    setOpenUpdateModal(false);
+                    setUpdateFloorPlanError(null);
+                  }}
+                >
+                  Cancel
+                </button>
 
-              <button
-                className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={handleConfirmUpdateFloorPlan}
-                disabled={updatingFloorPlan}
-              >
-                {updatingFloorPlan ? "Updating..." : "Save Changes"}
-              </button>
+                <button
+                  type="button"
+                  className="rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-3 font-semibold text-white transition hover:scale-[1.02] disabled:opacity-60"
+                  onClick={handleConfirmUpdateFloorPlan}
+                  disabled={updatingFloorPlan}
+                >
+                  {updatingFloorPlan ? "Updating..." : "Save Changes"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {openDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-xl font-semibold text-slate-900">Delete Floor Plan</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-slate-900">
-                {selectedFloorPlan.name}
-              </span>
-              ?
-            </p>
-            <p className="mt-1 text-sm text-red-600">
-              This action cannot be undone.
-            </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-slate-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(244,63,94,0.12),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.10),transparent_24%)]" />
 
-            {deleteFloorPlanError && (
-              <p className="mt-3 text-sm text-red-600">{deleteFloorPlanError}</p>
-            )}
+            <div className="relative border-b border-white/10 px-6 py-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/10 text-rose-300">
+                  <Trash2 className="h-5 w-5" />
+                </div>
 
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                className="rounded-xl border px-4 py-2 text-slate-700 hover:bg-slate-50"
-                onClick={() => {
-                  if (deletingFloorPlan) return;
-                  setOpenDeleteModal(false);
-                  setDeleteFloorPlanError(null);
-                }}
-              >
-                Cancel
-              </button>
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-300">
+                    <AlertCircle className="h-4 w-4" />
+                    Delete Floor Plan
+                  </div>
+                  <h2 className="mt-2 text-2xl font-bold text-white">
+                    Confirm Delete
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-              <button
-                className="rounded-xl bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={handleConfirmDeleteFloorPlan}
-                disabled={deletingFloorPlan}
-              >
-                {deletingFloorPlan ? "Deleting..." : "Delete"}
-              </button>
+            <div className="relative px-6 py-5">
+              <p className="text-sm text-slate-300">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-white">
+                  {selectedFloorPlan.name}
+                </span>
+                ?
+              </p>
+
+              {deleteFloorPlanError && (
+                <div className="mt-4 flex items-start gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{deleteFloorPlanError}</span>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-slate-200 transition hover:bg-white/10"
+                  onClick={() => {
+                    if (deletingFloorPlan) return;
+                    setOpenDeleteModal(false);
+                    setDeleteFloorPlanError(null);
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="rounded-2xl bg-rose-500 px-4 py-3 font-semibold text-white transition hover:bg-rose-600 disabled:opacity-60"
+                  onClick={handleConfirmDeleteFloorPlan}
+                  disabled={deletingFloorPlan}
+                >
+                  {deletingFloorPlan ? "Deleting..." : "Delete"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
