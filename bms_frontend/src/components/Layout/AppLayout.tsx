@@ -16,7 +16,7 @@ export default function AppLayout({children}: Props) {
             <Sidebar />
 
             {/* Main Area */}
-            <div className="flex-1 flex flex-col bg-slate-50">
+            <div className="flex-1 flex flex-col bg-slate-950">
                 <Topbar />
 
                 <main className="flex-1 overflow-auto p-6">

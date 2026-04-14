@@ -1,25 +1,31 @@
-import { BmsApi, type CreateHvacRequest } from "@/api/bms";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { BmsApi, type CreateSiteRequest, type SiteDto } from "@/api/bms";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import {
-  Cpu,
-  RadioTower,
+  Building2,
+  MapPin,
   Sparkles,
   X,
-  AlertCircle,
   CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
-import { useMemo, useState, type FC, type SubmitEventHandler } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FC,
+  type SubmitEventHandler,
+} from "react";
 
-type AddHvacModalProps = {
+type UpdateSiteModelProps = {
   open: boolean;
-  tenantId: string;
-  tenantTitle?: string;
-  hvacId?: string;
   siteId: string;
-  siteTitle?: string;
-  hvacTitle?: string;
+  siteName: string;
+  tenantId: string;
+  site: SiteDto;
   onClose: () => void;
-  onCreated?: () => void;
+  onCreated: () => void;
 };
 
 const inputClass =
@@ -27,12 +33,12 @@ const inputClass =
 
 const labelClass = "mb-2 text-sm font-medium text-slate-200";
 
-const AddHvacModal: FC<AddHvacModalProps> = ({
+const UpdateSiteModal: FC<UpdateSiteModelProps> = ({
   open,
-  tenantId,
   siteId,
-  tenantTitle,
-  siteTitle,
+  siteName,
+  tenantId,
+  site,
   onClose,
   onCreated,
 }) => {
@@ -40,25 +46,51 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
 
   const [saving, setSaving] = useState<boolean>(false);
   const [err, setErr] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<boolean>(false);
 
-  const initialForm = useMemo<CreateHvacRequest>(
+  const initialForm = useMemo<CreateSiteRequest>(
     () => ({
-      hvacName: "",
-      deviceId: "",
-      protocol: "BACNET",
-      unitType: "AHU",
+      siteName: "",
+      addressLine1: "",
+      city: "",
+      postcode: "",
+      timezone: "",
     }),
     []
   );
 
-  const [form, setForm] = useState<CreateHvacRequest>(initialForm);
+  const [form, setForm] = useState<CreateSiteRequest>(initialForm);
 
-  const resetLocalState = () => {
+  const hydratedRef = useRef<{ open: boolean; siteId: string } | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      hydratedRef.current = null;
+      return;
+    }
+
+    if (hydratedRef.current?.open === true && hydratedRef.current?.siteId === siteId) {
+      return;
+    }
+
+    setForm({
+      siteName: site.siteName ?? "",
+      addressLine1: site.addressLine1 ?? "",
+      city: site.city ?? "",
+      postcode: site.postcode ?? "",
+      timezone: site.timezone ?? "",
+    });
+
     setErr(null);
     setSuccess(false);
-    setSaving(false);
+
+    hydratedRef.current = { open: true, siteId };
+  }, [open, site, siteId]);
+
+  const resetLocalState = () => {
     setForm(initialForm);
+    setErr(null);
+    setSaving(false);
   };
 
   const handleClose = () => {
@@ -67,27 +99,24 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
     onClose();
   };
 
-  const setField = <K extends keyof CreateHvacRequest>(
+  const setField = <K extends keyof CreateSiteRequest>(
     key: K,
-    value: CreateHvacRequest[K]
-  ) => setForm((p) => ({ ...p, [key]: value }));
+    value: CreateSiteRequest[K]
+  ) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
   const validate = (): string | null => {
-    if (!tenantId) return "Missing tenantId, please open the form again";
-    if (!siteId) return "Missing siteId, please open the form again";
-    if (!form.hvacName.trim()) return "HVAC name is required";
-    if (!form.deviceId.trim()) return "Device ID is required";
-    if (!String(form.protocol).trim()) return "Protocol is required";
-    if (!String(form.unitType).trim()) return "Unit type is required";
+    if (!form.siteName.trim()) return "Site name is required";
+    if (!form.addressLine1.trim()) return "Address Line 1 is required";
+    if (!form.city.trim()) return "City is required";
+    if (!form.postcode.trim()) return "Postcode is required";
+    if (!form.timezone.trim()) return "Timezone is required";
     return null;
   };
 
-  const canSubmit = useMemo(() => {
-    return !!tenantId && !!siteId && !!form.hvacName.trim() && !!form.deviceId.trim();
-  }, [tenantId, siteId, form.hvacName, form.deviceId]);
-
-  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
-    e.preventDefault();
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (event) => {
+    event.preventDefault();
 
     const validationError = validate();
     if (validationError) {
@@ -100,20 +129,20 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
       setErr(null);
       setSuccess(false);
 
-      await BmsApi.addHvacToExistingSite(tenantId, siteId, form);
+      await BmsApi.updateSite(tenantId, siteId, form);
 
       setSuccess(true);
+      onCreated?.();
 
       setTimeout(() => {
-        onCreated?.();
         resetLocalState();
         onClose();
-      }, 1000);
+      }, 1200);
     } catch (error: any) {
       const msg =
         error?.response?.data?.message ||
         error?.message ||
-        "An error occurred. Please try again.";
+        "Failed to update site. Please try again.";
       setErr(String(msg));
     } finally {
       setSaving(false);
@@ -158,31 +187,24 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-300">
-                      <Cpu className="h-5 w-5" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-blue-300">
+                      <Building2 className="h-5 w-5" />
                     </div>
 
                     <div>
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
                         <Sparkles className="h-4 w-4" />
-                        Add HVAC
+                        Update Site
                       </div>
 
                       <h2 className="mt-2 text-2xl font-bold text-white">
-                        New HVAC Registration
+                        {form.siteName || "Site Details"}
                       </h2>
 
                       <p className="mt-1 text-sm text-slate-400">
                         Tenant:
                         <span className="ml-1 font-medium text-slate-200">
-                          {tenantTitle ?? tenantId}
-                        </span>
-                      </p>
-
-                      <p className="mt-1 text-sm text-slate-400">
-                        Site:
-                        <span className="ml-1 font-medium text-slate-200">
-                          {siteTitle ?? siteId}
+                          {siteName ?? siteId}
                         </span>
                       </p>
                     </div>
@@ -191,9 +213,9 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
                     disabled={saving}
                     onPointerDown={(e) => e.stopPropagation()}
+                    className="rounded-2xl border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -219,89 +241,88 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
                     className="mb-4 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
                   >
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>HVAC created successfully.</span>
+                    <span>Site updated successfully.</span>
                   </motion.div>
                 )}
 
                 <div className="grid grid-cols-1 gap-4">
                   <label className="block">
-                    <div className={labelClass}>HVAC Name</div>
+                    <div className={labelClass}>Site name</div>
                     <input
                       className={inputClass}
-                      value={form.hvacName}
-                      onChange={(e) => setField("hvacName", e.target.value)}
+                      value={form.siteName}
+                      onChange={(e) => setField("siteName", e.target.value)}
                       disabled={saving}
-                      placeholder="e.g., AHU - Level 2"
+                      placeholder="e.g., Auckland Office"
                     />
                   </label>
 
                   <label className="block">
-                    <div className={labelClass}>Device ID</div>
+                    <div className={labelClass}>Address line 1</div>
                     <input
                       className={inputClass}
-                      value={form.deviceId}
-                      onChange={(e) => setField("deviceId", e.target.value)}
+                      value={form.addressLine1}
+                      onChange={(e) => setField("addressLine1", e.target.value)}
                       disabled={saving}
-                      placeholder="e.g., hvac-1"
+                      placeholder="e.g., 42 Queen St"
                     />
                   </label>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <label className="block">
-                      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-200">
-                        <RadioTower className="h-4 w-4 text-cyan-300" />
-                        Protocol
-                      </div>
-                      <select
+                      <div className={labelClass}>City</div>
+                      <input
                         className={inputClass}
-                        value={form.protocol}
-                        onChange={(e) =>
-                          setField("protocol", e.target.value as CreateHvacRequest["protocol"])
-                        }
+                        value={form.city}
+                        onChange={(e) => setField("city", e.target.value)}
                         disabled={saving}
-                      >
-                        <option value="BACNET">BACNET</option>
-                        <option value="MODBUS">MODBUS</option>
-                        <option value="SIMULATED">SIMULATED</option>
-                      </select>
+                        placeholder="e.g., Auckland"
+                      />
                     </label>
 
                     <label className="block">
-                      <div className={labelClass}>Unit Type</div>
-                      <select
+                      <div className={labelClass}>Postcode</div>
+                      <input
                         className={inputClass}
-                        value={form.unitType}
-                        onChange={(e) =>
-                          setField("unitType", e.target.value as CreateHvacRequest["unitType"])
-                        }
+                        value={form.postcode}
+                        onChange={(e) => setField("postcode", e.target.value)}
                         disabled={saving}
-                      >
-                        <option value="AHU">AHU</option>
-                        <option value="VRF">VRF</option>
-                        <option value="FCU">FCU</option>
-                        <option value="CHILLER">CHILLER</option>
-                        <option value="OTHER">OTHER</option>
-                      </select>
+                        placeholder="e.g., 1010"
+                      />
                     </label>
                   </div>
+
+                  <label className="block">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-200">
+                      <MapPin className="h-4 w-4 text-cyan-300" />
+                      Timezone
+                    </div>
+                    <input
+                      className={inputClass}
+                      value={form.timezone}
+                      onChange={(e) => setField("timezone", e.target.value)}
+                      disabled={saving}
+                      placeholder="e.g., Pacific/Auckland"
+                    />
+                  </label>
                 </div>
 
                 <div className="mt-6 flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
                     disabled={saving}
+                    className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
                   >
                     Cancel
                   </button>
 
                   <button
                     type="submit"
+                    disabled={saving || !siteId}
                     className="rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 px-5 py-3 text-sm font-semibold text-white transition hover:scale-[1.02] disabled:opacity-60"
-                    disabled={!canSubmit || saving}
                   >
-                    {saving ? "Saving..." : "Add HVAC"}
+                    {saving ? "Updating..." : "Update Site"}
                   </button>
                 </div>
               </form>
@@ -313,4 +334,4 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
   );
 };
 
-export default AddHvacModal;
+export default UpdateSiteModal;
