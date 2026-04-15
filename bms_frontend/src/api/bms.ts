@@ -170,6 +170,17 @@ export type CreateHvacRequest = {
     unitType: "AHU" | "VRF" | "FCU" | "CHILLER" | "OTHER";
 };
 
+export type CurrentUserDto = {
+  keycloakUserId: string;
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  roles: string[];
+};
+
+
 export type FloorPlanDto = {
     floorPlanId?: string;
     id?: string;
@@ -205,6 +216,14 @@ export type UpsertFloorPlanPlacementRequest = {
   locked: boolean;
 };
 
+export type CreateTechnicianRequest = {
+  keycloakUserId: string;
+  email: string;
+  displayName: string;
+  tenantId: string;
+  siteId: string;
+};
+
 
 export const BmsApi = {
 
@@ -212,6 +231,7 @@ export const BmsApi = {
     getSitesByTenant: async (tenantId: string) => await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`),
     getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
 
+    getCurrentUser: async () => await api<CurrentUserDto>("/api/me"),
     getHvacSiteDetails: async (tenantId: string, siteId: string) =>
         await api<HvacDto[]>(
             `/api/tenants/${tenantId}/sites/${siteId}/hvacs/details`
@@ -473,6 +493,15 @@ export const BmsApi = {
         { method: "DELETE" }
         );
     },
+
+   createTechnician: async (req: CreateTechnicianRequest): Promise<void> =>
+    await api<void>("/api/technicians", {
+        method: "POST",
+        body: JSON.stringify(req),
+        headers: {
+            "Content-Type": "application/json",
+        },
+    }),
 
     
 };
