@@ -1,75 +1,117 @@
+import type { FC } from "react";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
-import type { FC } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import AppLayout from './components/Layout/AppLayout'
-import Hvac from './components/Pages/Hvac'
-import Onboarding from './components/Forms/TenantRegistration/Onboarding'
-import ViewFloorPlan from './components/FloorPlan/ViewFloorPlan'
-import UploadFloorPlanPage from './components/FloorPlan/UploadFloorPlanPage'
-import UserViewFloorPlan from './components/Buildings/FloorPlans/UserViewFloorPlan'
-import UserViewTenants from './components/Buildings/Tenants/UserViewTenants'
-import UserViewSites from './components/Buildings/Sites/UserViewSites'
-import HvacDeviceMappingPage from './components/DeviceMapping/HvacDeviceMappingPage'
-import SiteHvacDetailsPage from './components/ViewHvacDetails/SiteHvacDetailsPage'
-import DashboardWrapper from './components/Pages/DashboardWrapper'
-import TenantsPage from './components/Forms/UpdateTenants/TenantsPage'
-import SitesPage from './components/Forms/UpdateTenants/SitesPage'
-import HvacsPages from './components/Forms/UpdateTenants/HvacsPages'
-import OnboardingPage from './components/Pages/Onboarding/OnboardingPage'
+import { setNavigator } from "./utils/navigation";
 
-// import HvacWsTable from './components/HvacWsTable.tsx'
-// import Header from './components/Header/Header.tsx'
-// import { HvacConfigForm } from './components/Forms/HvacConfigForm.tsx'
+import AppLayout from "./components/Layout/AppLayout";
+import Hvac from "./components/Pages/Hvac";
+import ViewFloorPlan from "./components/FloorPlan/ViewFloorPlan";
+import UploadFloorPlanPage from "./components/FloorPlan/UploadFloorPlanPage";
+import UserViewFloorPlan from "./components/Buildings/FloorPlans/UserViewFloorPlan";
+import UserViewTenants from "./components/Buildings/Tenants/UserViewTenants";
+import UserViewSites from "./components/Buildings/Sites/UserViewSites";
+import HvacDeviceMappingPage from "./components/DeviceMapping/HvacDeviceMappingPage";
+import SiteHvacDetailsPage from "./components/ViewHvacDetails/SiteHvacDetailsPage";
+import DashboardWrapper from "./components/Pages/DashboardWrapper";
+import TenantsPage from "./components/Forms/UpdateTenants/TenantsPage";
+import SitesPage from "./components/Forms/UpdateTenants/SitesPage";
+import HvacsPages from "./components/Forms/UpdateTenants/HvacsPages";
+import OnboardingPage from "./components/Pages/Onboarding/OnboardingPage";
+import UserManagementPage from "./components/UserManagement/UserManagementPage";
 
-const App:FC = () => (
+import AccessDeniedPage from "./components/Pages/AccessDenied/AccessDeniedPage";
+import ProtectedRoute from "./components/Auth/ProtectedRoute";
 
-    // <div className='min-h-screen bg-gray-950 text-white'>
-    //   <div className='mx-auto max-w-6xl py-8'>
-    //     <Header />
-    //     <div className='my-4 w-full border-b border-gray-600'></div>
-    //     <HvacWsTable />
-    //     <HvacConfigForm />
-    //   </div>
-    // </div>
+/**
+ * 🔥 This wrapper registers React Router navigation globally
+ * so http.ts can use navigateTo() without reload
+ */
+const AppRoutes: FC = () => {
+  const navigate = useNavigate();
 
-    <BrowserRouter>
-      <AppLayout>
-        <Routes>
-         <Route
-            path="/user/tenants/:tenantId/sites/:siteId/dashboard"
-            element={<DashboardWrapper />}
-          />
-          <Route path='/hvac' element={<Hvac />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path='/admin/update-tenant' element={<TenantsPage />} />
-          <Route path="/admin/tenants/query/:tenantId/sites" element={<SitesPage />} />
-          <Route path="/admin/tenants/query/:tenantId/sites/:siteId/hvacs" element={<HvacsPages />} />
-          <Route
-              path="/admin/tenants/:tenantId/sites/:siteId/floor-plans/upload"
-              element={<UploadFloorPlanPage />}
-           />
-          <Route
-            path="/admin/tenants/:tenantId/sites/:siteId/floor-plans/view"
-            element={<ViewFloorPlan />}
-          />
-          <Route
-            path="/buildings/user/tenants/:tenantId/sites/:siteId/floor-plans/view"
-            element={<UserViewFloorPlan />}
-          />
-          <Route path="/buildings/user/tenants" element={<UserViewTenants />} />
-          <Route path="/user/tenants/:tenantId/sites" element={<UserViewSites />} />
-          <Route
-            path="/admin/tenants/:tenantId/sites/:siteId/hvac-device-mapping"
-            element={<HvacDeviceMappingPage />}
-          />
+  useEffect(() => {
+    setNavigator(navigate);
+  }, [navigate]);
 
-          <Route
-            path="/user/tenants/:tenantId/sites/:siteId/hvacs"
-            element={<SiteHvacDetailsPage />}
-          />
-        </Routes>
-      </AppLayout>
-    </BrowserRouter>
-)
+  return (
+    <Routes>
+      {/* ================= USER ROUTES ================= */}
+      <Route
+        path="/user/tenants/:tenantId/sites/:siteId/dashboard"
+        element={<DashboardWrapper />}
+      />
+
+      <Route path="/user/tenants/:tenantId/sites" element={<UserViewSites />} />
+      <Route path="/buildings/user/tenants" element={<UserViewTenants />} />
+
+      <Route
+        path="/buildings/user/tenants/:tenantId/sites/:siteId/floor-plans/view"
+        element={<UserViewFloorPlan />}
+      />
+
+      <Route
+        path="/user/tenants/:tenantId/sites/:siteId/hvacs"
+        element={<SiteHvacDetailsPage />}
+      />
+
+      {/* ================= ADMIN ROUTES ================= */}
+      <Route path="/admin/update-tenant" element={<TenantsPage />} />
+
+      <Route
+        path="/admin/tenants/query/:tenantId/sites"
+        element={<SitesPage />}
+      />
+
+      <Route
+        path="/admin/tenants/query/:tenantId/sites/:siteId/hvacs"
+        element={<HvacsPages />}
+      />
+
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/floor-plans/upload"
+        element={<UploadFloorPlanPage />}
+      />
+
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/floor-plans/view"
+        element={<ViewFloorPlan />}
+      />
+
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/hvac-device-mapping"
+        element={<HvacDeviceMappingPage />}
+      />
+
+      {/* 🔐 PROTECTED USER MANAGEMENT */}
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <UserManagementPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ================= GENERAL ================= */}
+      <Route path="/hvac" element={<Hvac />} />
+      <Route path="/onboarding" element={<OnboardingPage />} />
+
+      {/* 🚫 ACCESS DENIED */}
+      <Route path="/access-denied" element={<AccessDeniedPage />} />
+    </Routes>
+  );
+};
+
+/**
+ * 🔥 Main App
+ */
+const App: FC = () => (
+  <BrowserRouter>
+    <AppLayout>
+      <AppRoutes />
+    </AppLayout>
+  </BrowserRouter>
+);
 
 export default App;

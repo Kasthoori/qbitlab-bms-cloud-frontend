@@ -1,6 +1,7 @@
 import type { Key } from "react";
 import { api }  from "./http";
 import { BACKEND_URL as API_BASE_URL } from "@/utils/config";
+import type { BmsUserResponse, CreateBmsUserRequest } from "@/types/userManagement";
 
 export type TenantDto = {
     tenantName?: string;
@@ -228,7 +229,13 @@ export type CreateTechnicianRequest = {
 export const BmsApi = {
 
     getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
-    getSitesByTenant: async (tenantId: string) => await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`),
+
+   getSitesByTenant: async (tenantId: string) =>
+    await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`, {
+        method: "GET",
+        handle403Redirect: false,
+    }),
+
     getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
 
     getCurrentUser: async () => await api<CurrentUserDto>("/api/me"),
@@ -436,7 +443,7 @@ export const BmsApi = {
         siteId: string
     ): Promise<DiscoveredHvacDeviceDto[]> => {
         return await api<DiscoveredHvacDeviceDto[]> (
-            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/discovered-devices`,
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/discovered-devices`,
             {
                 method: "GET"
             }
@@ -448,7 +455,7 @@ export const BmsApi = {
         siteId: string
     ): Promise<HvacDeviceMappingDto[]> => {
         return await api<HvacDeviceMappingDto[]>(
-            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
             {
                 method: "GET"
             }
@@ -461,7 +468,7 @@ export const BmsApi = {
         body: CreateHvacDeviceMappingRequest
     ): Promise<HvacDeviceMappingDto> => {
         return await api<HvacDeviceMappingDto>(
-            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
             {
                 method: "POST",
                 body: JSON.stringify(body),
@@ -478,7 +485,7 @@ export const BmsApi = {
         mappingId: string
     ): Promise<void> => {
         await api<void>(
-        `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/${mappingId}`,
+        `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/${mappingId}`,
         { method: "DELETE" }
         );
     },
@@ -489,7 +496,7 @@ export const BmsApi = {
         hvacId: string
     ): Promise<void> => {
         await api<void>(
-        `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/hvac/${hvacId}`,
+        `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/hvac/${hvacId}`,
         { method: "DELETE" }
         );
     },
@@ -502,6 +509,19 @@ export const BmsApi = {
             "Content-Type": "application/json",
         },
     }),
+
+
+    // ============= User Management APIs =============
+
+  createBmsUser: async (req: CreateBmsUserRequest): Promise<BmsUserResponse> =>
+    await api<BmsUserResponse>("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify(req),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }),
+
 
     
 };

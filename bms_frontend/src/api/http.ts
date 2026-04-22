@@ -1,25 +1,39 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { keycloak } from "../keycloak";
 import { BACKEND_URL } from "../utils/config";
+import { navigateTo } from "../utils/navigation";
 
 const BASE_URL = BACKEND_URL;
-
-console.log("KEYCLOAK IMPORT IN http.ts:", keycloak);
 
 type ApiOptions = {
   method?: string;
   body?: BodyInit | null;
   headers?: Record<string, string>;
-  auth?: boolean; // default true
+  auth?: boolean;
+  handle403Redirect?: boolean;
 };
 
-export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const { auth = true, headers, body, ...rest } = options;
+type ApiError = {
+  status: number;
+  message: string;
+  body?: unknown;
+};
+
+export async function api<T>(
+  path: string,
+  options: ApiOptions = {}
+): Promise<T> {
+  const {
+    auth = true,
+    headers,
+    body,
+    handle403Redirect = true,
+    ...rest
+  } = options;
 
   if (auth) {
     if (!keycloak) {
-      throw new Error(
-        "Keycloak is undefined in http.ts. This usually means wrong import path or circular dependency."
-      );
+      throw new Error("Keycloak not initialized");
     }
 
     try {
@@ -30,7 +44,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     }
 
     if (!keycloak.token) {
-      throw new Error("No Keycloak access token available. User is not authenticated.");
+      throw new Error("No access token");
     }
   }
 
@@ -38,33 +52,74 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
 
   const finalHeaders: Record<string, string> = {
     ...(headers ?? {}),
-    ...(auth ? { Authorization: `Bearer ${keycloak.token}` } : {}),
+    ...(auth && keycloak?.token
+      ? { Authorization: `Bearer ${keycloak.token}` }
+      : {}),
   };
 
-  // Only set JSON content type for non-FormData requests
-  if (!isFormData) {
+  if (!isFormData && !finalHeaders["Content-Type"]) {
     finalHeaders["Content-Type"] = "application/json";
   }
 
-  console.log("API CALL:", `${BASE_URL}${path}`);
-  console.log("AUTH HEADER EXISTS?", !!finalHeaders.Authorization);
-  console.log("IS FORMDATA?", isFormData);
-
   const res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
+    method: options.method ?? "GET",
     body,
     headers: finalHeaders,
   });
 
+  // 🔐 401 → login
+  if (res.status === 401) {
+    await keycloak.login();
+    throw { status: 401, message: "Unauthorized" } as ApiError;
+  }
+
+  // 🚫 403 → Access Denied page (SPA navigation)
+  if (res.status === 403) {
+    if (
+      handle403Redirect &&
+      window.location.pathname !== "/access-denied"
+    ) {
+      navigateTo("/access-denied");
+    }
+
+    throw {
+      status: 403,
+      message: "Forbidden",
+    } as ApiError;
+  }
+
+  // ❌ Other errors
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Request failed (${res.status})`);
+    let errorBody: unknown;
+    let message = `Request failed (${res.status})`;
+
+    try {
+      errorBody = await res.json();
+      if (errorBody && typeof errorBody === "object" && "message" in errorBody) {
+        message = (errorBody as any).message;
+      }
+    } catch {
+      const text = await res.text().catch(() => "");
+      errorBody = text;
+      if (text) message = text;
+    }
+
+    throw {
+      status: res.status,
+      message,
+      body: errorBody,
+    } as ApiError;
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
   }
 
   const contentType = res.headers.get("Content-Type") ?? "";
+
   if (!contentType.includes("application/json")) {
-    // @ts-expect-error allow void returns
-    return undefined;
+    return undefined as T;
   }
 
   return (await res.json()) as T;

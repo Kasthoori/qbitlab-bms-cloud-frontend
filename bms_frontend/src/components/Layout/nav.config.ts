@@ -28,7 +28,14 @@ export type NavItem =
                 { label: "View Floor Plan", path: "/admin/floor-plans/floor-2", icon: FileImage},
               ],
             },
-            { label: "Create User", path: "/admin/create-user", icon: UserPlus}
+            { label: "User Management", icon: UserPlus,
+              children: [
+                { label: "Add User", path: "/admin/users", icon: UserPlus},
+                { label: "View Users", path: "/admin/user-management/view-users", icon: User},
+                { label: "Edit User", path: "/admin/user-management/edit-user", icon: User},
+                { label: "Delete User", path: "/admin/user-management/delete-user", icon: User},
+              ],
+            }
         ],
       },
       {
