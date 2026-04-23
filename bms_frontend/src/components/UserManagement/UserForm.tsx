@@ -13,6 +13,7 @@ import {
   User2,
   UserCog,
   Wrench,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type JSX } from "react";
 import { BmsApi } from "@/api/bms";
@@ -32,7 +33,9 @@ interface SiteDto {
   siteName: string;
 }
 
-type FormErrors = Partial<Record<keyof CreateBmsUserRequest | "general", string>>;
+type FormErrors = Partial<
+  Record<keyof CreateBmsUserRequest | "general" | "siteIds", string>
+>;
 
 const ROLE_OPTIONS: { value: UserRole; label: string; icon: JSX.Element }[] = [
   { value: "ADMIN", label: "Admin", icon: <Shield size={16} /> },
@@ -50,7 +53,7 @@ const initialForm: CreateBmsUserRequest = {
   displayName: "",
   role: "TECHNICIAN",
   tenantId: null,
-  siteId: null,
+  siteIds: [],
   notificationEnabled: true,
   enabled: true,
 };
@@ -130,19 +133,19 @@ export default function UserForm() {
 
   useEffect(() => {
     if (!isTenantRequired) {
-      setForm((prev: any) => ({
+      setForm((prev) => ({
         ...prev,
         tenantId: null,
-        siteId: null,
+        siteIds: [],
       }));
       setSites([]);
       return;
     }
 
     if (!isSiteRequired) {
-      setForm((prev: any) => ({
+      setForm((prev) => ({
         ...prev,
-        siteId: null,
+        siteIds: [],
       }));
     }
   }, [form.role, isTenantRequired, isSiteRequired]);
@@ -151,12 +154,27 @@ export default function UserForm() {
     key: K,
     value: CreateBmsUserRequest[K]
   ) => {
-    setForm((prev: any) => ({ ...prev, [key]: value }));
+    setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({
       ...prev,
       [key]: undefined,
+      siteIds: undefined,
       general: undefined,
     }));
+  };
+
+  const toggleSite = (siteId: string) => {
+    const current = form.siteIds ?? [];
+    const exists = current.includes(siteId);
+
+    if (exists) {
+      updateField(
+        "siteIds",
+        current.filter((id) => id !== siteId)
+      );
+    } else {
+      updateField("siteIds", [...current, siteId]);
+    }
   };
 
   const validate = () => {
@@ -182,8 +200,8 @@ export default function UserForm() {
       nextErrors.tenantId = "Tenant is required for this role.";
     }
 
-    if (isSiteRequired && !form.siteId) {
-      nextErrors.siteId = "Site is required for TECHNICIAN.";
+    if (isSiteRequired && (!form.siteIds || form.siteIds.length === 0)) {
+      nextErrors.siteIds = "At least one site is required for TECHNICIAN.";
     }
 
     setErrors(nextErrors);
@@ -199,7 +217,7 @@ export default function UserForm() {
     displayName: form.displayName?.trim() || "",
     role: form.role,
     tenantId: form.tenantId || null,
-    siteId: form.siteId || null,
+    siteIds: form.siteIds ?? [],
     notificationEnabled: form.notificationEnabled,
     enabled: form.enabled,
   });
@@ -253,7 +271,7 @@ export default function UserForm() {
                 Create BMS User
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-slate-300">
-                Create users with role based access, tenant assignment, optional site assignment, and notification controls.
+                Create users with role based access, tenant assignment, and multi-site assignment for technicians.
               </p>
             </div>
 
@@ -372,7 +390,7 @@ export default function UserForm() {
             </div>
 
             {isTenantRequired && (
-              <div>
+              <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-slate-200">
                   Tenant <span className="text-cyan-300">*</span>
                 </label>
@@ -382,7 +400,7 @@ export default function UserForm() {
                   onChange={(e) => {
                     const tenantId = e.target.value || null;
                     updateField("tenantId", tenantId);
-                    updateField("siteId", null);
+                    updateField("siteIds", []);
                   }}
                   disabled={loadingTenants}
                   className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-sm text-white outline-none transition ${
@@ -413,42 +431,79 @@ export default function UserForm() {
             )}
 
             {isSiteRequired && (
-              <div>
+              <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-medium text-slate-200">
-                  Site <span className="text-cyan-300">*</span>
+                  Assigned Sites <span className="text-cyan-300">*</span>
                 </label>
 
-                <select
-                  value={form.siteId ?? ""}
-                  onChange={(e) => updateField("siteId", e.target.value || null)}
-                  disabled={!form.tenantId || loadingSites}
-                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-sm text-white outline-none transition disabled:opacity-60 ${
-                    errors.siteId
-                      ? "border-red-400/30"
-                      : "border-white/10 hover:border-white/20 focus:border-cyan-300/35"
-                  }`}
-                >
-                  <option value="" className="bg-slate-900 text-slate-300">
-                    {!form.tenantId
-                      ? "Select tenant first"
-                      : loadingSites
-                      ? "Loading sites..."
-                      : "Select site"}
-                  </option>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  {!form.tenantId ? (
+                    <p className="text-sm text-slate-400">Select tenant first</p>
+                  ) : loadingSites ? (
+                    <p className="text-sm text-slate-400">Loading sites...</p>
+                  ) : sites.length === 0 ? (
+                    <p className="text-sm text-slate-400">No sites available for this tenant</p>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {sites.map((site) => {
+                        const checked = form.siteIds?.includes(site.siteId) ?? false;
 
-                  {sites.map((site) => (
-                    <option
-                      key={site.siteId}
-                      value={site.siteId}
-                      className="bg-slate-900 text-white"
-                    >
-                      {site.siteName}
-                    </option>
-                  ))}
-                </select>
+                        return (
+                          <label
+                            key={site.siteId}
+                            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white transition hover:bg-white/10"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleSite(site.siteId)}
+                              className="h-4 w-4 rounded border-white/20 bg-transparent"
+                            />
 
-                {errors.siteId && (
-                  <p className="mt-2 text-sm text-red-300">{errors.siteId}</p>
+                            <div className="flex min-w-0 flex-col">
+                              <span className="truncate font-medium">{site.siteName}</span>
+                              <span className="truncate text-xs text-slate-400">
+                                {site.siteId}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {form.siteIds && form.siteIds.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {form.siteIds.map((siteId) => {
+                      const site = sites.find((s) => s.siteId === siteId);
+
+                      return (
+                        <span
+                          key={siteId}
+                          className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100"
+                        >
+                          {site?.siteName || siteId}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateField(
+                                "siteIds",
+                                (form.siteIds ?? []).filter((id) => id !== siteId)
+                              )
+                            }
+                            className="text-cyan-200 transition hover:text-white"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {errors.siteIds && (
+                  <p className="mt-2 text-sm text-red-300">{errors.siteIds}</p>
                 )}
               </div>
             )}
@@ -580,10 +635,13 @@ export default function UserForm() {
                 }
               />
               <InfoRow
-                label="Site"
+                label="Sites"
                 value={
-                  sites.find((s) => s.siteId === form.siteId)?.siteName ||
-                  "Not assigned"
+                  form.siteIds && form.siteIds.length > 0
+                    ? form.siteIds
+                        .map((id) => sites.find((s) => s.siteId === id)?.siteName || id)
+                        .join(", ")
+                    : "Not assigned"
                 }
               />
               <InfoRow
@@ -605,7 +663,7 @@ export default function UserForm() {
             <p>Admin: no tenant or site required</p>
             <p>BMS Admin: no tenant or site required</p>
             <p>Facility Manager: tenant required</p>
-            <p>Technician: tenant and site required</p>
+            <p>Technician: tenant required and one or more sites required</p>
           </div>
         </div>
       </motion.div>

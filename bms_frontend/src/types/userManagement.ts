@@ -4,7 +4,7 @@ export type UserRole =
   | "TECHNICIAN"
   | "FACILITY_MANAGER";
 
-export type CreateBmsUserRequest = {
+export interface CreateBmsUserRequest {
   username: string;
   email: string;
   password: string;
@@ -13,37 +13,23 @@ export type CreateBmsUserRequest = {
   displayName?: string;
   role: UserRole;
   tenantId?: string | null;
-  siteId?: string | null;
+  siteIds?: string[];
   notificationEnabled: boolean;
   enabled: boolean;
-};
+}
 
-export type UpdateBmsUserRequest = {
+export interface BmsUserResponse {
+  id: string;
+  keycloakUserId: string;
   username: string;
   email: string;
-  password?: string;
   firstName?: string;
   lastName?: string;
   displayName?: string;
   role: UserRole;
   tenantId?: string | null;
-  siteId?: string | null;
-  notificationEnabled: boolean;
-  enabled: boolean;
-};
-
-export type BmsUserResponse = {
-  id: string;
-  keycloakUserId: string;
-  username: string;
-  email: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  displayName?: string | null;
-  role: UserRole;
-  tenantId?: string | null;
-  siteId?: string | null;
+  siteIds?: string[];
   notificationEnabled: boolean;
   enabled: boolean;
   createdAt: string;
-};
+}

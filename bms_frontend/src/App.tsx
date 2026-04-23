@@ -43,7 +43,11 @@ const AppRoutes: FC = () => {
       />
 
       <Route path="/user/tenants/:tenantId/sites" element={<UserViewSites />} />
-      <Route path="/buildings/user/tenants" element={<UserViewTenants />} />
+      <Route path="/buildings/user/tenants" element={
+                <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+                    <UserViewTenants />
+                </ProtectedRoute>
+              } />
 
       <Route
         path="/buildings/user/tenants/:tenantId/sites/:siteId/floor-plans/view"
@@ -56,11 +60,19 @@ const AppRoutes: FC = () => {
       />
 
       {/* ================= ADMIN ROUTES ================= */}
-      <Route path="/admin/update-tenant" element={<TenantsPage />} />
+      <Route path="/admin/update-tenant" element={
+                  <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+                      <TenantsPage />
+                  </ProtectedRoute>
+                } 
+              />
 
       <Route
         path="/admin/tenants/query/:tenantId/sites"
-        element={<SitesPage />}
+        element={<ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+                    <SitesPage /> 
+                </ProtectedRoute>
+              }
       />
 
       <Route
@@ -95,7 +107,11 @@ const AppRoutes: FC = () => {
 
       {/* ================= GENERAL ================= */}
       <Route path="/hvac" element={<Hvac />} />
-      <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/onboarding" element={
+        <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+          <OnboardingPage />
+        </ProtectedRoute>
+      } />
 
       {/* 🚫 ACCESS DENIED */}
       <Route path="/access-denied" element={<AccessDeniedPage />} />

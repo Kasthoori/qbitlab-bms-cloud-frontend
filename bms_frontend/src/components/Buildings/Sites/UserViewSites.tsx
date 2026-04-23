@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -53,8 +54,14 @@ export default function UserViewSites() {
 
       setTenant(tenantData ?? null);
       setSites(Array.isArray(siteData) ? siteData : []);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+
+      if (error?.status === 403) {
+        navigate("/access-denied", { replace: true });
+        return;
+      }
+
       setErrorMessage("Failed to load tenant sites.");
     } finally {
       setLoading(false);
