@@ -22,6 +22,7 @@ import UserManagementPage from "./components/UserManagement/UserManagementPage";
 
 import AccessDeniedPage from "./components/Pages/AccessDenied/AccessDeniedPage";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
+import UpdateUserProfile from "./components/UserManagement/UpdateUserProfile";
 
 /**
  * 🔥 This wrapper registers React Router navigation globally
@@ -112,6 +113,15 @@ const AppRoutes: FC = () => {
           <OnboardingPage />
         </ProtectedRoute>
       } />
+
+      <Route
+        path="/admin/user-management/edit-user"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+                <UpdateUserProfile />
+          </ProtectedRoute>
+          }
+      />
 
       {/* 🚫 ACCESS DENIED */}
       <Route path="/access-denied" element={<AccessDeniedPage />} />

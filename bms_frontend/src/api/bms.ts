@@ -544,5 +544,29 @@ export const BmsApi = {
     }),
 
 
+    getBmsUsers: async (): Promise<BmsUserResponse[]> =>
+    await api<BmsUserResponse[]>("/api/admin/users"),
+
+    getBmsUserById: async (userId: string): Promise<BmsUserResponse> =>
+    await api<BmsUserResponse>(`/api/admin/users/${userId}`),
+
+    updateBmsUser: async (
+    userId: string,
+    req: CreateBmsUserRequest
+    ): Promise<BmsUserResponse> =>
+    await api<BmsUserResponse>(`/api/admin/users/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify(req),
+        headers: {
+        "Content-Type": "application/json",
+        },
+    }),
+
+    deleteBmsUser: async (userId: string): Promise<void> =>
+    await api<void>(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+    }),
+
+
     
 };
