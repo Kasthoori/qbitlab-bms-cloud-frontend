@@ -12,8 +12,11 @@ export interface CreateBmsUserRequest {
   lastName?: string;
   displayName?: string;
   role: UserRole;
-  tenantId?: string | null;
-  siteIds?: string[];
+  tenantIds: string[];
+  sites: {
+    tenantId: string;
+    siteId: string;
+  }[];
   notificationEnabled: boolean;
   enabled: boolean;
 }
@@ -27,8 +30,11 @@ export interface BmsUserResponse {
   lastName?: string;
   displayName?: string;
   role: UserRole;
-  tenantId?: string | null;
-  siteIds?: string[];
+  tenantIds: string[];
+  sites: {
+    tenantId: string;
+    siteId: string;
+  }[];
   notificationEnabled: boolean;
   enabled: boolean;
   createdAt: string;

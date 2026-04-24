@@ -221,20 +221,41 @@ export type CreateTechnicianRequest = {
   keycloakUserId: string;
   email: string;
   displayName: string;
+  tenantIds: string[];
+  sites: TechnicianSiteAccessRequest[];
+};
+
+export type TechnicianSiteAccessRequest = {
   tenantId: string;
   siteId: string;
+};
+
+export type TechnicianAccessRequest = {
+  tenantIds: string[];
+  sites: TechnicianSiteAccessRequest[];
 };
 
 
 export const BmsApi = {
 
-    getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
+    //getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
+   getMyTenants: async (page = 0, size = 50) =>
+        await api<Page<TenantDto>>(`/api/tenants/search?page=${page}&size=${size}`),
 
-   getSitesByTenant: async (tenantId: string) =>
-    await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`, {
-        method: "GET",
-        handle403Redirect: false,
-    }),
+//    getSitesByTenant: async (tenantId: string) =>
+//     await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`, {
+//         method: "GET",
+//         handle403Redirect: false,
+//     }),
+
+    getSitesByTenant: async (
+        tenantId: string,
+        page = 0,
+        size = 50
+        ) =>
+        await api<Page<SiteDto>>(
+            `/api/tenants/query/${tenantId}/sites?page=${page}&size=${size}`
+        ),
 
     getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
 

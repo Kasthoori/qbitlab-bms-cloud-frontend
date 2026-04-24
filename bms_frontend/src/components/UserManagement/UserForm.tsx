@@ -4,11 +4,14 @@ import {
   Bell,
   Building2,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Eye,
   EyeOff,
   KeyRound,
   Loader2,
   Mail,
+  Search,
   Shield,
   User2,
   UserCog,
@@ -33,15 +36,31 @@ interface SiteDto {
   siteName: string;
 }
 
+type SitesByTenant = Record<string, SiteDto[]>;
+type SearchByTenant = Record<string, string>;
+
 type FormErrors = Partial<
-  Record<keyof CreateBmsUserRequest | "general" | "siteIds", string>
+  Record<
+    keyof CreateBmsUserRequest | "general" | "tenantIds" | "sites",
+    string
+  >
 >;
+
+const TENANT_PAGE_SIZE = 50;
+const MAX_TENANT_PAGES = 100;
+
+const SITE_PAGE_SIZE = 50;
+const MAX_SITE_PAGES = 100;
 
 const ROLE_OPTIONS: { value: UserRole; label: string; icon: JSX.Element }[] = [
   { value: "ADMIN", label: "Admin", icon: <Shield size={16} /> },
   { value: "BMS_ADMIN", label: "BMS Admin", icon: <UserCog size={16} /> },
   { value: "TECHNICIAN", label: "Technician", icon: <Wrench size={16} /> },
-  { value: "FACILITY_MANAGER", label: "Facility Manager", icon: <Building2 size={16} /> },
+  {
+    value: "FACILITY_MANAGER",
+    label: "Facility Manager",
+    icon: <Building2 size={16} />,
+  },
 ];
 
 const initialForm: CreateBmsUserRequest = {
@@ -52,8 +71,8 @@ const initialForm: CreateBmsUserRequest = {
   lastName: "",
   displayName: "",
   role: "TECHNICIAN",
-  tenantId: null,
-  siteIds: [],
+  tenantIds: [],
+  sites: [],
   notificationEnabled: true,
   enabled: true,
 };
@@ -71,10 +90,18 @@ export default function UserForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   const [tenants, setTenants] = useState<TenantDto[]>([]);
-  const [sites, setSites] = useState<SiteDto[]>([]);
+  const [sitesByTenant, setSitesByTenant] = useState<SitesByTenant>({});
 
   const [loadingTenants, setLoadingTenants] = useState(false);
-  const [loadingSites, setLoadingSites] = useState(false);
+  const [loadingSitesTenantId, setLoadingSitesTenantId] = useState<string | null>(
+    null
+  );
+
+  const [tenantSearch, setTenantSearch] = useState("");
+  const [siteSearchByTenant, setSiteSearchByTenant] = useState<SearchByTenant>(
+    {}
+  );
+  const [expandedTenantIds, setExpandedTenantIds] = useState<string[]>([]);
 
   const fullName = useMemo(() => {
     const joined = `${form.firstName ?? ""} ${form.lastName ?? ""}`.trim();
@@ -86,66 +113,116 @@ export default function UserForm() {
 
   const isSiteRequired = form.role === "TECHNICIAN";
 
+  const filteredTenants = useMemo(() => {
+    const keyword = tenantSearch.trim().toLowerCase();
+
+    if (!keyword) return tenants;
+
+    return tenants.filter((tenant) => {
+      const tenantId = String(tenant.tenantId).toLowerCase();
+      const tenantName = tenant.name.toLowerCase();
+
+      return tenantName.includes(keyword) || tenantId.includes(keyword);
+    });
+  }, [tenants, tenantSearch]);
+
+  const selectedTenantNames = useMemo(() => {
+    return form.tenantIds
+      .map(
+        (tenantId) =>
+          tenants.find((tenant) => String(tenant.tenantId) === tenantId)?.name ||
+          tenantId
+      )
+      .join(", ");
+  }, [form.tenantIds, tenants]);
+
+  const selectedSiteNames = useMemo(() => {
+    return form.sites
+      .map((selected) => {
+        const site = sitesByTenant[selected.tenantId]?.find(
+          (s) => s.siteId === selected.siteId
+        );
+
+        return site?.siteName || selected.siteId;
+      })
+      .join(", ");
+  }, [form.sites, sitesByTenant]);
+
   useEffect(() => {
-    const loadTenants = async () => {
+    let cancelled = false;
+
+    const loadAllTenants = async () => {
       try {
         setLoadingTenants(true);
-        const response = await BmsApi.getMyTenants();
-        setTenants(response.content ?? []);
+
+        const allTenants: TenantDto[] = [];
+        const seenTenantIds = new Set<string>();
+
+        let page = 0;
+        let totalPages = 1;
+
+        while (page < totalPages && page < MAX_TENANT_PAGES) {
+          const response = await BmsApi.getMyTenants(page, TENANT_PAGE_SIZE);
+          const content = response.content ?? [];
+
+          for (const tenant of content) {
+            const tenantId = String(tenant.tenantId);
+
+            if (!seenTenantIds.has(tenantId)) {
+              seenTenantIds.add(tenantId);
+              allTenants.push(tenant);
+            }
+          }
+
+          totalPages = response.totalPages ?? 1;
+          page += 1;
+
+          if (content.length === 0) break;
+        }
+
+        if (!cancelled) {
+          setTenants(allTenants);
+        }
       } catch (error) {
         console.error("Failed to load tenants", error);
-        setErrors((prev) => ({
-          ...prev,
-          general: "Failed to load tenants.",
-        }));
+
+        if (!cancelled) {
+          setErrors((prev) => ({
+            ...prev,
+            general: "Failed to load tenants.",
+          }));
+        }
       } finally {
-        setLoadingTenants(false);
+        if (!cancelled) {
+          setLoadingTenants(false);
+        }
       }
     };
 
-    loadTenants();
+    loadAllTenants();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  useEffect(() => {
-    const loadSites = async () => {
-      if (!form.tenantId) {
-        setSites([]);
-        return;
-      }
-
-      try {
-        setLoadingSites(true);
-        const response = await BmsApi.getSitesByTenant(form.tenantId);
-        setSites(response ?? []);
-      } catch (error) {
-        console.error("Failed to load sites", error);
-        setErrors((prev) => ({
-          ...prev,
-          general: "You do not have access to this tenant.",
-        }));
-      } finally {
-        setLoadingSites(false);
-      }
-    };
-
-    loadSites();
-  }, [form.tenantId]);
 
   useEffect(() => {
     if (!isTenantRequired) {
       setForm((prev) => ({
         ...prev,
-        tenantId: null,
-        siteIds: [],
+        tenantIds: [],
+        sites: [],
       }));
-      setSites([]);
+      setSitesByTenant({});
+      setExpandedTenantIds([]);
+      setSiteSearchByTenant({});
       return;
     }
 
     if (!isSiteRequired) {
       setForm((prev) => ({
         ...prev,
-        siteIds: [],
+        sites: [],
       }));
     }
   }, [form.role, isTenantRequired, isSiteRequired]);
@@ -155,26 +232,149 @@ export default function UserForm() {
     value: CreateBmsUserRequest[K]
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+
     setErrors((prev) => ({
       ...prev,
       [key]: undefined,
-      siteIds: undefined,
+      tenantIds: undefined,
+      sites: undefined,
       general: undefined,
     }));
   };
 
-  const toggleSite = (siteId: string) => {
-    const current = form.siteIds ?? [];
-    const exists = current.includes(siteId);
+  const loadAllSitesForTenant = async (
+    tenantId: string,
+    forceReload = false
+  ) => {
+    if (!forceReload && sitesByTenant[tenantId]) return;
+
+    const allSites: SiteDto[] = [];
+    const seenSiteIds = new Set<string>();
+
+    let page = 0;
+    let totalPages = 1;
+
+    try {
+      setLoadingSitesTenantId(tenantId);
+
+      while (page < totalPages && page < MAX_SITE_PAGES) {
+        const response = await BmsApi.getSitesByTenant(
+          tenantId,
+          page,
+          SITE_PAGE_SIZE
+        );
+
+        const content: SiteDto[] = Array.isArray(response)
+          ? response
+          : response.content ?? [];
+
+        for (const site of content) {
+          if (!seenSiteIds.has(site.siteId)) {
+            seenSiteIds.add(site.siteId);
+            allSites.push(site);
+          }
+        }
+
+        totalPages = Array.isArray(response) ? 1 : response.totalPages ?? 1;
+        page += 1;
+
+        if (content.length === 0) break;
+      }
+
+      setSitesByTenant((prev) => ({
+        ...prev,
+        [tenantId]: allSites,
+      }));
+    } catch (error) {
+      console.error("Failed to load sites", error);
+
+      setErrors((prev) => ({
+        ...prev,
+        general: "Failed to load sites for selected tenant.",
+      }));
+    } finally {
+      setLoadingSitesTenantId(null);
+    }
+  };
+
+  const toggleTenant = async (tenantId: string) => {
+    const exists = form.tenantIds.includes(tenantId);
 
     if (exists) {
       updateField(
-        "siteIds",
-        current.filter((id) => id !== siteId)
+        "tenantIds",
+        form.tenantIds.filter((id) => id !== tenantId)
       );
-    } else {
-      updateField("siteIds", [...current, siteId]);
+
+      updateField(
+        "sites",
+        form.sites.filter((site) => site.tenantId !== tenantId)
+      );
+
+      setExpandedTenantIds((prev) => prev.filter((id) => id !== tenantId));
+      return;
     }
+
+    updateField("tenantIds", [...form.tenantIds, tenantId]);
+  };
+
+  const toggleExpandTenant = async (tenantId: string) => {
+    const expanded = expandedTenantIds.includes(tenantId);
+
+    if (expanded) {
+      setExpandedTenantIds((prev) => prev.filter((id) => id !== tenantId));
+      return;
+    }
+
+    setExpandedTenantIds((prev) => [...prev, tenantId]);
+    await loadAllSitesForTenant(tenantId);
+  };
+
+  const toggleSite = (tenantId: string, siteId: string) => {
+    const exists = form.sites.some(
+      (site) => site.tenantId === tenantId && site.siteId === siteId
+    );
+
+    if (exists) {
+      updateField(
+        "sites",
+        form.sites.filter(
+          (site) => !(site.tenantId === tenantId && site.siteId === siteId)
+        )
+      );
+      return;
+    }
+
+    updateField("sites", [...form.sites, { tenantId, siteId }]);
+  };
+
+  const removeSiteChip = (tenantId: string, siteId: string) => {
+    updateField(
+      "sites",
+      form.sites.filter(
+        (site) => !(site.tenantId === tenantId && site.siteId === siteId)
+      )
+    );
+  };
+
+  const isSiteChecked = (tenantId: string, siteId: string) => {
+    return form.sites.some(
+      (site) => site.tenantId === tenantId && site.siteId === siteId
+    );
+  };
+
+  const getFilteredSites = (tenantId: string) => {
+    const sites = sitesByTenant[tenantId] ?? [];
+    const keyword = (siteSearchByTenant[tenantId] ?? "").trim().toLowerCase();
+
+    if (!keyword) return sites;
+
+    return sites.filter((site) => {
+      return (
+        site.siteName.toLowerCase().includes(keyword) ||
+        site.siteId.toLowerCase().includes(keyword)
+      );
+    });
   };
 
   const validate = () => {
@@ -196,12 +396,12 @@ export default function UserForm() {
       nextErrors.password = "Password must be at least 6 characters.";
     }
 
-    if (isTenantRequired && !form.tenantId) {
-      nextErrors.tenantId = "Tenant is required for this role.";
+    if (isTenantRequired && form.tenantIds.length === 0) {
+      nextErrors.tenantIds = "At least one tenant is required for this role.";
     }
 
-    if (isSiteRequired && (!form.siteIds || form.siteIds.length === 0)) {
-      nextErrors.siteIds = "At least one site is required for TECHNICIAN.";
+    if (isSiteRequired && form.sites.length === 0) {
+      nextErrors.sites = "At least one site is required for TECHNICIAN.";
     }
 
     setErrors(nextErrors);
@@ -216,8 +416,8 @@ export default function UserForm() {
     lastName: form.lastName?.trim() || "",
     displayName: form.displayName?.trim() || "",
     role: form.role,
-    tenantId: form.tenantId || null,
-    siteIds: form.siteIds ?? [],
+    tenantIds: isTenantRequired ? form.tenantIds : [],
+    sites: isSiteRequired ? form.sites : [],
     notificationEnabled: form.notificationEnabled,
     enabled: form.enabled,
   });
@@ -235,7 +435,10 @@ export default function UserForm() {
 
       setCreatedUser(response);
       setForm(initialForm);
-      setSites([]);
+      setSitesByTenant({});
+      setExpandedTenantIds([]);
+      setSiteSearchByTenant({});
+      setTenantSearch("");
       setErrors({});
     } catch (error: any) {
       console.error("Failed to create BMS user", error);
@@ -271,7 +474,8 @@ export default function UserForm() {
                 Create BMS User
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-slate-300">
-                Create users with role based access, tenant assignment, and multi-site assignment for technicians.
+                Create users with role based access, multiple tenant assignment,
+                and multiple site assignment for technicians.
               </p>
             </div>
 
@@ -391,119 +595,273 @@ export default function UserForm() {
 
             {isTenantRequired && (
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-200">
-                  Tenant <span className="text-cyan-300">*</span>
-                </label>
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <label className="block text-sm font-medium text-slate-200">
+                    Assigned Tenants <span className="text-cyan-300">*</span>
+                  </label>
 
-                <select
-                  value={form.tenantId ?? ""}
-                  onChange={(e) => {
-                    const tenantId = e.target.value || null;
-                    updateField("tenantId", tenantId);
-                    updateField("siteIds", []);
-                  }}
-                  disabled={loadingTenants}
-                  className={`w-full rounded-2xl border bg-white/5 px-4 py-3 text-sm text-white outline-none transition ${
-                    errors.tenantId
-                      ? "border-red-400/30"
-                      : "border-white/10 hover:border-white/20 focus:border-cyan-300/35"
-                  }`}
-                >
-                  <option value="" className="bg-slate-900 text-slate-300">
-                    {loadingTenants ? "Loading tenants..." : "Select tenant"}
-                  </option>
-
-                  {tenants.map((tenant) => (
-                    <option
-                      key={String(tenant.tenantId)}
-                      value={String(tenant.tenantId)}
-                      className="bg-slate-900 text-white"
-                    >
-                      {tenant.name}
-                    </option>
-                  ))}
-                </select>
-
-                {errors.tenantId && (
-                  <p className="mt-2 text-sm text-red-300">{errors.tenantId}</p>
-                )}
-              </div>
-            )}
-
-            {isSiteRequired && (
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium text-slate-200">
-                  Assigned Sites <span className="text-cyan-300">*</span>
-                </label>
+                  <span className="text-xs text-slate-400">
+                    Selected: {form.tenantIds.length}
+                  </span>
+                </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  {!form.tenantId ? (
-                    <p className="text-sm text-slate-400">Select tenant first</p>
-                  ) : loadingSites ? (
-                    <p className="text-sm text-slate-400">Loading sites...</p>
-                  ) : sites.length === 0 ? (
-                    <p className="text-sm text-slate-400">No sites available for this tenant</p>
+                  <div className="mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/20 px-4 py-3">
+                    <Search size={16} className="text-slate-400" />
+                    <input
+                      value={tenantSearch}
+                      onChange={(e) => setTenantSearch(e.target.value)}
+                      placeholder="Search tenant by name or ID..."
+                      className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+                    />
+                  </div>
+
+                  {loadingTenants ? (
+                    <p className="text-sm text-slate-400">Loading tenants...</p>
+                  ) : filteredTenants.length === 0 ? (
+                    <p className="text-sm text-slate-400">No tenants found</p>
                   ) : (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {sites.map((site) => {
-                        const checked = form.siteIds?.includes(site.siteId) ?? false;
+                    <div className="max-h-[320px] overflow-y-auto pr-2">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {filteredTenants.map((tenant) => {
+                          const tenantId = String(tenant.tenantId);
+                          const checked = form.tenantIds.includes(tenantId);
 
-                        return (
-                          <label
-                            key={site.siteId}
-                            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white transition hover:bg-white/10"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleSite(site.siteId)}
-                              className="h-4 w-4 rounded border-white/20 bg-transparent"
-                            />
+                          return (
+                            <label
+                              key={tenantId}
+                              className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
+                                checked
+                                  ? "border-cyan-300/30 bg-cyan-400/10 text-white"
+                                  : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleTenant(tenantId)}
+                                className="h-4 w-4 rounded border-white/20 bg-transparent"
+                              />
 
-                            <div className="flex min-w-0 flex-col">
-                              <span className="truncate font-medium">{site.siteName}</span>
-                              <span className="truncate text-xs text-slate-400">
-                                {site.siteId}
-                              </span>
-                            </div>
-                          </label>
-                        );
-                      })}
+                              <div className="flex min-w-0 flex-col">
+                                <span className="truncate font-medium">
+                                  {tenant.name}
+                                </span>
+                                <span className="truncate text-xs text-slate-400">
+                                  {tenantId}
+                                </span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {form.siteIds && form.siteIds.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {form.siteIds.map((siteId) => {
-                      const site = sites.find((s) => s.siteId === siteId);
+                {errors.tenantIds && (
+                  <p className="mt-2 text-sm text-red-300">
+                    {errors.tenantIds}
+                  </p>
+                )}
+              </div>
+            )}
 
-                      return (
-                        <span
-                          key={siteId}
-                          className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100"
-                        >
-                          {site?.siteName || siteId}
+            {isSiteRequired && form.tenantIds.length > 0 && (
+              <div className="md:col-span-2">
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <label className="block text-sm font-medium text-slate-200">
+                    Assigned Sites <span className="text-cyan-300">*</span>
+                  </label>
+
+                  <span className="text-xs text-slate-400">
+                    Selected: {form.sites.length}
+                  </span>
+                </div>
+
+                <div className="max-h-[560px] space-y-4 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-4 pr-2">
+                  {form.tenantIds.map((tenantId) => {
+                    const tenant = tenants.find(
+                      (t) => String(t.tenantId) === tenantId
+                    );
+
+                    const tenantSites = getFilteredSites(tenantId);
+                    const allTenantSites = sitesByTenant[tenantId] ?? [];
+                    const isLoading = loadingSitesTenantId === tenantId;
+                    const expanded = expandedTenantIds.includes(tenantId);
+
+                    const selectedCountForTenant = form.sites.filter(
+                      (site) => site.tenantId === tenantId
+                    ).length;
+
+                    return (
+                      <div
+                        key={tenantId}
+                        className="rounded-2xl border border-white/10 bg-slate-950/20 p-4"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <button
                             type="button"
-                            onClick={() =>
-                              updateField(
-                                "siteIds",
-                                (form.siteIds ?? []).filter((id) => id !== siteId)
-                              )
-                            }
-                            className="text-cyan-200 transition hover:text-white"
+                            onClick={() => toggleExpandTenant(tenantId)}
+                            className="flex min-w-0 items-center gap-3 text-left"
                           >
-                            <X size={12} />
+                            <span className="rounded-xl border border-white/10 bg-white/10 p-2 text-cyan-100">
+                              {expanded ? (
+                                <ChevronDown size={16} />
+                              ) : (
+                                <ChevronRight size={16} />
+                              )}
+                            </span>
+
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-semibold text-white">
+                                {tenant?.name || tenantId}
+                              </span>
+                              <span className="block truncate text-xs text-slate-400">
+                                {selectedCountForTenant} selected • {tenantId}
+                              </span>
+                            </span>
                           </button>
-                        </span>
-                      );
-                    })}
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                loadAllSitesForTenant(tenantId, true)
+                              }
+                              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200 transition hover:bg-white/10"
+                            >
+                              Refresh
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandTenant(tenantId)}
+                              className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-100 transition hover:bg-cyan-400/15"
+                            >
+                              {expanded ? "Hide Sites" : "Show Sites"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {expanded && (
+                          <div className="mt-4 space-y-3">
+                            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                              <Search size={16} className="text-slate-400" />
+                              <input
+                                value={siteSearchByTenant[tenantId] ?? ""}
+                                onChange={(e) =>
+                                  setSiteSearchByTenant((prev) => ({
+                                    ...prev,
+                                    [tenantId]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Search site by name or ID..."
+                                className="w-full bg-transparent text-sm text-white placeholder:text-slate-500 outline-none"
+                              />
+                            </div>
+
+                            {isLoading ? (
+                              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
+                                <Loader2 size={16} className="animate-spin" />
+                                Loading sites...
+                              </div>
+                            ) : allTenantSites.length === 0 ? (
+                              <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
+                                No sites available for this tenant.
+                              </p>
+                            ) : tenantSites.length === 0 ? (
+                              <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
+                                No matching sites found.
+                              </p>
+                            ) : (
+                              <div className="max-h-64 overflow-y-auto rounded-2xl border border-white/10 p-2">
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  {tenantSites.map((site) => {
+                                    const checked = isSiteChecked(
+                                      tenantId,
+                                      site.siteId
+                                    );
+
+                                    return (
+                                      <label
+                                        key={site.siteId}
+                                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition ${
+                                          checked
+                                            ? "border-cyan-300/30 bg-cyan-400/10 text-white"
+                                            : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          onChange={() =>
+                                            toggleSite(tenantId, site.siteId)
+                                          }
+                                          className="h-4 w-4 rounded border-white/20 bg-transparent"
+                                        />
+
+                                        <div className="flex min-w-0 flex-col">
+                                          <span className="truncate font-medium">
+                                            {site.siteName}
+                                          </span>
+                                          <span className="truncate text-xs text-slate-400">
+                                            {site.siteId}
+                                          </span>
+                                        </div>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {form.sites.length > 0 && (
+                  <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-[0.22em] text-slate-400">
+                      Selected Sites
+                    </p>
+
+                    <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto pr-1">
+                      {form.sites.map((selected) => {
+                        const site = sitesByTenant[selected.tenantId]?.find(
+                          (s) => s.siteId === selected.siteId
+                        );
+
+                        return (
+                          <span
+                            key={`${selected.tenantId}-${selected.siteId}`}
+                            className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100"
+                          >
+                            {site?.siteName || selected.siteId}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeSiteChip(
+                                  selected.tenantId,
+                                  selected.siteId
+                                )
+                              }
+                              className="text-cyan-200 transition hover:text-white"
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
-                {errors.siteIds && (
-                  <p className="mt-2 text-sm text-red-300">{errors.siteIds}</p>
+                {errors.sites && (
+                  <p className="mt-2 text-sm text-red-300">{errors.sites}</p>
                 )}
               </div>
             )}
@@ -556,7 +914,10 @@ export default function UserForm() {
               type="button"
               onClick={() => {
                 setForm(initialForm);
-                setSites([]);
+                setSitesByTenant({});
+                setExpandedTenantIds([]);
+                setSiteSearchByTenant({});
+                setTenantSearch("");
                 setErrors({});
                 setCreatedUser(null);
               }}
@@ -628,21 +989,12 @@ export default function UserForm() {
               <InfoRow label="Email" value={form.email || "user@company.com"} />
               <InfoRow label="Role" value={form.role.replaceAll("_", " ")} />
               <InfoRow
-                label="Tenant"
-                value={
-                  tenants.find((t) => String(t.tenantId) === form.tenantId)?.name ||
-                  "Not assigned"
-                }
+                label="Tenants"
+                value={selectedTenantNames || "Not assigned"}
               />
               <InfoRow
                 label="Sites"
-                value={
-                  form.siteIds && form.siteIds.length > 0
-                    ? form.siteIds
-                        .map((id) => sites.find((s) => s.siteId === id)?.siteName || id)
-                        .join(", ")
-                    : "Not assigned"
-                }
+                value={selectedSiteNames || "Not assigned"}
               />
               <InfoRow
                 label="Notifications"
@@ -662,8 +1014,8 @@ export default function UserForm() {
           <div className="mt-3 space-y-2 text-sm text-slate-300">
             <p>Admin: no tenant or site required</p>
             <p>BMS Admin: no tenant or site required</p>
-            <p>Facility Manager: tenant required</p>
-            <p>Technician: tenant required and one or more sites required</p>
+            <p>Facility Manager: one or more tenants required</p>
+            <p>Technician: one or more tenants and sites required</p>
           </div>
         </div>
       </motion.div>
@@ -805,7 +1157,9 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
       <span className="text-slate-400">{label}</span>
-      <span className="max-w-[60%] truncate text-right text-white">{value}</span>
+      <span className="max-w-[60%] truncate text-right text-white">
+        {value}
+      </span>
     </div>
   );
 }
