@@ -1,5 +1,11 @@
 import type { FC } from "react";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate,
+  Navigate,
+} from "react-router-dom";
 import { useEffect } from "react";
 
 import { setNavigator } from "./utils/navigation";
@@ -19,15 +25,12 @@ import SitesPage from "./components/Forms/UpdateTenants/SitesPage";
 import HvacsPages from "./components/Forms/UpdateTenants/HvacsPages";
 import OnboardingPage from "./components/Pages/Onboarding/OnboardingPage";
 import UserManagementPage from "./components/UserManagement/UserManagementPage";
-
 import AccessDeniedPage from "./components/Pages/AccessDenied/AccessDeniedPage";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import UpdateUserProfile from "./components/UserManagement/UpdateUserProfile";
+import DeleteUserPage from "./components/UserManagement/DeleteUserPage";
+import ViewUsersPage from "./components/UserManagement/ViewUsersPage";
 
-/**
- * 🔥 This wrapper registers React Router navigation globally
- * so http.ts can use navigateTo() without reload
- */
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
 
@@ -37,66 +40,119 @@ const AppRoutes: FC = () => {
 
   return (
     <Routes>
-      {/* ================= USER ROUTES ================= */}
+      {/* Default route */}
+      <Route path="/" element={<Navigate to="/buildings/user/tenants" replace />} />
+
+      {/* ================= USER / TECHNICIAN ROUTES ================= */}
       <Route
-        path="/user/tenants/:tenantId/sites/:siteId/dashboard"
-        element={<DashboardWrapper />}
+        path="/hvac"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+            <Hvac />
+          </ProtectedRoute>
+        }
       />
 
-      <Route path="/user/tenants/:tenantId/sites" element={<UserViewSites />} />
-      <Route path="/buildings/user/tenants" element={
-                <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
-                    <UserViewTenants />
-                </ProtectedRoute>
-              } />
+      <Route
+        path="/buildings/user/tenants"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+            <UserViewTenants />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/user/tenants/:tenantId/sites"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+            <UserViewSites />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/user/tenants/:tenantId/sites/:siteId/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+            <DashboardWrapper />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/buildings/user/tenants/:tenantId/sites/:siteId/floor-plans/view"
-        element={<UserViewFloorPlan />}
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+            <UserViewFloorPlan />
+          </ProtectedRoute>
+        }
       />
 
       <Route
         path="/user/tenants/:tenantId/sites/:siteId/hvacs"
-        element={<SiteHvacDetailsPage />}
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+            <SiteHvacDetailsPage />
+          </ProtectedRoute>
+        }
       />
 
       {/* ================= ADMIN ROUTES ================= */}
-      <Route path="/admin/update-tenant" element={
-                  <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
-                      <TenantsPage />
-                  </ProtectedRoute>
-                } 
-              />
+      <Route
+        path="/admin/update-tenant"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <TenantsPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/admin/tenants/query/:tenantId/sites"
-        element={<ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
-                    <SitesPage /> 
-                </ProtectedRoute>
-              }
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <SitesPage />
+          </ProtectedRoute>
+        }
       />
 
       <Route
         path="/admin/tenants/query/:tenantId/sites/:siteId/hvacs"
-        element={<HvacsPages />}
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <HvacsPages />
+          </ProtectedRoute>
+        }
       />
 
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/floor-plans/upload"
-        element={<UploadFloorPlanPage />}
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <UploadFloorPlanPage />
+          </ProtectedRoute>
+        }
       />
 
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/floor-plans/view"
-        element={<ViewFloorPlan />}
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <ViewFloorPlan />
+          </ProtectedRoute>
+        }
       />
 
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/hvac-device-mapping"
-        element={<HvacDeviceMappingPage />}
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <HvacDeviceMappingPage />
+          </ProtectedRoute>
+        }
       />
 
-      {/* 🔐 PROTECTED USER MANAGEMENT */}
       <Route
         path="/admin/users"
         element={
@@ -106,32 +162,51 @@ const AppRoutes: FC = () => {
         }
       />
 
-      {/* ================= GENERAL ================= */}
-      <Route path="/hvac" element={<Hvac />} />
-      <Route path="/onboarding" element={
-        <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
-          <OnboardingPage />
-        </ProtectedRoute>
-      } />
-
       <Route
         path="/admin/user-management/edit-user"
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
-                <UpdateUserProfile />
+            <UpdateUserProfile />
           </ProtectedRoute>
-          }
+        }
+      />
+
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <OnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/user-management/delete-user"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <DeleteUserPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/user-management/view-users"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <ViewUsersPage />
+          </ProtectedRoute>
+        }
       />
 
       {/* 🚫 ACCESS DENIED */}
       <Route path="/access-denied" element={<AccessDeniedPage />} />
+
+      {/* Unknown routes */}
+      <Route path="*" element={<Navigate to="/access-denied" replace />} />
     </Routes>
   );
 };
 
-/**
- * 🔥 Main App
- */
 const App: FC = () => (
   <BrowserRouter>
     <AppLayout>

@@ -239,8 +239,11 @@ export type TechnicianAccessRequest = {
 export const BmsApi = {
 
     //getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
-   getMyTenants: async (page = 0, size = 50) =>
-        await api<Page<TenantDto>>(`/api/tenants/search?page=${page}&size=${size}`),
+//    getMyTenants: async (page = 0, size = 50) =>
+//         await api<Page<TenantDto>>(`/api/tenants/search?page=${page}&size=${size}`),
+
+        getMyTenants: async (page = 0, size = 50) =>
+        await api<Page<TenantDto>>(`/api/me/tenants?page=${page}&size=${size}`),
 
 //    getSitesByTenant: async (tenantId: string) =>
 //     await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`, {
