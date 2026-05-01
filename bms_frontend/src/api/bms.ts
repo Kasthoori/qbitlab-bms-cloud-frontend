@@ -547,8 +547,13 @@ export const BmsApi = {
     }),
 
 
-    getBmsUsers: async (): Promise<BmsUserResponse[]> =>
-    await api<BmsUserResponse[]>("/api/admin/users"),
+    getBmsUsers: async (
+            page = 0,
+            size = 20
+            ): Promise<Page<BmsUserResponse>> =>
+            await api<Page<BmsUserResponse>>(
+                `/api/admin/users?page=${page}&size=${size}`
+            ),
 
     getBmsUserById: async (userId: string): Promise<BmsUserResponse> =>
     await api<BmsUserResponse>(`/api/admin/users/${userId}`),

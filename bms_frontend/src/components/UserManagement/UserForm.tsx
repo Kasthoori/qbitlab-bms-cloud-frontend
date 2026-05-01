@@ -10,6 +10,7 @@ import {
   EyeOff,
   KeyRound,
   Loader2,
+  Phone,
   Mail,
   Search,
   Shield,
@@ -56,6 +57,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string; icon: JSX.Element }[] = [
   { value: "ADMIN", label: "Admin", icon: <Shield size={16} /> },
   { value: "BMS_ADMIN", label: "BMS Admin", icon: <UserCog size={16} /> },
   { value: "TECHNICIAN", label: "Technician", icon: <Wrench size={16} /> },
+  { value: "SITE_MANAGER", label: "Site Manager", icon: <Building2 size={16} /> },
   {
     value: "FACILITY_MANAGER",
     label: "Facility Manager",
@@ -70,6 +72,7 @@ const initialForm: CreateBmsUserRequest = {
   firstName: "",
   lastName: "",
   displayName: "",
+  phoneNumber: "",
   role: "TECHNICIAN",
   tenantIds: [],
   sites: [],
@@ -79,6 +82,10 @@ const initialForm: CreateBmsUserRequest = {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidPhone(value: string) {
+  return /^[0-9+\-\s()]{8,20}$/.test(value);
 }
 
 export default function UserForm() {
@@ -109,7 +116,7 @@ export default function UserForm() {
   }, [form.firstName, form.lastName, form.displayName]);
 
   const isTenantRequired =
-    form.role === "TECHNICIAN" || form.role === "FACILITY_MANAGER";
+    form.role === "TECHNICIAN" || form.role === "FACILITY_MANAGER" || form.role === "SITE_MANAGER";
 
   const isSiteRequired = form.role === "TECHNICIAN";
 
@@ -390,6 +397,18 @@ export default function UserForm() {
       nextErrors.email = "Please enter a valid email address.";
     }
 
+    if (
+    (form.role === "TECHNICIAN" || form.role === "FACILITY_MANAGER") &&
+    !form.phoneNumber?.trim()
+      ) {
+        nextErrors.phoneNumber = "Phone number is required for SMS alerts.";
+      } else if (
+        form.phoneNumber?.trim() &&
+        !isValidPhone(form.phoneNumber.trim())
+      ) {
+        nextErrors.phoneNumber = "Please enter a valid phone number.";
+      }
+
     if (!form.password.trim()) {
       nextErrors.password = "Password is required.";
     } else if (form.password.trim().length < 6) {
@@ -411,6 +430,7 @@ export default function UserForm() {
   const normalizePayload = (): CreateBmsUserRequest => ({
     username: form.username.trim(),
     email: form.email.trim(),
+    phoneNumber: form.phoneNumber?.trim() || "",
     password: form.password.trim(),
     firstName: form.firstName?.trim() || "",
     lastName: form.lastName?.trim() || "",
@@ -519,6 +539,16 @@ export default function UserForm() {
               type="email"
             />
 
+            <Field
+              label="Phone Number"
+              icon={<Phone size={16} />}
+              value={form.phoneNumber ?? ""}
+              onChange={(v) => updateField("phoneNumber", v)}
+              placeholder="Enter phone number"
+              error={errors.phoneNumber}
+              type="tel"
+            />
+
             <div className="md:col-span-2">
               <PasswordField
                 label="Password"
@@ -621,7 +651,7 @@ export default function UserForm() {
                   ) : filteredTenants.length === 0 ? (
                     <p className="text-sm text-slate-400">No tenants found</p>
                   ) : (
-                    <div className="max-h-[320px] overflow-y-auto pr-2">
+                    <div className="max-h-80 overflow-y-auto pr-2">
                       <div className="grid gap-3 sm:grid-cols-2">
                         {filteredTenants.map((tenant) => {
                           const tenantId = String(tenant.tenantId);
@@ -679,7 +709,7 @@ export default function UserForm() {
                   </span>
                 </div>
 
-                <div className="max-h-[560px] space-y-4 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-4 pr-2">
+                <div className="max-h-140 space-y-4 overflow-y-auto rounded-2xl border border-white/10 bg-white/5 p-4 pr-2">
                   {form.tenantIds.map((tenantId) => {
                     const tenant = tenants.find(
                       (t) => String(t.tenantId) === tenantId
@@ -1003,6 +1033,10 @@ export default function UserForm() {
               <InfoRow
                 label="Account Status"
                 value={form.enabled ? "Active" : "Inactive"}
+              />
+              <InfoRow
+                label="Phone"
+                value={form.phoneNumber || "Not provided"}
               />
             </div>
           </div>

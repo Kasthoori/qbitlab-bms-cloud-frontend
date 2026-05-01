@@ -1,17 +1,17 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Bell,
+  //Bell,
   Building2,
   Building2Icon,
   BuildingIcon,
   //FileImage,
-  LayoutDashboard,
+  //LayoutDashboard,
   Shield,
   //Upload,
   User,
   UserPlus,
-  Wind,
-  Zap,
+  //Wind,
+  //Zap,
 } from "lucide-react";
 
 export type NavItem = {
@@ -22,8 +22,8 @@ export type NavItem = {
 };
 
 export const navItems: NavItem[] = [
-  { label: "Dashboard", path: "/buildings/user/tenants", icon: LayoutDashboard },
-  { label: "HVAC", path: "/buildings/user/tenants", icon: Wind },
+  // { label: "Dashboard", path: "/buildings/user/tenants", icon: LayoutDashboard },
+  // { label: "HVAC", path: "/buildings/user/tenants", icon: Wind },
 
   {
     label: "Admin",

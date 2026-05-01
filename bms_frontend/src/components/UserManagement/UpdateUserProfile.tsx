@@ -13,6 +13,7 @@ import {
   KeyRound,
   Loader2,
   Mail,
+  Phone,
   RefreshCw,
   Save,
   Search,
@@ -57,6 +58,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string; icon: JSX.Element }[] = [
   { value: "ADMIN", label: "Admin", icon: <Shield size={16} /> },
   { value: "BMS_ADMIN", label: "BMS Admin", icon: <UserCog size={16} /> },
   { value: "TECHNICIAN", label: "Technician", icon: <Wrench size={16} /> },
+  { value: "SITE_MANAGER", label: "Site Manager", icon: <Building2 size={16} /> },
   {
     value: "FACILITY_MANAGER",
     label: "Facility Manager",
@@ -71,6 +73,7 @@ const emptyForm: CreateBmsUserRequest = {
   firstName: "",
   lastName: "",
   displayName: "",
+  phoneNumber: "",
   role: "TECHNICIAN",
   tenantIds: [],
   sites: [],
@@ -80,6 +83,10 @@ const emptyForm: CreateBmsUserRequest = {
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidPhone(value: string) {
+  return /^[0-9+\-\s()]{8,20}$/.test(value);
 }
 
 export default function UpdateUserProfile() {
@@ -109,7 +116,7 @@ export default function UpdateUserProfile() {
   const [showPassword, setShowPassword] = useState(false);
 
   const isTenantRequired =
-    form.role === "TECHNICIAN" || form.role === "FACILITY_MANAGER";
+    form.role === "TECHNICIAN" || form.role === "FACILITY_MANAGER" || form.role === "SITE_MANAGER";
 
   const isSiteRequired = form.role === "TECHNICIAN";
 
@@ -178,6 +185,7 @@ export default function UpdateUserProfile() {
       firstName: selectedUser.firstName ?? "",
       lastName: selectedUser.lastName ?? "",
       displayName: selectedUser.displayName ?? "",
+      phoneNumber: selectedUser.phoneNumber ?? "",
       role: selectedUser.role,
       tenantIds: selectedUser.tenantIds ?? [],
       sites: selectedUser.sites ?? [],
@@ -221,7 +229,7 @@ export default function UpdateUserProfile() {
       setLoadingUsers(true);
       setErrors({});
       const response = await BmsApi.getBmsUsers();
-      setUsers(response);
+      setUsers(response.content ?? []);
     } catch (error: any) {
       setErrors({
         general: error?.message || "Failed to load users.",
@@ -465,6 +473,18 @@ export default function UpdateUserProfile() {
       nextErrors.email = "Please enter a valid email address.";
     }
 
+    if (
+      (form.role === "TECHNICIAN" || form.role === "FACILITY_MANAGER") &&
+      !form.phoneNumber?.trim()
+      ) {
+        nextErrors.phoneNumber = "Phone number is required for SMS alerts.";
+      } else if (
+        form.phoneNumber?.trim() &&
+        !isValidPhone(form.phoneNumber.trim())
+      ) {
+        nextErrors.phoneNumber = "Please enter a valid phone number.";
+      }
+
     if (form.password && form.password.trim().length > 0 && form.password.trim().length < 6) {
       nextErrors.password = "Password must be at least 6 characters.";
     }
@@ -498,6 +518,7 @@ export default function UpdateUserProfile() {
         firstName: form.firstName?.trim() || "",
         lastName: form.lastName?.trim() || "",
         displayName: form.displayName?.trim() || "",
+        phoneNumber: form.phoneNumber?.trim() || "",
         role: form.role,
         tenantIds: isTenantRequired ? form.tenantIds : [],
         sites: isSiteRequired ? uniqueSites : [],
@@ -736,6 +757,15 @@ const handleSubmit = async (e: React.FormEvent) => {
                   error={errors.email}
                   required
                   type="email"
+                />
+
+                <Field
+                  label="Phone Number"
+                  icon={<Phone size={16} />}
+                  value={form.phoneNumber ?? ""}
+                  onChange={(v) => updateField("phoneNumber", v)}
+                  error={errors.phoneNumber}
+                  type="tel"
                 />
 
                 <div className="md:col-span-2">

@@ -31,8 +31,8 @@ export default function DeleteUserPage() {
       setLoading(true);
       setErrorMessage(null);
 
-      const result = await BmsApi.getBmsUsers();
-      setUsers(result ?? []);
+      const result = await BmsApi.getBmsUsers(0, 100);
+      setUsers(result.content ?? []);
     } catch (error) {
       console.error(error);
       setErrorMessage("Failed to load users.");
