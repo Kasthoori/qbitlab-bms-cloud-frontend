@@ -1,6 +1,7 @@
 import type { Key } from "react";
 import { api }  from "./http";
 import { BACKEND_URL as API_BASE_URL } from "@/utils/config";
+import type { BmsUserResponse, CreateBmsUserRequest } from "@/types/userManagement";
 
 export type TenantDto = {
     tenantName?: string;
@@ -170,6 +171,17 @@ export type CreateHvacRequest = {
     unitType: "AHU" | "VRF" | "FCU" | "CHILLER" | "OTHER";
 };
 
+export type CurrentUserDto = {
+  keycloakUserId: string;
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  roles: string[];
+};
+
+
 export type FloorPlanDto = {
     floorPlanId?: string;
     id?: string;
@@ -205,13 +217,52 @@ export type UpsertFloorPlanPlacementRequest = {
   locked: boolean;
 };
 
+export type CreateTechnicianRequest = {
+  keycloakUserId: string;
+  email: string;
+  displayName: string;
+  tenantIds: string[];
+  sites: TechnicianSiteAccessRequest[];
+};
+
+export type TechnicianSiteAccessRequest = {
+  tenantId: string;
+  siteId: string;
+};
+
+export type TechnicianAccessRequest = {
+  tenantIds: string[];
+  sites: TechnicianSiteAccessRequest[];
+};
+
 
 export const BmsApi = {
 
-    getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
-    getSitesByTenant: async (tenantId: string) => await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`),
+    //getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
+//    getMyTenants: async (page = 0, size = 50) =>
+//         await api<Page<TenantDto>>(`/api/tenants/search?page=${page}&size=${size}`),
+
+        getMyTenants: async (page = 0, size = 50) =>
+        await api<Page<TenantDto>>(`/api/me/tenants?page=${page}&size=${size}`),
+
+//    getSitesByTenant: async (tenantId: string) =>
+//     await api<SiteDto[]>(`/api/tenants/query/${tenantId}/sites`, {
+//         method: "GET",
+//         handle403Redirect: false,
+//     }),
+
+    getSitesByTenant: async (
+        tenantId: string,
+        page = 0,
+        size = 50
+        ) =>
+        await api<Page<SiteDto>>(
+            `/api/tenants/query/${tenantId}/sites?page=${page}&size=${size}`
+        ),
+
     getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
 
+    getCurrentUser: async () => await api<CurrentUserDto>("/api/me"),
     getHvacSiteDetails: async (tenantId: string, siteId: string) =>
         await api<HvacDto[]>(
             `/api/tenants/${tenantId}/sites/${siteId}/hvacs/details`
@@ -416,7 +467,7 @@ export const BmsApi = {
         siteId: string
     ): Promise<DiscoveredHvacDeviceDto[]> => {
         return await api<DiscoveredHvacDeviceDto[]> (
-            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/discovered-devices`,
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/discovered-devices`,
             {
                 method: "GET"
             }
@@ -428,7 +479,7 @@ export const BmsApi = {
         siteId: string
     ): Promise<HvacDeviceMappingDto[]> => {
         return await api<HvacDeviceMappingDto[]>(
-            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
             {
                 method: "GET"
             }
@@ -441,7 +492,7 @@ export const BmsApi = {
         body: CreateHvacDeviceMappingRequest
     ): Promise<HvacDeviceMappingDto> => {
         return await api<HvacDeviceMappingDto>(
-            `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping`,
             {
                 method: "POST",
                 body: JSON.stringify(body),
@@ -458,7 +509,7 @@ export const BmsApi = {
         mappingId: string
     ): Promise<void> => {
         await api<void>(
-        `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/${mappingId}`,
+        `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/${mappingId}`,
         { method: "DELETE" }
         );
     },
@@ -469,10 +520,61 @@ export const BmsApi = {
         hvacId: string
     ): Promise<void> => {
         await api<void>(
-        `/api/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/hvac/${hvacId}`,
+        `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-device-mapping/hvac/${hvacId}`,
         { method: "DELETE" }
         );
     },
+
+   createTechnician: async (req: CreateTechnicianRequest): Promise<void> =>
+    await api<void>("/api/technicians", {
+        method: "POST",
+        body: JSON.stringify(req),
+        headers: {
+            "Content-Type": "application/json",
+        },
+    }),
+
+
+    // ============= User Management APIs =============
+
+  createBmsUser: async (req: CreateBmsUserRequest): Promise<BmsUserResponse> =>
+    await api<BmsUserResponse>("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify(req),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }),
+
+
+    getBmsUsers: async (
+            page = 0,
+            size = 20
+            ): Promise<Page<BmsUserResponse>> =>
+            await api<Page<BmsUserResponse>>(
+                `/api/admin/users?page=${page}&size=${size}`
+            ),
+
+    getBmsUserById: async (userId: string): Promise<BmsUserResponse> =>
+    await api<BmsUserResponse>(`/api/admin/users/${userId}`),
+
+    updateBmsUser: async (
+    userId: string,
+    req: CreateBmsUserRequest
+    ): Promise<BmsUserResponse> =>
+    await api<BmsUserResponse>(`/api/admin/users/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify(req),
+        headers: {
+        "Content-Type": "application/json",
+        },
+    }),
+
+    deleteBmsUser: async (userId: string): Promise<void> =>
+    await api<void>(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+    }),
+
 
     
 };
