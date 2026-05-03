@@ -235,6 +235,59 @@ export type TechnicianAccessRequest = {
   sites: TechnicianSiteAccessRequest[];
 };
 
+// Maintenance Note Types and Interfaces
+
+export type HvacMaintenanceNoteType =
+  | "SCHEDULED_MAINTENANCE"
+  | "FAILURE_REPAIR";
+
+export type HvacMaintenanceNoteStatus =
+  | "SUBMITTED"
+  | "REVIEWED";
+
+export type HvacMaintenanceNoteDto = {
+  noteId: string;
+  tenantId: string;
+  siteId: string;
+  externalDeviceId: string;
+
+  noteType: HvacMaintenanceNoteType;
+  status: HvacMaintenanceNoteStatus;
+
+  workDone?: string | null;
+  filterChanged?: boolean;
+  serviceDone?: boolean;
+
+  failureCause?: string | null;
+  correctiveAction?: string | null;
+  sparePartsAdded?: string | null;
+  machineRestartedAt?: string | null;
+
+  technicianName?: string | null;
+  technicianUserId?: string | null;
+
+  reviewedByUserId?: string | null;
+  reviewedAt?: string | null;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateHvacMaintenanceNoteRequest = {
+  noteType: HvacMaintenanceNoteType;
+
+  workDone?: string;
+  filterChanged?: boolean;
+  serviceDone?: boolean;
+
+  failureCause?: string;
+  correctiveAction?: string;
+  sparePartsAdded?: string;
+  machineRestartedAt?: string;
+
+  technicianName?: string;
+};
+
 
 export const BmsApi = {
 
@@ -574,6 +627,78 @@ export const BmsApi = {
     await api<void>(`/api/admin/users/${userId}`, {
         method: "DELETE",
     }),
+
+
+        // ============= HVAC Maintenance Notes APIs =============
+
+    createHvacMaintenanceNote: async (
+        tenantId: string,
+        siteId: string,
+        externalDeviceId: string,
+        req: CreateHvacMaintenanceNoteRequest
+    ): Promise<HvacMaintenanceNoteDto> => {
+
+         console.log("create note externalDeviceId =", externalDeviceId);
+
+            if (!externalDeviceId || externalDeviceId.trim() === "") {
+                throw new Error("externalDeviceId is missing in createHvacMaintenanceNote");
+            }
+
+       return await api<HvacMaintenanceNoteDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes`,
+            {
+                method: "POST",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+    )},
+
+    getHvacMaintenanceNotes: async (
+        tenantId: string,
+        siteId: string,
+        externalDeviceId: string,
+        noteType?: HvacMaintenanceNoteType | "ALL"
+    ): Promise<HvacMaintenanceNoteDto[]> => {
+        const query =
+            noteType && noteType !== "ALL"
+                ? `?noteType=${noteType}`
+                : "";
+
+        return await api<HvacMaintenanceNoteDto[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes${query}`,
+            {
+                method: "GET",
+            }
+        );
+    },
+
+    reviewHvacMaintenanceNote: async (
+        tenantId: string,
+        siteId: string,
+        externalDeviceId: string,
+        noteId: string
+    ): Promise<HvacMaintenanceNoteDto> =>
+        await api<HvacMaintenanceNoteDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes/${noteId}/review`,
+            {
+                method: "PUT",
+            }
+        ),
+
+
+    markHvacFailureGone: async (
+        tenantId: string,
+        siteId: string,
+        externalDeviceId: string
+        ): Promise<void> =>
+        await api<void>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/mark-failure-gone`,
+            {
+            method: "PUT",
+            }
+        ),
 
 
     
