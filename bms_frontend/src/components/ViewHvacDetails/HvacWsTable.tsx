@@ -1,5 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useMemo, useRef, useState, type FC } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FC,
+} from "react";
 import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
@@ -20,7 +27,7 @@ import { BACKEND_URL } from "../../utils/config";
 import { api } from "@/api/http";
 
 import type { HvacDto } from "@/api/bms";
-
+import HvacCommandPanel from "@/components/Hvac/HvacCommandPanel";
 
 function resolveExternalDeviceId(row: any): string | undefined {
   if (row.externalDeviceId) return row.externalDeviceId;
@@ -36,6 +43,14 @@ function resolveExternalDeviceId(row: any): string | undefined {
 type HvacWsTableProps = {
   tenantId: string;
   siteId: string;
+
+  /**
+   * Required because backend hvac_commands table stores edge_controller_id.
+   * Temporary testing: you can pass this as hardcoded value from parent page.
+   * Production: fetch from edge_site_assignments for this tenant/site.
+   */
+  edgeControllerId: string;
+
   onSelectHvac?: (hvac: HvacDto) => void;
   selectedHvacId?: string;
 };
@@ -45,8 +60,16 @@ const WS_ENDPOINT = `${BACKEND_URL}/ws`;
 const glassCard =
   "rounded-3xl border border-white/10 bg-white/5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl";
 
-const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, selectedHvacId }) => {
+const HvacWsTable: FC<HvacWsTableProps> = ({
+  tenantId,
+  siteId,
+  edgeControllerId,
+  onSelectHvac,
+  selectedHvacId,
+}) => {
   const [rows, setRows] = useState<HvacSiteDetailsDto[]>([]);
+  const [selectedHvac, setSelectedHvac] = useState<any | null>(null);
+
   const [connected, setConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,12 +79,15 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
   const liveByDeviceIdRef = useRef<Map<string, HvacCurrentState>>(new Map());
   const hasLoadedOnceRef = useRef<boolean>(false);
 
+
   const mergeMappedRowsWithLiveData = useCallback(
     (mappedRows: HvacSiteDetailsDto[]): HvacSiteDetailsDto[] => {
       const liveByDeviceId = liveByDeviceIdRef.current;
 
       return mappedRows.map((mappedRow) => {
-        const externalKey = (mappedRow.externalDeviceId || "").trim().toLowerCase();
+        const externalKey = (mappedRow.externalDeviceId || "")
+          .trim()
+          .toLowerCase();
 
         if (!externalKey) {
           return mappedRow;
@@ -89,13 +115,16 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
     []
   );
 
-  const updateRows = useCallback((updater: (current: HvacSiteDetailsDto[]) => HvacSiteDetailsDto[]) => {
-    setRows((current) => {
-      const next = updater(current);
-      rowsRef.current = next;
-      return next;
-    });
-  }, []);
+  const updateRows = useCallback(
+    (updater: (current: HvacSiteDetailsDto[]) => HvacSiteDetailsDto[]) => {
+      setRows((current) => {
+        const next = updater(current);
+        rowsRef.current = next;
+        return next;
+      });
+    },
+    []
+  );
 
   const loadMappedRows = useCallback(
     async (showInitialLoader = false) => {
@@ -119,7 +148,11 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
         setRows(mergedRows);
         hasLoadedOnceRef.current = true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load mapped HVAC rows.");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load mapped HVAC rows."
+        );
 
         if (!hasLoadedOnceRef.current) {
           rowsRef.current = [];
@@ -139,6 +172,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
     liveByDeviceIdRef.current = new Map();
     rowsRef.current = [];
     setRows([]);
+    setSelectedHvac(null);
     setError(null);
     setLoading(true);
 
@@ -177,6 +211,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
 
             for (const row of liveRows) {
               const key = (row.deviceId || "").trim().toLowerCase();
+
               if (key) {
                 nextLiveMap.set(key, row);
               }
@@ -188,7 +223,9 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
               if (!currentRows.length) return currentRows;
 
               return currentRows.map((mappedRow) => {
-                const externalKey = (mappedRow.externalDeviceId || "").trim().toLowerCase();
+                const externalKey = (mappedRow.externalDeviceId || "")
+                  .trim()
+                  .toLowerCase();
 
                 if (!externalKey) {
                   return mappedRow;
@@ -202,7 +239,8 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
 
                 return {
                   ...mappedRow,
-                  unitName: mappedRow.unitName || live.unitName || mappedRow.hvacName,
+                  unitName:
+                    mappedRow.unitName || live.unitName || mappedRow.hvacName,
                   temperature: live.temperature,
                   setpoint: live.setpoint,
                   onState: live.onState,
@@ -254,8 +292,15 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
     return () => window.removeEventListener("focus", handleFocus);
   }, [loadMappedRows]);
 
-  const activeUnits = useMemo(() => rows.filter((row) => row.onState).length, [rows]);
-  const faultCount = useMemo(() => rows.filter((row) => row.fault).length, [rows]);
+  const activeUnits = useMemo(
+    () => rows.filter((row) => row.onState).length,
+    [rows]
+  );
+
+  const faultCount = useMemo(
+    () => rows.filter((row) => row.fault).length,
+    [rows]
+  );
 
   const avgTemp = useMemo(() => {
     const values = rows
@@ -268,12 +313,16 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
   }, [rows]);
 
   const formatNumber = (value?: number | null, digits = 2) => {
-    if (value === null || value === undefined || Number.isNaN(value)) return "-";
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return "-";
+    }
+
     return value.toFixed(digits);
   };
 
   const formatTime = (value?: string | null) => {
     if (!value) return "-";
+
     try {
       return new Date(value).toLocaleTimeString();
     } catch {
@@ -322,7 +371,9 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
             <TriangleAlert className="h-4 w-4 text-amber-300" />
             Faults
           </div>
-          <div className="text-4xl font-bold text-amber-300">{faultCount}</div>
+          <div className="text-4xl font-bold text-amber-300">
+            {faultCount}
+          </div>
         </div>
 
         <div className={`${glassCard} p-5`}>
@@ -351,9 +402,14 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
               <SparkLine />
               Live Telemetry
             </div>
-            <h2 className="mt-3 text-2xl font-bold text-white">HVAC Details</h2>
+
+            <h2 className="mt-3 text-2xl font-bold text-white">
+              HVAC Details
+            </h2>
+
             <p className="mt-1 text-sm text-slate-400">
-              Live HVAC data for mapped devices only
+              Live HVAC data for mapped devices only. Click a row to send
+              commands.
             </p>
           </div>
 
@@ -364,7 +420,11 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
                 : "border border-rose-400/20 bg-rose-500/10 text-rose-300"
             }`}
           >
-            {connected ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+            {connected ? (
+              <Wifi className="h-3.5 w-3.5" />
+            ) : (
+              <WifiOff className="h-3.5 w-3.5" />
+            )}
             {connected ? "CONNECTED" : "DISCONNECTED"}
           </span>
         </div>
@@ -394,21 +454,28 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
                   </td>
                 </tr>
               ) : (
-                rows.map((row, index) => (
-                  <tr
-                    key={row.hvacId ?? row.externalDeviceId ?? `${row.hvacName}-${index}`}
-                    onClick={() => {
-                        const externalDeviceId = resolveExternalDeviceId(row);
+                rows.map((row, index) => {
+                  const externalDeviceId = resolveExternalDeviceId(row);
+                  const isSelected =
+                    selectedHvac?.hvacId === row.hvacId ||
+                    selectedHvac?.externalDeviceId === externalDeviceId ||
+                    selectedHvacId === row.hvacId;
 
-                        console.log("ROW CLICKED:", row);
-                        console.log("externalDeviceId resolved:", externalDeviceId);
-
-                        onSelectHvac?.({
+                  return (
+                    <tr
+                      key={
+                        row.hvacId ??
+                        row.externalDeviceId ??
+                        `${row.hvacName}-${index}`
+                      }
+                      onClick={() => {
+                        const selected = {
                           hvacId: row.hvacId,
                           deviceId: externalDeviceId,
                           externalDeviceId,
                           hvacName: row.hvacName,
                           unitName: row.unitName,
+                          protocol: row.protocol ?? "SIMULATOR",
                           temperature: row.temperature,
                           setpoint: row.setpoint,
                           onState: row.onState,
@@ -416,105 +483,124 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
                           flowRate: row.flowRate,
                           fault: row.fault,
                           telemetryTime: row.telemetryTime ?? undefined,
-                        });
+                        };
+
+                        console.log("ROW CLICKED:", row);
+                        console.log("selected command HVAC:", selected);
+
+                        setSelectedHvac(selected);
+                        onSelectHvac?.(selected as HvacDto);
                       }}
-                      className={`border-t border-white/10 text-slate-100 transition cursor-pointer ${
-                        selectedHvacId === row.hvacId
-                          ? "bg-cyan-500/15"
-                          : "hover:bg-white/5"
+                      className={`cursor-pointer border-t border-white/10 text-slate-100 transition ${
+                        isSelected ? "bg-cyan-500/15" : "hover:bg-white/5"
                       }`}
                     >
-                    <td className="whitespace-nowrap px-4 py-4 text-sm font-medium">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 ${
-                            row.fault
-                              ? "bg-rose-500/10 text-rose-300"
-                              : row.onState
-                              ? "bg-cyan-500/10 text-cyan-300"
-                              : "bg-white/5 text-slate-400"
-                          }`}
-                        >
+                      <td className="whitespace-nowrap px-4 py-4 text-sm font-medium">
+                        <div className="flex items-center gap-3">
                           <div
-                            className={row.onState ? "animate-spin" : ""}
-                            style={row.onState ? { animationDuration: "1.2s" } : undefined}
+                            className={`flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 ${
+                              row.fault
+                                ? "bg-rose-500/10 text-rose-300"
+                                : row.onState
+                                  ? "bg-cyan-500/10 text-cyan-300"
+                                  : "bg-white/5 text-slate-400"
+                            }`}
                           >
-                            <Fan className="h-5 w-5" />
+                            <div
+                              className={row.onState ? "animate-spin" : ""}
+                              style={
+                                row.onState
+                                  ? { animationDuration: "1.2s" }
+                                  : undefined
+                              }
+                            >
+                              <Fan className="h-5 w-5" />
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-white">
+                              {row.unitName || row.hvacName}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {row.externalDeviceId || row.hvacId || "No ID"}
+                            </p>
                           </div>
                         </div>
-                        <div>
-                          <p className="text-white">{row.unitName || row.hvacName}</p>
-                          <p className="text-xs text-slate-500">
-                            {row.externalDeviceId || row.hvacId || "No ID"}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300">
-                        <Thermometer className="h-3.5 w-3.5" />
-                        {formatNumber(row.temperature)}
-                      </span>
-                    </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300">
+                          <Thermometer className="h-3.5 w-3.5" />
+                          {formatNumber(row.temperature)}
+                        </span>
+                      </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300">
-                        <Gauge className="h-3.5 w-3.5" />
-                        {formatNumber(row.setpoint)}
-                      </span>
-                    </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300">
+                          <Gauge className="h-3.5 w-3.5" />
+                          {formatNumber(row.setpoint)}
+                        </span>
+                      </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      <span
-                        className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                          row.onState
-                            ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
-                            : "border border-white/10 bg-white/5 text-slate-300"
-                        }`}
-                      >
-                        {row.onState ? "ON" : "OFF"}
-                      </span>
-                    </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <span
+                          className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                            row.onState
+                              ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
+                              : "border border-white/10 bg-white/5 text-slate-300"
+                          }`}
+                        >
+                          {row.onState ? "ON" : "OFF"}
+                        </span>
+                      </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-200">
-                      {row.fanSpeed !== null && row.fanSpeed !== undefined
-                        ? `${formatNumber(row.fanSpeed, 0)}%`
-                        : "-"}
-                    </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-200">
+                        {row.fanSpeed !== null && row.fanSpeed !== undefined
+                          ? `${formatNumber(row.fanSpeed, 0)}%`
+                          : "-"}
+                      </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-300">
-                      <Wind className="h-3.5 w-3.5" />
-                      {row.flowRate !== null && row.flowRate !== undefined
-                        ? `${formatNumber(row.flowRate)} m³/h`
-                        : "-"}
-                    </span>
-                  </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-300">
+                          <Wind className="h-3.5 w-3.5" />
+                          {row.flowRate !== null && row.flowRate !== undefined
+                            ? `${formatNumber(row.flowRate)} m³/h`
+                            : "-"}
+                        </span>
+                      </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                          row.fault
-                            ? "border border-rose-400/20 bg-rose-500/10 text-rose-300"
-                            : "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
-                        }`}
-                      >
-                        <TriangleAlert className="h-3.5 w-3.5" />
-                        {row.fault ? "FAULT" : "OK"}
-                      </span>
-                    </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm">
+                        <span
+                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                            row.fault
+                              ? "border border-rose-400/20 bg-rose-500/10 text-rose-300"
+                              : "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
+                          }`}
+                        >
+                          <TriangleAlert className="h-3.5 w-3.5" />
+                          {row.fault ? "FAULT" : "OK"}
+                        </span>
+                      </td>
 
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-400">
-                      {formatTime(row.telemetryTime)}
-                    </td>
-                  </tr>
-                ))
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-400">
+                        {formatTime(row.telemetryTime)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <HvacCommandPanel
+        tenantId={tenantId}
+        siteId={siteId}
+        edgeControllerId={edgeControllerId}
+        selectedHvac={selectedHvac}
+      />
     </div>
   );
 };

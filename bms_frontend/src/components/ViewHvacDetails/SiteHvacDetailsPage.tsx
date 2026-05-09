@@ -30,11 +30,62 @@ export default function SiteHvacDetailsPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUserDto | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
+  const [edgeControllerId, setEdgeControllerId] = useState<string>("");
+  const [edgeError, setEdgeError] = useState<string | null>(null);
+  const [edgeLoading, setEdgeLoading] = useState<boolean>(true);
+
   useEffect(() => {
     BmsApi.getCurrentUser()
       .then(setCurrentUser)
       .catch(() => setCurrentUser(null));
   }, []);
+
+  useEffect(() => {
+    if (!tenantId || !siteId) return;
+
+    const tenantIdValue = tenantId;
+    const siteIdValue = siteId;
+
+    let cancelled = false;
+
+    async function loadEdgeAssignment() {
+      try {
+        setEdgeLoading(true);
+        setEdgeError(null);
+
+        const assignment = await BmsApi.getSiteEdgeAssignment(
+          tenantIdValue,
+          siteIdValue
+        );
+
+        if (!cancelled) {
+          setEdgeControllerId(assignment.edgeControllerId);
+        }
+      } catch (error: any) {
+        console.error("Failed to load edge assignment", error);
+
+        if (!cancelled) {
+          setEdgeControllerId("");
+          setEdgeError(
+            error?.response?.data?.message ||
+              error?.response?.data?.error ||
+              error?.message ||
+              "No edge controller assigned to this site."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setEdgeLoading(false);
+        }
+      }
+    }
+
+    loadEdgeAssignment();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId, siteId]);
 
   if (!tenantId || !siteId) {
     return (
@@ -49,14 +100,17 @@ export default function SiteHvacDetailsPage() {
   const currentUserRole = currentUser?.roles
     ?.map((role) => role.replace("ROLE_", ""))
     ?.find((role) =>
-      ["ADMIN", "BMS_ADMIN", "TECHNICIAN", "FACILITY_MANAGER", "SITE_MANAGER"].includes(role)
+      [
+        "ADMIN",
+        "BMS_ADMIN",
+        "TECHNICIAN",
+        "FACILITY_MANAGER",
+        "SITE_MANAGER",
+      ].includes(role)
     ) as UserRole | undefined;
 
   const currentUserName =
-    currentUser?.name ||
-    currentUser?.username ||
-    currentUser?.email ||
-    "";
+    currentUser?.name || currentUser?.username || currentUser?.email || "";
 
   function handleFailureResolved() {
     setReloadKey((prev) => prev + 1);
@@ -105,13 +159,29 @@ export default function SiteHvacDetailsPage() {
           </div>
         </div>
 
-        <HvacWsTable
-          key={reloadKey}
-          tenantId={tenantId}
-          siteId={siteId}
-          onSelectHvac={setSelectedHvac}
-          selectedHvacId={selectedHvac?.hvacId}
-        />
+        {edgeLoading && (
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-slate-300">
+            Loading edge controller assignment...
+          </div>
+        )}
+
+        {edgeError && (
+          <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-5 text-amber-100">
+            <p className="font-medium">Edge controller assignment missing</p>
+            <p className="mt-1 text-sm text-amber-200/80">{edgeError}</p>
+          </div>
+        )}
+
+        {!edgeLoading && edgeControllerId && (
+          <HvacWsTable
+            key={reloadKey}
+            tenantId={tenantId}
+            siteId={siteId}
+            edgeControllerId={edgeControllerId}
+            onSelectHvac={setSelectedHvac}
+            selectedHvacId={selectedHvac?.hvacId}
+          />
+        )}
 
         {selectedHvac ? (
           <HvacMaintenanceNotesPanel

@@ -359,6 +359,58 @@ export type UpdateSimulatorHvacRequest = {
 };
 
 
+// ============= HVAC Command Types =============
+
+// Used by BMS_ADMIN to send commands to Simulator / BACnet / Modbus
+export type HvacCommandType =
+  | "SET_ON_OFF"
+  | "SET_SETPOINT"
+  | "SET_FAN_SPEED"
+  | "SET_FLOW_RATE"
+  | "SET_AMBIENT_TEMP"
+  | "CLEAR_FAULT"
+  | "RESTART_HVAC"
+  | "SIMULATE_FAULT";
+
+export type CreateHvacCommandRequest = {
+  edgeControllerId: string;
+  hvacId: string;
+  externalDeviceId: string;
+  protocol: string;
+  commandType: HvacCommandType;
+  payload: Record<string, unknown>;
+};
+
+export type EdgeCommandResponse = {
+  commandId: string;
+  tenantId: string;
+  siteId: string;
+  edgeControllerId?: string;
+  hvacId: string;
+  externalDeviceId: string;
+  protocol: string;
+  commandType: HvacCommandType | string;
+  payload: Record<string, unknown>;
+
+  status?: string;
+  createdAt?: string;
+  deliveredAt?: string | null;
+  executedAt?: string | null;
+  errorMessage?: string | null;
+};
+
+export type SiteEdgeAssignmentResponse = {
+  assignmentId: string;
+  edgeControllerId: string;
+  edgeKey: string;
+  edgeName: string;
+  status: string;
+  tenantId: string;
+  siteId: string;
+};
+
+
+
 export const BmsApi = {
 
     //getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
@@ -841,6 +893,47 @@ export const BmsApi = {
                 method: "DELETE",
             }
         ),
+
+
+    // ============= HVAC Command APIs =============
+
+    createHvacCommand: async (
+        tenantId: string,
+        siteId: string,
+        req: CreateHvacCommandRequest
+    ): Promise<EdgeCommandResponse> =>
+        await api<EdgeCommandResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-commands`,
+            {
+                method: "POST",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        ),
+
+    listHvacCommands: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeCommandResponse[]> =>
+        await api<EdgeCommandResponse[]>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-commands`,
+            {
+                method: "GET",
+            }
+        ),
+
+    getSiteEdgeAssignment: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<SiteEdgeAssignmentResponse> =>
+        await api<SiteEdgeAssignmentResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-assignment`,
+            {
+                method: "GET",
+            }
+    ),
 
 
     
