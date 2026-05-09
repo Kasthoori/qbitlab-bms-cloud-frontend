@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { BmsApi, type CreateHvacRequest } from "@/api/bms";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import {
@@ -99,6 +100,14 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
       setSaving(true);
       setErr(null);
       setSuccess(false);
+
+      console.log("ADD HVAC MODAL SUBMIT", {
+          tenantId,
+          siteId,
+          tenantTitle,
+          siteTitle,
+          form,
+        });
 
       await BmsApi.addHvacToExistingSite(tenantId, siteId, form);
 
@@ -262,7 +271,7 @@ const AddHvacModal: FC<AddHvacModalProps> = ({
                       >
                         <option value="BACNET">BACNET</option>
                         <option value="MODBUS">MODBUS</option>
-                        <option value="SIMULATED">SIMULATED</option>
+                        <option value="SIMULATOR">SIMULATOR</option>
                       </select>
                     </label>
 

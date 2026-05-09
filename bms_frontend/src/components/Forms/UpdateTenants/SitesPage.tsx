@@ -156,6 +156,17 @@ const SitesPage: FC = () => {
                     nav(`/admin/tenants/${tenantId}/sites/${s.siteId}/hvac-device-mapping`),
                 },
                 {
+                  label: "Simulator HVACs",
+                  variant: "secondary",
+                  onClick: () =>
+                    nav(`/admin/tenants/${tenantId}/sites/${s.siteId}/simulator-hvacs`, {
+                      state: {
+                        tenantName: tenantId,
+                        siteName: s.siteName,
+                      },
+                    }),
+                },
+                {
                   label: "Add Floor Plan",
                   variant: "secondary",
                   onClick: () =>
@@ -182,6 +193,8 @@ const SitesPage: FC = () => {
                   variant: "danger",
                   onClick: () => onAskDeleteSite(s),
                 },
+
+                
               ]}
             />
           ))}

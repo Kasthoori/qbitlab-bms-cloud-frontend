@@ -44,7 +44,7 @@ export const hvacSchema = z.object({
   hvacName: z.string().min(2, "HVAC name is required"),
   deviceId: z.string().min(2, "Device ID is required"),
   unitType: z.enum(["AHU", "SPLIT", "VRF", "FAN_COIL", "OTHER"]),
-  protocol: z.enum(["BACNET", "MODBUS", "SIMULATED"]),
+  protocol: z.enum(["BACNET", "MODBUS", "SIMULATOR"]),
   zone: z.string().optional(),
 });
 

@@ -3,7 +3,7 @@ import { keycloak } from "../keycloak";
 import { BACKEND_URL } from "../utils/config";
 import { navigateTo } from "../utils/navigation";
 
-const BASE_URL = BACKEND_URL;
+const BASE_URL = BACKEND_URL.replace(/\/+$/, "");
 
 type ApiOptions = {
   method?: string;
@@ -18,6 +18,11 @@ type ApiError = {
   message: string;
   body?: unknown;
 };
+
+function buildApiUrl(path: string): string {
+  const cleanPath = `/${path}`.replace(/\/+/g, "/");
+  return `${BASE_URL}${cleanPath}`;
+}
 
 export async function api<T>(
   path: string,
@@ -57,29 +62,28 @@ export async function api<T>(
       : {}),
   };
 
-  if (!isFormData && !finalHeaders["Content-Type"]) {
+  if (!isFormData && body != null && !finalHeaders["Content-Type"]) {
     finalHeaders["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const url = buildApiUrl(path);
+
+  console.log("API Request URL:", url);
+
+  const res = await fetch(url, {
     ...rest,
-    method: options.method ?? "GET",
+    method: rest.method ?? "GET",
     body,
     headers: finalHeaders,
   });
 
-  // 🔐 401 → login
   if (res.status === 401) {
     await keycloak.login();
     throw { status: 401, message: "Unauthorized" } as ApiError;
   }
 
-  // 🚫 403 → Access Denied page (SPA navigation)
   if (res.status === 403) {
-    if (
-      handle403Redirect &&
-      window.location.pathname !== "/access-denied"
-    ) {
+    if (handle403Redirect && window.location.pathname !== "/access-denied") {
       navigateTo("/access-denied");
     }
 
@@ -89,20 +93,27 @@ export async function api<T>(
     } as ApiError;
   }
 
-  // ❌ Other errors
   if (!res.ok) {
     let errorBody: unknown;
     let message = `Request failed (${res.status})`;
 
     try {
       errorBody = await res.json();
-      if (errorBody && typeof errorBody === "object" && "message" in errorBody) {
+
+      if (
+        errorBody &&
+        typeof errorBody === "object" &&
+        "message" in errorBody
+      ) {
         message = (errorBody as any).message;
       }
     } catch {
       const text = await res.text().catch(() => "");
       errorBody = text;
-      if (text) message = text;
+
+      if (text) {
+        message = text;
+      }
     }
 
     throw {

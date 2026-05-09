@@ -20,7 +20,7 @@ export type HvacSiteDetailsDto = {
   unitType?: string | null;
   zone?: string | null;
   protocol?: string | null;
-  externalDeviceId?: string | null;
+  externalDeviceId?: string;
   mapped?: boolean | null;
   temperature?: number | null;
   setpoint?: number | null;

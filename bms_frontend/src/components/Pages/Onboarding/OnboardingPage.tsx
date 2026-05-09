@@ -91,13 +91,13 @@ export default function OnboardingPage() {
   };
 
   const handleAddHvac = async (values: HvacFormValues) => {
-    if (!site) return;
+    if (!tenant || !site) return;
 
     setError(null);
     setBusy(true);
 
     try {
-      const created = await api<HvacResponse>(`/api/sites/${site.siteId}/hvacs`, {
+      const created = await api<HvacResponse>(`/api/hvacs/${tenant.tenantId}/sites/${site.siteId}/hvacs`, {
         method: "POST",
         body: JSON.stringify(values),
         auth: true,
@@ -112,7 +112,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-full rounded-3xl bg-gradient-to-br from-slate-950 via-[#08122f] to-slate-950 p-6 text-white">
+    <div className="min-h-full rounded-3xl bg-linear-to-br from-slate-950 via-[#08122f] to-slate-950 p-6 text-white">
       <div className="mb-8">
         <h1 className="flex items-center gap-3 text-3xl font-bold">
           <Sparkles className="h-7 w-7 text-blue-400" />
@@ -162,7 +162,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-4 text-slate-200">
+              <div className="rounded-2xl bg-linear-to-r from-blue-500/20 to-purple-500/20 p-4 text-slate-200">
                 💡 Tip: keep your HVAC deviceId aligned with edge-controller identifiers such as
                 <span className="ml-1 font-medium text-white">hvac-1</span>,
                 <span className="ml-1 font-medium text-white">hvac-2</span>.

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from "react";
 import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -18,9 +19,25 @@ import type { HvacCurrentState, HvacSiteDetailsDto } from "../../types/hvac";
 import { BACKEND_URL } from "../../utils/config";
 import { api } from "@/api/http";
 
+import type { HvacDto } from "@/api/bms";
+
+
+function resolveExternalDeviceId(row: any): string | undefined {
+  if (row.externalDeviceId) return row.externalDeviceId;
+  if (row.deviceId) return row.deviceId;
+  if (row.device_id) return row.device_id;
+
+  const match = row.unitName?.match(/HVAC-(\d+)/i);
+  if (match?.[1]) return `hvac-${match[1]}`;
+
+  return undefined;
+}
+
 type HvacWsTableProps = {
   tenantId: string;
   siteId: string;
+  onSelectHvac?: (hvac: HvacDto) => void;
+  selectedHvacId?: string;
 };
 
 const WS_ENDPOINT = `${BACKEND_URL}/ws`;
@@ -28,7 +45,7 @@ const WS_ENDPOINT = `${BACKEND_URL}/ws`;
 const glassCard =
   "rounded-3xl border border-white/10 bg-white/5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl";
 
-const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId }) => {
+const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, selectedHvacId }) => {
   const [rows, setRows] = useState<HvacSiteDetailsDto[]>([]);
   const [connected, setConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -380,8 +397,33 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId }) => {
                 rows.map((row, index) => (
                   <tr
                     key={row.hvacId ?? row.externalDeviceId ?? `${row.hvacName}-${index}`}
-                    className="border-t border-white/10 text-slate-100 transition hover:bg-white/5"
-                  >
+                    onClick={() => {
+                        const externalDeviceId = resolveExternalDeviceId(row);
+
+                        console.log("ROW CLICKED:", row);
+                        console.log("externalDeviceId resolved:", externalDeviceId);
+
+                        onSelectHvac?.({
+                          hvacId: row.hvacId,
+                          deviceId: externalDeviceId,
+                          externalDeviceId,
+                          hvacName: row.hvacName,
+                          unitName: row.unitName,
+                          temperature: row.temperature,
+                          setpoint: row.setpoint,
+                          onState: row.onState,
+                          fanSpeed: row.fanSpeed,
+                          flowRate: row.flowRate,
+                          fault: row.fault,
+                          telemetryTime: row.telemetryTime ?? undefined,
+                        });
+                      }}
+                      className={`border-t border-white/10 text-slate-100 transition cursor-pointer ${
+                        selectedHvacId === row.hvacId
+                          ? "bg-cyan-500/15"
+                          : "hover:bg-white/5"
+                      }`}
+                    >
                     <td className="whitespace-nowrap px-4 py-4 text-sm font-medium">
                       <div className="flex items-center gap-3">
                         <div

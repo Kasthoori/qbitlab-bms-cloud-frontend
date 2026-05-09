@@ -167,7 +167,7 @@ export type CreateSiteRequest = {
 export type CreateHvacRequest = {
     hvacName: string;
     deviceId: string;
-    protocol: "BACNET" | "MODBUS" | "SIMULATED";
+    protocol: "BACNET" | "MODBUS" | "SIMULATOR";
     unitType: "AHU" | "VRF" | "FCU" | "CHILLER" | "OTHER";
 };
 
@@ -233,6 +233,129 @@ export type TechnicianSiteAccessRequest = {
 export type TechnicianAccessRequest = {
   tenantIds: string[];
   sites: TechnicianSiteAccessRequest[];
+};
+
+// Maintenance Note Types and Interfaces
+
+export type HvacMaintenanceNoteType =
+  | "SCHEDULED_MAINTENANCE"
+  | "FAILURE_REPAIR";
+
+export type HvacMaintenanceNoteStatus =
+  | "SUBMITTED"
+  | "REVIEWED";
+
+export type HvacMaintenanceNoteDto = {
+  noteId: string;
+  tenantId: string;
+  siteId: string;
+  externalDeviceId: string;
+
+  noteType: HvacMaintenanceNoteType;
+  status: HvacMaintenanceNoteStatus;
+
+  workDone?: string | null;
+  filterChanged?: boolean;
+  serviceDone?: boolean;
+
+  failureCause?: string | null;
+  correctiveAction?: string | null;
+  sparePartsAdded?: string | null;
+  machineRestartedAt?: string | null;
+
+  technicianName?: string | null;
+  technicianUserId?: string | null;
+
+  reviewedByUserId?: string | null;
+  reviewedAt?: string | null;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateHvacMaintenanceNoteRequest = {
+  noteType: HvacMaintenanceNoteType;
+
+  workDone?: string;
+  filterChanged?: boolean;
+  serviceDone?: boolean;
+
+  failureCause?: string;
+  correctiveAction?: string;
+  sparePartsAdded?: string;
+  machineRestartedAt?: string;
+
+  technicianName?: string;
+};
+
+
+// ============= Simulator HVAC Types =============
+
+export type SimulatorHvacProtocol = "SIMULATOR" | "BACNET" | "MODBUS";
+
+export type SimulatorHvacDto = {
+  id: string;
+
+  tenantId: string;
+  siteId: string;
+
+  hvacId?: string | null;
+  edgeControllerId?: string | null;
+
+  externalDeviceId: string;
+  unitName: string;
+  unitType?: string | null;
+  zone?: string | null;
+
+  protocol: SimulatorHvacProtocol | string;
+
+  temperature?: number | null;
+  setpoint?: number | null;
+  onState?: boolean | null;
+  fanSpeed?: number | null;
+  flowRate?: number | null;
+  fault?: boolean | null;
+  enabled?: boolean | null;
+
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type CreateSimulatorHvacRequest = {
+  hvacId?: string | null;
+  edgeControllerId?: string | null;
+
+  externalDeviceId: string;
+  unitName: string;
+  unitType?: string;
+  zone?: string;
+  protocol?: SimulatorHvacProtocol | string;
+
+  temperature?: number;
+  setpoint?: number;
+  onState?: boolean;
+  fanSpeed?: number;
+  flowRate?: number;
+  fault?: boolean;
+  enabled?: boolean;
+};
+
+export type UpdateSimulatorHvacRequest = {
+  hvacId?: string | null;
+  edgeControllerId?: string | null;
+
+  unitName: string;
+  unitType?: string;
+  zone?: string;
+  protocol?: SimulatorHvacProtocol | string;
+
+  temperature?: number;
+  setpoint?: number;
+  onState?: boolean;
+  fanSpeed?: number;
+  flowRate?: number;
+  fault?: boolean;
+  enabled?: boolean;
 };
 
 
@@ -574,6 +697,150 @@ export const BmsApi = {
     await api<void>(`/api/admin/users/${userId}`, {
         method: "DELETE",
     }),
+
+
+        // ============= HVAC Maintenance Notes APIs =============
+
+    createHvacMaintenanceNote: async (
+        tenantId: string,
+        siteId: string,
+        externalDeviceId: string,
+        req: CreateHvacMaintenanceNoteRequest
+    ): Promise<HvacMaintenanceNoteDto> => {
+
+         console.log("create note externalDeviceId =", externalDeviceId);
+
+            if (!externalDeviceId || externalDeviceId.trim() === "") {
+                throw new Error("externalDeviceId is missing in createHvacMaintenanceNote");
+            }
+
+       return await api<HvacMaintenanceNoteDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes`,
+            {
+                method: "POST",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+    )},
+
+    getHvacMaintenanceNotes: async (
+        tenantId: string,
+        siteId: string,
+        externalDeviceId: string,
+        noteType?: HvacMaintenanceNoteType | "ALL"
+    ): Promise<HvacMaintenanceNoteDto[]> => {
+        const query =
+            noteType && noteType !== "ALL"
+                ? `?noteType=${noteType}`
+                : "";
+
+        return await api<HvacMaintenanceNoteDto[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes${query}`,
+            {
+                method: "GET",
+            }
+        );
+    },
+
+    reviewHvacMaintenanceNote: async (
+        tenantId: string,
+        siteId: string,
+        externalDeviceId: string,
+        noteId: string
+    ): Promise<HvacMaintenanceNoteDto> =>
+        await api<HvacMaintenanceNoteDto>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes/${noteId}/review`,
+            {
+                method: "PUT",
+            }
+        ),
+
+
+    markHvacFailureGone: async (
+        tenantId: string,
+        siteId: string,
+        externalDeviceId: string
+        ): Promise<void> =>
+        await api<void>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/mark-failure-gone`,
+            {
+            method: "PUT",
+            }
+        ),
+
+
+
+
+    // ============= Simulator HVAC APIs =============
+
+    getSimulatorHvacs: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<SimulatorHvacDto[]> =>
+        await api<SimulatorHvacDto[]>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/simulator-hvacs`,
+            {
+                method: "GET",
+            }
+        ),
+
+    getEnabledSimulatorHvacs: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<SimulatorHvacDto[]> =>
+        await api<SimulatorHvacDto[]>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/simulator-hvacs/enabled`,
+            {
+                method: "GET",
+            }
+        ),
+
+    createSimulatorHvac: async (
+        tenantId: string,
+        siteId: string,
+        req: CreateSimulatorHvacRequest
+    ): Promise<SimulatorHvacDto> =>
+        await api<SimulatorHvacDto>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/simulator-hvacs`,
+            {
+                method: "POST",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        ),
+
+    updateSimulatorHvac: async (
+        tenantId: string,
+        siteId: string,
+        simulatorHvacId: string,
+        req: UpdateSimulatorHvacRequest
+    ): Promise<SimulatorHvacDto> =>
+        await api<SimulatorHvacDto>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/simulator-hvacs/${simulatorHvacId}`,
+            {
+                method: "PUT",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        ),
+
+    deleteSimulatorHvac: async (
+        tenantId: string,
+        siteId: string,
+        simulatorHvacId: string
+    ): Promise<void> =>
+        await api<void>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/simulator-hvacs/${simulatorHvacId}`,
+            {
+                method: "DELETE",
+            }
+        ),
 
 
     
