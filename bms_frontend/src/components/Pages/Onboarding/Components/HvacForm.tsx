@@ -30,7 +30,7 @@ export default function HvacForm({
       deviceId: "",
       unitType: "OTHER",
       zone: "",
-      protocol: "SIMULATED",
+      protocol: "SIMULATOR",
     },
   });
 
@@ -69,7 +69,7 @@ export default function HvacForm({
 
           <Field label="Protocol" error={errors.protocol?.message}>
             <Select {...register("protocol")}>
-              <option value="SIMULATED">Simulated</option>
+              <option value="SIMULATOR">SIMULATOR</option>
               <option value="BACNET">BACnet</option>
               <option value="MODBUS">Modbus</option>
             </Select>

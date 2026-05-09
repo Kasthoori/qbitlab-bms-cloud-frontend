@@ -12,7 +12,7 @@ type Protocol = CreateHvacRequest["protocol"];
 type UnitType = CreateHvacRequest["unitType"];
 
 const isProtocol = (v: any): v is Protocol =>
-  v === "BACNET" || v === "MODBUS" || v === "SIMULATED";
+  v === "BACNET" || v === "MODBUS" || v === "SIMULATOR";
 
 const isUnitType = (v: any): v is UnitType =>
   v === "AHU" || v === "VRF" || v === "FCU" || v === "CHILLER" || v === "OTHER";

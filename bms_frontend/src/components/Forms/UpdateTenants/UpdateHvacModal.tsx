@@ -238,7 +238,7 @@ const UpdateHvacModal: FC<UpdateHvacModalProps> = ({
                       >
                         <option value="BACNET">BACNET</option>
                         <option value="MODBUS">MODBUS</option>
-                        <option value="SIMULATED">SIMULATED</option>
+                        <option value="SIMULATOR">SIMULATOR</option>
                       </select>
                     </label>
 

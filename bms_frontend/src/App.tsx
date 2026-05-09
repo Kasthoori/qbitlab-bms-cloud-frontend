@@ -30,6 +30,7 @@ import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import UpdateUserProfile from "./components/UserManagement/UpdateUserProfile";
 import DeleteUserPage from "./components/UserManagement/DeleteUserPage";
 import ViewUsersPage from "./components/UserManagement/ViewUsersPage";
+import SimulatorHvacsRoute from "./components/Simulator/SimulatorHvacsRoute";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -203,6 +204,11 @@ const AppRoutes: FC = () => {
 
       {/* Unknown routes */}
       <Route path="*" element={<Navigate to="/access-denied" replace />} />
+
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/simulator-hvacs"
+        element={<SimulatorHvacsRoute />}
+      />
     </Routes>
   );
 };

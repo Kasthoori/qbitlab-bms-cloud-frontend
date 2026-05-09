@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useRef, useState, type FC } from "react";
 import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -23,6 +24,8 @@ import type { HvacDto } from "@/api/bms";
 
 function resolveExternalDeviceId(row: any): string | undefined {
   if (row.externalDeviceId) return row.externalDeviceId;
+  if (row.deviceId) return row.deviceId;
+  if (row.device_id) return row.device_id;
 
   const match = row.unitName?.match(/HVAC-(\d+)/i);
   if (match?.[1]) return `hvac-${match[1]}`;
@@ -402,11 +405,13 @@ const HvacWsTable: FC<HvacWsTableProps> = ({ tenantId, siteId, onSelectHvac, sel
 
                         onSelectHvac?.({
                           hvacId: row.hvacId,
+                          deviceId: externalDeviceId,
                           externalDeviceId,
                           hvacName: row.hvacName,
                           unitName: row.unitName,
                           temperature: row.temperature,
                           setpoint: row.setpoint,
+                          onState: row.onState,
                           fanSpeed: row.fanSpeed,
                           flowRate: row.flowRate,
                           fault: row.fault,

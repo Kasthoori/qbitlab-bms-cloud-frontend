@@ -77,7 +77,7 @@ export const hvacSchema = z.object({
     hvacName: z.string().min(2, "HVAC name is required"),
     deviceId: z.string().min(2, "Device ID is required"),
     unitType: z.enum(["AHU", "SPLIT", "VRF", "FAN_COIL", "OTHER"]),
-    protocol: z.enum(["BACNET", "MODBUS", "SIMULATED"]),
+    protocol: z.enum(["BACNET", "MODBUS", "SIMULATOR"]),
     zone: z.string().optional(),
 });
 
@@ -364,7 +364,9 @@ export default function Onboarding() {
                             onSubmit={async (values: any) => {
                                 setError(null);
                                 setBusy(true);
+                            
                                 try {
+                                    
                                     const created = await api<SiteResponse>(`/api/tenants/${tenant.tenantId}/sites`, {
                                         method: "POST",
                                         body: JSON.stringify(values),
@@ -374,8 +376,6 @@ export default function Onboarding() {
                                     console.log("CREATED", created);
                                     console.log("BODY", values);
                                     setStep("HVAC");
-                                    // eslint-disable-next-line no-debugger
-                                    debugger;
                                 } catch(e: any) {
                                     setError(e?.message ?? "Failed to create site");
                                 } finally {
@@ -393,14 +393,33 @@ export default function Onboarding() {
                             site={site}
                             onBack={() => setStep("SITE")}
                             onAdd={async (values: any) => {
+                                if (!tenant || !site) {
+                                    setError("Tenant or site is missing. Please restart the onboarding flow.");
+                                    return;
+                                }
+
+                                const currentTenant = tenant;
+                                const currentSite = site;
+
                                 setError(null);
-                                setBusy(true)
-                                try{
-                                    const created = await api<HvacResponse>(`/api/sites/${site.siteId}/hvacs`, {
-                                        method: "POST",
-                                        body: JSON.stringify(values),
-                                        auth: true,
+                                setBusy(true);
+
+                                try {
+                                    console.log("ONBOARDING ADD HVAC REQUEST", {
+                                        tenantId: currentTenant.tenantId,
+                                        siteId: currentSite.siteId,
+                                        siteName: currentSite.siteName,
+                                        values,
                                     });
+
+                                    const created = await api<HvacResponse>(
+                                        `/api/hvacs/${currentTenant.tenantId}/sites/${currentSite.siteId}/hvacs`,
+                                        {
+                                            method: "POST",
+                                            body: JSON.stringify(values),
+                                            auth: true,
+                                        }
+                                    );
 
                                     setHvacs((prev) => [created, ...prev]);
                                 } catch (e: any) {

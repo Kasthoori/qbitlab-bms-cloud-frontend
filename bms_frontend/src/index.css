@@ -24,5 +24,45 @@
     }
 }
 
+.glass-input {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background: rgb(2 6 23 / 0.55);
+  padding: 0.75rem 0.9rem;
+  color: rgb(241 245 249);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.glass-input::placeholder {
+  color: rgb(100 116 139);
+}
+
+.glass-input:focus {
+  border-color: rgb(103 232 249 / 0.75);
+  box-shadow: 0 0 0 3px rgb(34 211 238 / 0.12);
+  background: rgb(2 6 23 / 0.78);
+}
+
+.glass-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}
+
 
 
