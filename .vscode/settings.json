@@ -1,11 +1,13 @@
 {
     "cSpell.words": [
         "BACNET",
+        "basicssl",
         "Cnet",
         "Farwood",
         "floorplan",
         "Hvac",
         "Hvacs",
+        "keycloakify",
         "modbus",
         "qbitlab",
         "stompjs",

@@ -1,4 +1,5 @@
-import { StrictMode, lazy } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import {  lazy } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { keycloak } from "./keycloak";   // ✅ shared instance
@@ -18,9 +19,9 @@ keycloak
   .then(() => {
     (window as any).keycloak = keycloak; // for debugging purposes
     createRoot(document.getElementById("root")!).render(
-      <StrictMode>
+      
         <App />
-      </StrictMode>
+      
     );
   })
   .catch((err) => {

@@ -7,7 +7,7 @@ import {
   useState,
   type FC,
 } from "react";
-import { Client, type IMessage } from "@stomp/stompjs";
+import { Client, type IMessage, type StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import {
   Activity,
@@ -15,15 +15,14 @@ import {
   Fan,
   Gauge,
   Thermometer,
-  Wifi,
-  WifiOff,
+  //Wifi,
+  //WifiOff,
   Wind,
   TriangleAlert,
   Boxes,
 } from "lucide-react";
 
 import type { HvacCurrentState, HvacSiteDetailsDto } from "../../types/hvac";
-import { BACKEND_URL } from "../../utils/config";
 import { api } from "@/api/http";
 
 import type { HvacDto } from "@/api/bms";
@@ -38,6 +37,26 @@ function resolveExternalDeviceId(row: any): string | undefined {
   if (match?.[1]) return `hvac-${match[1]}`;
 
   return undefined;
+}
+
+/**
+ * SockJS expects an HTTP/HTTPS endpoint, not ws:// or wss://.
+ *
+ * For your current setup:
+ *   frontend: https://localhost:5173
+ *   backend:  http://192.168.68.64:8084
+ *
+ * Use:
+ *   VITE_WS_BASE_URL=http://192.168.68.64:8084/ws
+ */
+function resolveSockJsEndpoint(): string {
+  const envUrl = import.meta.env.VITE_WS_BASE_URL?.trim();
+
+  if (envUrl) {
+    return envUrl;
+  }
+
+  return "http://192.168.68.64:8084/ws";
 }
 
 type HvacWsTableProps = {
@@ -55,8 +74,6 @@ type HvacWsTableProps = {
   selectedHvacId?: string;
 };
 
-const WS_ENDPOINT = `${BACKEND_URL}/ws`;
-
 const glassCard =
   "rounded-3xl border border-white/10 bg-white/5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl";
 
@@ -70,15 +87,22 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
   const [rows, setRows] = useState<HvacSiteDetailsDto[]>([]);
   const [selectedHvac, setSelectedHvac] = useState<any | null>(null);
 
-  const [connected, setConnected] = useState<boolean>(false);
+  //const [connected, setConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const clientRef = useRef<Client | null>(null);
+  const subscriptionRef = useRef<StompSubscription | null>(null);
+
   const rowsRef = useRef<HvacSiteDetailsDto[]>([]);
   const liveByDeviceIdRef = useRef<Map<string, HvacCurrentState>>(new Map());
   const hasLoadedOnceRef = useRef<boolean>(false);
 
+  /**
+   * Used to avoid showing "closed" as an error when React unmounts/remounts
+   * the component during normal lifecycle or Vite dev refresh.
+   */
+  const manuallyClosingRef = useRef<boolean>(false);
 
   const mergeMappedRowsWithLiveData = useCallback(
     (mappedRows: HvacSiteDetailsDto[]): HvacSiteDetailsDto[] => {
@@ -171,10 +195,12 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
     hasLoadedOnceRef.current = false;
     liveByDeviceIdRef.current = new Map();
     rowsRef.current = [];
+
     setRows([]);
     setSelectedHvac(null);
     setError(null);
     setLoading(true);
+    //setConnected(false);
 
     loadMappedRows(true);
   }, [tenantId, siteId, loadMappedRows]);
@@ -192,20 +218,59 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
   useEffect(() => {
     if (!tenantId || !siteId) return;
 
-    const socketFactory = () => new SockJS(WS_ENDPOINT);
+    const wsEndpoint = resolveSockJsEndpoint();
+    const topic = `/topic/tenants/${tenantId}/sites/${siteId}/hvac`;
+
+    manuallyClosingRef.current = false;
+
+    /**
+     * Clean up any previous client before creating a new one.
+     * This prevents duplicate connections when tenant/site changes.
+     */
+    if (clientRef.current) {
+      manuallyClosingRef.current = true;
+      subscriptionRef.current?.unsubscribe();
+      subscriptionRef.current = null;
+      clientRef.current.deactivate();
+      clientRef.current = null;
+      //setConnected(false);
+      manuallyClosingRef.current = false;
+    }
 
     const client = new Client({
-      webSocketFactory: socketFactory as never,
+      webSocketFactory: () => {
+        console.log("[HVAC WS] SockJS endpoint:", wsEndpoint);
+        return new SockJS(wsEndpoint) as unknown as WebSocket;
+      },
+
       reconnectDelay: 5000,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+
+      debug: (message) => {
+        console.log("[HVAC STOMP]", message);
+      },
 
       onConnect: () => {
-        setConnected(true);
+        console.log("[HVAC WS] Connected");
+        console.log("[HVAC WS] Subscribing to:", topic);
 
-        const topic = `/topic/tenants/${tenantId}/sites/${siteId}/hvac`;
+        //setConnected(true);
 
-        client.subscribe(topic, (message: IMessage) => {
+        subscriptionRef.current?.unsubscribe();
+
+        subscriptionRef.current = client.subscribe(topic, (message: IMessage) => {
           try {
-            const liveRows = JSON.parse(message.body) as HvacCurrentState[];
+            const parsed = JSON.parse(message.body);
+
+            /**
+             * Backend may send:
+             * 1. an array of HVAC current states
+             * 2. a single HVAC current state object
+             */
+            const liveRows = Array.isArray(parsed)
+              ? (parsed as HvacCurrentState[])
+              : ([parsed] as HvacCurrentState[]);
 
             const nextLiveMap = new Map(liveByDeviceIdRef.current);
 
@@ -251,35 +316,87 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
                 };
               });
             });
+
+            /**
+             * Keep command panel selected HVAC fresh when live telemetry arrives.
+             */
+            setSelectedHvac((current: any | null) => {
+              if (!current) return current;
+
+              const currentKey = (
+                current.externalDeviceId ||
+                current.deviceId ||
+                ""
+              )
+                .trim()
+                .toLowerCase();
+
+              if (!currentKey) return current;
+
+              const live = nextLiveMap.get(currentKey);
+
+              if (!live) return current;
+
+              return {
+                ...current,
+                unitName: current.unitName || live.unitName || current.hvacName,
+                temperature: live.temperature,
+                setpoint: live.setpoint,
+                onState: live.onState,
+                fanSpeed: live.fanSpeed,
+                flowRate: live.flowRate,
+                fault: live.fault,
+                telemetryTime: live.telemetryTime,
+              };
+            });
           } catch (parseError) {
-            console.error("Error parsing websocket HVAC payload:", parseError);
+            console.error("[HVAC WS] Error parsing payload:", parseError);
+            console.error("[HVAC WS] Raw message body:", message.body);
           }
         });
       },
 
       onDisconnect: () => {
-        setConnected(false);
+        console.log("[HVAC WS] Disconnected");
+        //setConnected(false);
       },
 
       onStompError: (frame) => {
-        setConnected(false);
-        console.error("Broker reported error:", frame.headers["message"]);
-        console.error("Additional details:", frame.body);
+        //setConnected(false);
+        console.error("[HVAC WS] STOMP error:", frame.headers["message"]);
+        console.error("[HVAC WS] STOMP details:", frame.body);
       },
 
       onWebSocketError: (event) => {
-        setConnected(false);
-        console.error("WebSocket error observed:", event);
+        //setConnected(false);
+        console.error("[HVAC WS] WebSocket error:", event);
+      },
+
+      onWebSocketClose: (event) => {
+        //setConnected(false);
+
+        if (manuallyClosingRef.current) {
+          console.log("[HVAC WS] WebSocket closed during cleanup.");
+          return;
+        }
+
+        console.warn("[HVAC WS] WebSocket closed:", event);
       },
     });
 
-    client.activate();
     clientRef.current = client;
+    client.activate();
 
     return () => {
-      clientRef.current?.deactivate();
+      manuallyClosingRef.current = true;
+
+      subscriptionRef.current?.unsubscribe();
+      subscriptionRef.current = null;
+
+      client.deactivate();
       clientRef.current = null;
-      setConnected(false);
+
+      //setConnected(false);
     };
   }, [tenantId, siteId, updateRows]);
 
@@ -413,7 +530,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
             </p>
           </div>
 
-          <span
+          {/* <span
             className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${
               connected
                 ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
@@ -426,7 +543,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
               <WifiOff className="h-3.5 w-3.5" />
             )}
             {connected ? "CONNECTED" : "DISCONNECTED"}
-          </span>
+          </span> */}
         </div>
 
         <div className="overflow-x-auto rounded-3xl border border-white/10">
@@ -485,8 +602,8 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
                           telemetryTime: row.telemetryTime ?? undefined,
                         };
 
-                        console.log("ROW CLICKED:", row);
-                        console.log("selected command HVAC:", selected);
+                        console.log("[HVAC TABLE] Row clicked:", row);
+                        console.log("[HVAC TABLE] Selected command HVAC:", selected);
 
                         setSelectedHvac(selected);
                         onSelectHvac?.(selected as HvacDto);
