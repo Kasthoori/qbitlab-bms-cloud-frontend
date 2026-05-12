@@ -74,12 +74,12 @@ const HvacWsTable:FC = () => {
         </div><div className="p-4">
                 <div className="mb-2 flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-white">HVAC Live (WebSocket)</h2>
-                    <span
+                    {/* <span
                         className={'rounded-full px-3 text-xs font-semibold' +
                             (connected ? ' bg-green-700 text-green-50' : ' bg-red-700 text-red-50')}
                     >
                         {connected ? 'CONNECTED' : 'DISCONNECTED'}
-                    </span>
+                    </span> */}
                 </div>
                 <div className="overflow-x-auto rounded-lg border border-gray-700">
                     <table className="min-w-full divide-y divide-gray-700">
