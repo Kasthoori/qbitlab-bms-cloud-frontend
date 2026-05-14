@@ -63,7 +63,9 @@ export default function RoleBasedDashboardPage() {
   const [data, setData] = useState<DashboardOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRisk, setSelectedRisk] = useState<"ALL" | "CRITICAL" | "WARNING" | "HEALTHY">("ALL");
+  const [selectedRisk, setSelectedRisk] = useState<
+    "ALL" | "CRITICAL" | "WARNING" | "HEALTHY"
+  >("ALL");
 
   useEffect(() => {
     let cancelled = false;
@@ -82,7 +84,9 @@ export default function RoleBasedDashboardPage() {
         console.error(err);
 
         if (!cancelled) {
-          setError("Cannot load dashboard overview. Please check backend API and role permissions.");
+          setError(
+            "Cannot load dashboard overview. Please check backend API and role permissions."
+          );
         }
       } finally {
         if (!cancelled) {
@@ -114,7 +118,9 @@ export default function RoleBasedDashboardPage() {
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-8 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
             <Loader2 className="mx-auto h-9 w-9 animate-spin text-cyan-200" />
-            <p className="mt-4 text-sm text-slate-300">Loading BMS intelligence dashboard...</p>
+            <p className="mt-4 text-sm text-slate-300">
+              Loading BMS intelligence dashboard...
+            </p>
           </div>
         </div>
       </div>
@@ -151,7 +157,9 @@ export default function RoleBasedDashboardPage() {
             label={data.role === "BMS_ADMIN" ? "Tenants / Sites" : "Assigned Sites"}
             value={
               data.role === "BMS_ADMIN"
-                ? `${formatNumber(kpis.totalTenants)} / ${formatNumber(kpis.totalSites)}`
+                ? `${formatNumber(kpis.totalTenants)} / ${formatNumber(
+                    kpis.totalSites
+                  )}`
                 : formatNumber(kpis.totalSites)
             }
             hint="Access controlled by backend"
@@ -179,6 +187,8 @@ export default function RoleBasedDashboardPage() {
             hint={`${formatNumber(kpis.highRiskSites)} high-risk site(s)`}
           />
         </section>
+
+        <AiInsightsPanel insights={data.aiInsights} role={data.role} />
 
         <DashboardChartsSection data={data} />
 
@@ -225,7 +235,7 @@ export default function RoleBasedDashboardPage() {
           </div>
 
           <div className="space-y-5">
-            <AiInsightsPanel insights={data.aiInsights} role={data.role} />
+            {/* <AiInsightsPanel insights={data.aiInsights} role={data.role} /> */}
 
             <RiskSitesPanel sites={data.riskSites} />
           </div>
@@ -236,7 +246,9 @@ export default function RoleBasedDashboardPage() {
             <div className="mb-4 flex items-center gap-3">
               <ShieldCheck className="h-5 w-5 text-violet-200" />
               <div>
-                <h2 className="text-lg font-semibold text-white">Tenant comparison</h2>
+                <h2 className="text-lg font-semibold text-white">
+                  Tenant comparison
+                </h2>
                 <p className="text-sm text-slate-300">
                   Global comparison for admin decision making.
                 </p>
@@ -257,13 +269,24 @@ export default function RoleBasedDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-white/10">
                   {data.tenants.map((tenant) => (
-                    <tr key={tenant.tenantId} className="text-slate-200 hover:bg-white/4">
-                      <td className="px-4 py-3 font-medium text-white">{tenant.tenantName}</td>
+                    <tr
+                      key={tenant.tenantId}
+                      className="text-slate-200 hover:bg-white/4"
+                    >
+                      <td className="px-4 py-3 font-medium text-white">
+                        {tenant.tenantName}
+                      </td>
                       <td className="px-4 py-3">{tenant.totalSites}</td>
                       <td className="px-4 py-3">{tenant.totalHvacs}</td>
-                      <td className="px-4 py-3 text-rose-200">{tenant.failedHvacs}</td>
-                      <td className="px-4 py-3 text-amber-200">{tenant.openAlerts}</td>
-                      <td className="px-4 py-3">{formatTemp(tenant.averageTemperature)}</td>
+                      <td className="px-4 py-3 text-rose-200">
+                        {tenant.failedHvacs}
+                      </td>
+                      <td className="px-4 py-3 text-amber-200">
+                        {tenant.openAlerts}
+                      </td>
+                      <td className="px-4 py-3">
+                        {formatTemp(tenant.averageTemperature)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -276,7 +299,13 @@ export default function RoleBasedDashboardPage() {
   );
 }
 
-function DashboardHeader({ role, generatedAt }: { role: string; generatedAt: string }) {
+function DashboardHeader({
+  role,
+  generatedAt,
+}: {
+  role: string;
+  generatedAt: string;
+}) {
   return (
     <section className="rounded-3xl border border-white/10 bg-white/[0.07] p-6 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -285,6 +314,7 @@ function DashboardHeader({ role, generatedAt }: { role: string; generatedAt: str
             <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
               <Sparkles className="h-6 w-6" />
             </div>
+
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">
                 QbitLabs BMS Intelligence
@@ -296,8 +326,8 @@ function DashboardHeader({ role, generatedAt }: { role: string; generatedAt: str
           </div>
 
           <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300">
-            AI-ready operational dashboard for HVAC health, site risk, maintenance priority,
-            tenant comparison, alerts, and technician actions.
+            AI-ready operational dashboard for HVAC health, site risk, maintenance
+            priority, tenant comparison, alerts, and technician actions.
           </p>
         </div>
 
@@ -410,7 +440,11 @@ function SiteHealthCard({
           )}
         </div>
 
-        <span className={`rounded-full border px-3 py-1 text-xs ${riskBadgeClass(site.riskLevel)}`}>
+        <span
+          className={`rounded-full border px-3 py-1 text-xs ${riskBadgeClass(
+            site.riskLevel
+          )}`}
+        >
           {site.riskLevel}
         </span>
       </div>
@@ -453,7 +487,10 @@ function SiteHealthCard({
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <div className="text-xs text-slate-400">
-          Avg temp: <span className="text-cyan-100">{formatTemp(site.averageTemperature)}</span>
+          Avg temp:{" "}
+          <span className="text-cyan-100">
+            {formatTemp(site.averageTemperature)}
+          </span>
         </div>
 
         <button
@@ -504,15 +541,27 @@ function AiInsightsPanel({
   role: string;
 }) {
   return (
-    <div className="rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.07] p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
-      <div className="flex items-center gap-3">
-        <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
-          <Sparkles className="h-5 w-5" />
+    <div className="mt-8 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.07] p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
+            <Sparkles className="h-5 w-5" />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold text-white">AI assistance</h2>
+            <p className="text-sm text-slate-300">
+              Rule-based insights now. Ask OpenAI for deeper explanation.
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-semibold text-white">AI assistance</h2>
-          <p className="text-sm text-slate-300">Rule-based now. OpenAI-ready later.</p>
-        </div>
+
+        <button
+          type="button"
+          className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
+        >
+          Ask OpenAI Assistant
+        </button>
       </div>
 
       <div className="mt-5 space-y-3">
@@ -546,14 +595,20 @@ function AiInsightsPanel({
   );
 }
 
-function RiskSitesPanel({ sites }: { sites: DashboardOverviewResponse["riskSites"] }) {
+function RiskSitesPanel({
+  sites,
+}: {
+  sites: DashboardOverviewResponse["riskSites"];
+}) {
   return (
     <div className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-rose-500/10 backdrop-blur-2xl">
       <div className="mb-4 flex items-center gap-3">
         <Gauge className="h-5 w-5 text-amber-200" />
         <div>
           <h2 className="text-lg font-semibold text-white">Risk sites</h2>
-          <p className="text-sm text-slate-300">Sites likely to fail or needing attention.</p>
+          <p className="text-sm text-slate-300">
+            Sites likely to fail or needing attention.
+          </p>
         </div>
       </div>
 
@@ -575,7 +630,11 @@ function RiskSitesPanel({ sites }: { sites: DashboardOverviewResponse["riskSites
                 <p className="text-xs text-slate-400">{site.tenantName}</p>
               </div>
 
-              <span className={`rounded-full border px-3 py-1 text-xs ${riskBadgeClass(site.riskLevel)}`}>
+              <span
+                className={`rounded-full border px-3 py-1 text-xs ${riskBadgeClass(
+                  site.riskLevel
+                )}`}
+              >
                 {site.riskLevel}
               </span>
             </div>
@@ -587,14 +646,17 @@ function RiskSitesPanel({ sites }: { sites: DashboardOverviewResponse["riskSites
                 <p className="text-rose-100">{site.failedHvacs}</p>
                 <p>Failed</p>
               </div>
+
               <div className="rounded-xl bg-white/4 p-2">
                 <p className="text-amber-100">{site.openAlerts}</p>
                 <p>Alerts</p>
               </div>
+
               <div className="rounded-xl bg-white/4 p-2">
                 <p className="text-slate-100">{site.offlineHvacs}</p>
                 <p>Offline</p>
               </div>
+
               <div className="rounded-xl bg-white/4 p-2">
                 <p className="text-cyan-100">{site.maintenanceDue}</p>
                 <p>Due</p>
