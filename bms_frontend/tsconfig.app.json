@@ -9,14 +9,15 @@
     "types": [],
     "typeRoots": ["./node_modules/@types", "./types"],
     "skipLibCheck": true,
-    "baseUrl": ".",
+
     "paths": {
-      "keycloak-theme/*": ["src/keycloak-theme/*"],
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"],
+      "keycloak-theme/*": ["./src/keycloak-theme/*"],
+      "*": ["./*"]
     },
+
     "resolveJsonModule": true,
 
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
@@ -24,7 +25,6 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

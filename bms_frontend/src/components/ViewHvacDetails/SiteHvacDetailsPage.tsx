@@ -40,52 +40,53 @@ export default function SiteHvacDetailsPage() {
       .catch(() => setCurrentUser(null));
   }, []);
 
-  useEffect(() => {
-    if (!tenantId || !siteId) return;
 
-    const tenantIdValue = tenantId;
-    const siteIdValue = siteId;
+useEffect(() => {
+  if (!tenantId || !siteId) return;
 
-    let cancelled = false;
+  const tenantIdValue = tenantId;
+  const siteIdValue = siteId;
 
-    async function loadEdgeAssignment() {
-      try {
-        setEdgeLoading(true);
-        setEdgeError(null);
+  let cancelled = false;
 
-        const assignment = await BmsApi.getSiteEdgeAssignment(
-          tenantIdValue,
-          siteIdValue
+  async function loadEdgeAssignment() {
+    try {
+      setEdgeLoading(true);
+      setEdgeError(null);
+
+      const assignment = await BmsApi.getReadableSiteEdgeAssignment(
+        tenantIdValue,
+        siteIdValue
+      );
+
+      if (!cancelled) {
+        setEdgeControllerId(assignment.edgeControllerId);
+      }
+    } catch (error: any) {
+      console.error("Failed to load readable edge assignment", error);
+
+      if (!cancelled) {
+        setEdgeControllerId("");
+        setEdgeError(
+          error?.response?.data?.message ||
+            error?.response?.data?.error ||
+            error?.message ||
+            "No edge controller assigned to this site."
         );
-
-        if (!cancelled) {
-          setEdgeControllerId(assignment.edgeControllerId);
-        }
-      } catch (error: any) {
-        console.error("Failed to load edge assignment", error);
-
-        if (!cancelled) {
-          setEdgeControllerId("");
-          setEdgeError(
-            error?.response?.data?.message ||
-              error?.response?.data?.error ||
-              error?.message ||
-              "No edge controller assigned to this site."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setEdgeLoading(false);
-        }
+      }
+    } finally {
+      if (!cancelled) {
+        setEdgeLoading(false);
       }
     }
+  }
 
-    loadEdgeAssignment();
+  loadEdgeAssignment();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId, siteId]);
+  return () => {
+    cancelled = true;
+  };
+}, [tenantId, siteId]);
 
   if (!tenantId || !siteId) {
     return (

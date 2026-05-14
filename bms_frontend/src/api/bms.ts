@@ -373,12 +373,8 @@ export type HvacCommandType =
   | "SIMULATE_FAULT";
 
 export type CreateHvacCommandRequest = {
-  edgeControllerId: string;
-  hvacId: string;
-  externalDeviceId: string;
-  protocol: string;
   commandType: HvacCommandType;
-  payload: Record<string, unknown>;
+  value?: string | number | boolean | null;
 };
 
 export type EdgeCommandResponse = {
@@ -410,6 +406,103 @@ export type SiteEdgeAssignmentResponse = {
 };
 
 
+// ============= Dashboard Types =============
+
+export type DashboardRole = "BMS_ADMIN" | "SITE_MANAGER" | "TECHNICIAN";
+
+export type RiskLevel = "HEALTHY" | "WARNING" | "CRITICAL";
+
+export type DashboardKpiDto = {
+  totalTenants: number;
+  totalSites: number;
+  totalHvacs: number;
+
+  activeHvacs: number;
+  failedHvacs: number;
+  offlineHvacs: number;
+
+  openAlerts: number;
+  maintenanceDue: number;
+  highRiskSites: number;
+
+  averageTemperature: number | null;
+};
+
+export type DashboardTenantSummaryDto = {
+  tenantId: string;
+  tenantName: string;
+
+  totalSites: number;
+  totalHvacs: number;
+  failedHvacs: number;
+  openAlerts: number;
+
+  averageTemperature: number | null;
+};
+
+export type DashboardSiteCardDto = {
+  tenantId: string;
+  tenantName: string;
+
+  siteId: string;
+  siteName: string;
+  address: string | null;
+
+  totalHvacs: number;
+  activeHvacs: number;
+  failedHvacs: number;
+  offlineHvacs: number;
+  openAlerts: number;
+  maintenanceDue: number;
+
+  averageTemperature: number | null;
+  averageSetpoint: number | null;
+
+  healthScore: number;
+  riskLevel: RiskLevel;
+  riskReason: string;
+
+  latestTelemetryTime: string | null;
+};
+
+export type DashboardRiskSiteDto = {
+  tenantId: string;
+  tenantName: string;
+
+  siteId: string;
+  siteName: string;
+
+  riskScore: number;
+  riskLevel: RiskLevel;
+  reason: string;
+
+  failedHvacs: number;
+  openAlerts: number;
+  offlineHvacs: number;
+  maintenanceDue: number;
+};
+
+export type DashboardAiInsightDto = {
+  title: string;
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  message: string;
+  recommendedAction: string;
+};
+
+export type DashboardOverviewResponse = {
+  role: DashboardRole;
+  userEmail: string;
+  generatedAt: string;
+
+  kpis: DashboardKpiDto;
+
+  tenants: DashboardTenantSummaryDto[];
+  sites: DashboardSiteCardDto[];
+  riskSites: DashboardRiskSiteDto[];
+  aiInsights: DashboardAiInsightDto[];
+};
+
+
 
 export const BmsApi = {
 
@@ -435,9 +528,31 @@ export const BmsApi = {
             `/api/tenants/query/${tenantId}/sites?page=${page}&size=${size}`
         ),
 
+    // Read only endpoint for HVACs under a Site - for TECHNICIAN / SITE_MANAGER / FACILITY_MANAGER
+    getReadableSiteEdgeAssignment: async (
+            tenantId: string,
+            siteId: string
+        ): Promise<SiteEdgeAssignmentResponse> =>
+            await api<SiteEdgeAssignmentResponse>(
+                `/api/tenants/${tenantId}/sites/${siteId}/edge-assignment`,
+                {
+                    method: "GET",
+                    handle403Redirect: false,
+                }
+        ),
+
     getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
 
     getCurrentUser: async () => await api<CurrentUserDto>("/api/me"),
+
+    // ============= Dashboard APIs =============
+
+    getDashboardOverview: async (): Promise<DashboardOverviewResponse> =>
+        await api<DashboardOverviewResponse>("/api/dashboard/overview", {
+            method: "GET",
+        }),
+    // ============= Tenant / Site / HVAC Management APIs =============
+
     getHvacSiteDetails: async (tenantId: string, siteId: string) =>
         await api<HvacDto[]>(
             `/api/tenants/${tenantId}/sites/${siteId}/hvacs/details`
@@ -934,6 +1049,38 @@ export const BmsApi = {
                 method: "GET",
             }
     ),
+
+
+
+    listReadableHvacCommands: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeCommandResponse[]> =>
+        await api<EdgeCommandResponse[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvac-commands`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        ),
+
+    createReadableHvacCommand: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        req: CreateHvacCommandRequest
+    ): Promise<EdgeCommandResponse> =>
+        await api<EdgeCommandResponse>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/commands`,
+            {
+                method: "POST",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                handle403Redirect: false,
+            }
+        ),
 
 
     

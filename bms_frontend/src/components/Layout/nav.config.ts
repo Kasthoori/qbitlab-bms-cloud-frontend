@@ -11,7 +11,7 @@ import {
   User,
   UserPlus,
   //Wind,
-  //Zap,
+  Zap,
 } from "lucide-react";
 
 export type NavItem = {
@@ -60,7 +60,7 @@ export const navItems: NavItem[] = [
     ],
   },
 
-  // { label: "Energy", path: "/buildings/user/tenants", icon: Zap },
+  { label: "Dashboard", path: "/dashboard", icon: Zap },
   // { label: "Alarms", path: "/buildings/user/tenants", icon: Bell },
   // { label: "Users", path: "/admin/users", icon: User },
 ];
