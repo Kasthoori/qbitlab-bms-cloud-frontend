@@ -1,10 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Fan, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { useInView } from "react-intersection-observer";
 
 import HvacWsTable from "./HvacWsTable";
 import HvacMaintenanceNotesPanel from "@/components/Maintenance/HvacMaintenanceNotesPanel";
+import HvacAiInsightPanel from "@/components/Hvac/HvacAiInsightPanel";
 import { BmsApi, type CurrentUserDto, type HvacDto } from "@/api/bms";
 
 type LocationState = {
@@ -17,6 +20,51 @@ type UserRole =
   | "TECHNICIAN"
   | "FACILITY_MANAGER"
   | "SITE_MANAGER";
+
+type ViewportRevealProps = {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+};
+
+/**
+ * Reusable viewport animation wrapper.
+ *
+ * Effect:
+ * - Section fades/slides in when it enters viewport.
+ * - Section fades/slides out when it leaves viewport.
+ * - Content is still mounted, so selected HVAC state and API components are not destroyed.
+ */
+function ViewportReveal({
+  children,
+  className = "",
+  delay = 0,
+}: ViewportRevealProps) {
+  const { ref, inView } = useInView({
+    threshold: 0.16,
+    triggerOnce: false,
+  });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 28, scale: 0.985 }}
+      animate={
+        inView
+          ? { opacity: 1, y: 0, scale: 1 }
+          : { opacity: 0, y: 28, scale: 0.985 }
+      }
+      transition={{
+        duration: 0.45,
+        delay,
+        ease: "easeOut",
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 export default function SiteHvacDetailsPage() {
   const navigate = useNavigate();
@@ -40,53 +88,52 @@ export default function SiteHvacDetailsPage() {
       .catch(() => setCurrentUser(null));
   }, []);
 
+  useEffect(() => {
+    if (!tenantId || !siteId) return;
 
-useEffect(() => {
-  if (!tenantId || !siteId) return;
+    const tenantIdValue = tenantId;
+    const siteIdValue = siteId;
 
-  const tenantIdValue = tenantId;
-  const siteIdValue = siteId;
+    let cancelled = false;
 
-  let cancelled = false;
+    async function loadEdgeAssignment() {
+      try {
+        setEdgeLoading(true);
+        setEdgeError(null);
 
-  async function loadEdgeAssignment() {
-    try {
-      setEdgeLoading(true);
-      setEdgeError(null);
-
-      const assignment = await BmsApi.getReadableSiteEdgeAssignment(
-        tenantIdValue,
-        siteIdValue
-      );
-
-      if (!cancelled) {
-        setEdgeControllerId(assignment.edgeControllerId);
-      }
-    } catch (error: any) {
-      console.error("Failed to load readable edge assignment", error);
-
-      if (!cancelled) {
-        setEdgeControllerId("");
-        setEdgeError(
-          error?.response?.data?.message ||
-            error?.response?.data?.error ||
-            error?.message ||
-            "No edge controller assigned to this site."
+        const assignment = await BmsApi.getReadableSiteEdgeAssignment(
+          tenantIdValue,
+          siteIdValue
         );
-      }
-    } finally {
-      if (!cancelled) {
-        setEdgeLoading(false);
+
+        if (!cancelled) {
+          setEdgeControllerId(assignment.edgeControllerId);
+        }
+      } catch (error: any) {
+        console.error("Failed to load readable edge assignment", error);
+
+        if (!cancelled) {
+          setEdgeControllerId("");
+          setEdgeError(
+            error?.response?.data?.message ||
+              error?.response?.data?.error ||
+              error?.message ||
+              "No edge controller assigned to this site."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setEdgeLoading(false);
+        }
       }
     }
-  }
 
-  loadEdgeAssignment();
+    loadEdgeAssignment();
 
-  return () => {
-    cancelled = true;
-  };
-}, [tenantId, siteId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId, siteId]);
 
   if (!tenantId || !siteId) {
     return (
@@ -120,93 +167,118 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-slate-950 p-6">
       <div className="space-y-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 backdrop-blur-xl transition hover:bg-white/10 hover:text-white"
-        >
-          <ArrowLeft size={16} />
-          Back
-        </button>
+        <ViewportReveal>
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 backdrop-blur-xl transition hover:bg-white/10 hover:text-white"
+          >
+            <ArrowLeft size={16} />
+            Back
+          </button>
+        </ViewportReveal>
 
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(2,6,23,0.96),rgba(15,23,42,0.94),rgba(30,41,59,0.94))] p-6 text-white shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
-                <Sparkles className="h-4 w-4" />
-                Live HVAC Monitoring
+        <ViewportReveal delay={0.05}>
+          <div className="overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(2,6,23,0.96),rgba(15,23,42,0.94),rgba(30,41,59,0.94))] p-6 text-white shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
+                  <Sparkles className="h-4 w-4" />
+                  Live HVAC Monitoring
+                </div>
+
+                <h1 className="mt-3 flex items-center gap-3 text-3xl font-bold">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-300">
+                    <Fan className="h-6 w-6" />
+                  </span>
+                  HVAC Details
+                </h1>
+
+                <p className="mt-2 text-sm text-slate-300">
+                  {siteName} · Site HVAC details
+                </p>
+
+                <p className="mt-3 text-xs text-slate-500">
+                  Tenant: <span className="text-slate-300">{tenantId}</span>
+                  <span className="mx-2">•</span>
+                  Site: <span className="text-slate-300">{siteId}</span>
+                </p>
               </div>
 
-              <h1 className="mt-3 flex items-center gap-3 text-3xl font-bold">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-300">
-                  <Fan className="h-6 w-6" />
-                </span>
-                HVAC Details
-              </h1>
-
-              <p className="mt-2 text-sm text-slate-300">
-                {siteName} · Site HVAC details
-              </p>
-
-              <p className="mt-3 text-xs text-slate-500">
-                Tenant: <span className="text-slate-300">{tenantId}</span>
-                <span className="mx-2">•</span>
-                Site: <span className="text-slate-300">{siteId}</span>
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2.5 text-sm font-medium text-cyan-300">
-              Real-time telemetry view
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2.5 text-sm font-medium text-cyan-300">
+                Real-time telemetry view
+              </div>
             </div>
           </div>
-        </div>
+        </ViewportReveal>
 
         {edgeLoading && (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-slate-300">
-            Loading edge controller assignment...
-          </div>
+          <ViewportReveal>
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-slate-300">
+              Loading edge controller assignment...
+            </div>
+          </ViewportReveal>
         )}
 
         {edgeError && (
-          <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-5 text-amber-100">
-            <p className="font-medium">Edge controller assignment missing</p>
-            <p className="mt-1 text-sm text-amber-200/80">{edgeError}</p>
-          </div>
+          <ViewportReveal>
+            <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-5 text-amber-100">
+              <p className="font-medium">Edge controller assignment missing</p>
+              <p className="mt-1 text-sm text-amber-200/80">{edgeError}</p>
+            </div>
+          </ViewportReveal>
         )}
 
         {!edgeLoading && edgeControllerId && (
-          <HvacWsTable
-            key={reloadKey}
-            tenantId={tenantId}
-            siteId={siteId}
-            edgeControllerId={edgeControllerId}
-            onSelectHvac={setSelectedHvac}
-            selectedHvacId={selectedHvac?.hvacId}
-          />
+          <ViewportReveal delay={0.08}>
+            <HvacWsTable
+              key={reloadKey}
+              tenantId={tenantId}
+              siteId={siteId}
+              edgeControllerId={edgeControllerId}
+              onSelectHvac={setSelectedHvac}
+              selectedHvacId={selectedHvac?.hvacId}
+            />
+          </ViewportReveal>
         )}
 
         {selectedHvac ? (
-          <HvacMaintenanceNotesPanel
-            tenantId={tenantId}
-            siteId={siteId}
-            externalDeviceId={selectedHvac.externalDeviceId ?? ""}
-            unitName={selectedHvac.unitName}
-            temperature={selectedHvac.temperature}
-            setpoint={selectedHvac.setpoint}
-            fanSpeed={
-              selectedHvac.fanSpeed != null
-                ? String(selectedHvac.fanSpeed)
-                : null
-            }
-            flowRate={selectedHvac.flowRate}
-            fault={selectedHvac.fault}
-            currentUserRole={currentUserRole}
-            currentUserName={currentUserName}
-            onFailureResolved={handleFailureResolved}
-          />
-        ) : (
-          <div className="rounded-3xl border border-white/10 bg-white/10 p-5 text-slate-300">
-            Select an HVAC from the table to view or add maintenance notes.
+          <div className="space-y-6">
+            <ViewportReveal delay={0.05}>
+              <HvacAiInsightPanel
+                tenantId={tenantId}
+                siteId={siteId}
+                hvacId={selectedHvac.hvacId}
+              />
+            </ViewportReveal>
+
+            <ViewportReveal delay={0.1}>
+              <HvacMaintenanceNotesPanel
+                tenantId={tenantId}
+                siteId={siteId}
+                externalDeviceId={selectedHvac.externalDeviceId ?? ""}
+                unitName={selectedHvac.unitName}
+                temperature={selectedHvac.temperature}
+                setpoint={selectedHvac.setpoint}
+                fanSpeed={
+                  selectedHvac.fanSpeed != null
+                    ? String(selectedHvac.fanSpeed)
+                    : null
+                }
+                flowRate={selectedHvac.flowRate}
+                fault={selectedHvac.fault}
+                currentUserRole={currentUserRole}
+                currentUserName={currentUserName}
+                onFailureResolved={handleFailureResolved}
+              />
+            </ViewportReveal>
           </div>
+        ) : (
+          <ViewportReveal delay={0.1}>
+            <div className="rounded-3xl border border-white/10 bg-white/10 p-5 text-slate-300">
+              Select an HVAC from the table to view AI insight and maintenance
+              notes.
+            </div>
+          </ViewportReveal>
         )}
       </div>
     </div>

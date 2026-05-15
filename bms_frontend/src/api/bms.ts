@@ -503,6 +503,58 @@ export type DashboardOverviewResponse = {
 };
 
 
+// ============= HVAC AI Insight Types =============
+
+export type HvacConditionLabel =
+  | "GOOD"
+  | "WATCH"
+  | "WARNING"
+  | "CRITICAL"
+  | "NO_DATA";
+
+export type HvacInsightResponse = {
+  tenantId: string;
+  siteId: string;
+  hvacId: string;
+
+  deviceId?: string | null;
+  unitName?: string | null;
+
+  conditionLabel: HvacConditionLabel;
+  riskScore: number;
+  summary: string;
+
+  avgTemperature?: number | null;
+  avgSetpoint?: number | null;
+  maxTemperature?: number | null;
+  minTemperature?: number | null;
+
+  avgFanSpeed?: number | null;
+  avgFlowRate?: number | null;
+
+  totalSamples?: number | null;
+  faultSamples?: number | null;
+  faultRatePercent?: number | null;
+
+  temperatureDeviation?: number | null;
+  estimatedRuntimeHours?: number | null;
+  estimatedEnergyRiskPercent?: number | null;
+
+  firstTelemetryTime?: string | null;
+  lastTelemetryTime?: string | null;
+
+  ruleFindings: string[];
+  recommendations: string[];
+};
+
+export type OpenAiHvacInsightResponse = {
+  aiSummary: string;
+  technicianAdvice: string;
+  managerAdvice: string;
+  safetyNote: string;
+};
+
+
 
 export const BmsApi = {
 
@@ -1079,6 +1131,37 @@ export const BmsApi = {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                handle403Redirect: false,
+            }
+        ),
+
+
+    // ============= HVAC AI Insight APIs =============
+
+    getHvacRuleBasedInsight: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        rangeHours = 24
+    ): Promise<HvacInsightResponse> =>
+        await api<HvacInsightResponse>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/insights/rule-based?rangeHours=${rangeHours}`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        ),
+
+    getHvacOpenAiAssistance: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        rangeHours = 24
+    ): Promise<OpenAiHvacInsightResponse> =>
+        await api<OpenAiHvacInsightResponse>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/insights/openai-assistance?rangeHours=${rangeHours}`,
+            {
+                method: "POST",
                 handle403Redirect: false,
             }
         ),

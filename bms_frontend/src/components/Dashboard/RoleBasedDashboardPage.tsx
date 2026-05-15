@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useInView } from "react-intersection-observer";
 import {
   BmsApi,
   type DashboardAiInsightDto,
@@ -55,6 +56,65 @@ function roleTitle(role: string) {
   if (role === "BMS_ADMIN") return "Command Center";
   if (role === "SITE_MANAGER") return "Site Operations Dashboard";
   return "Technician Action Dashboard";
+}
+
+/**
+ * ViewportReveal
+ *
+ * Uses React Intersection Observer.
+ *
+ * Behavior:
+ * - Appears when entering viewport
+ * - Disappears when leaving viewport
+ * - triggerOnce: false means animation repeats while scrolling
+ * - rootMargin gives smoother reveal before the item fully enters the screen
+ */
+function ViewportReveal({
+  children,
+  delay = 0,
+  y = 26,
+  className = "",
+}: {
+  children: ReactNode;
+  delay?: number;
+  y?: number;
+  className?: string;
+}) {
+  const { ref, inView } = useInView({
+    threshold: 0.14,
+    triggerOnce: false,
+    rootMargin: "0px 0px -8% 0px",
+  });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={false}
+      animate={
+        inView
+          ? {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              filter: "blur(0px)",
+            }
+          : {
+              opacity: 0,
+              y,
+              scale: 0.985,
+              filter: "blur(6px)",
+            }
+      }
+      transition={{
+        duration: 0.45,
+        delay,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 export default function RoleBasedDashboardPage() {
@@ -116,7 +176,7 @@ export default function RoleBasedDashboardPage() {
     return (
       <div className="min-h-screen bg-slate-950 px-6 py-8 text-slate-100">
         <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-8 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+          <div className="rounded-3xl border border-white/10 bg-white/6 p-8 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
             <Loader2 className="mx-auto h-9 w-9 animate-spin text-cyan-200" />
             <p className="mt-4 text-sm text-slate-300">
               Loading BMS intelligence dashboard...
@@ -149,150 +209,178 @@ export default function RoleBasedDashboardPage() {
       </div>
 
       <main className="relative z-10 px-5 py-6 md:px-8 lg:px-10">
-        <DashboardHeader role={data.role} generatedAt={data.generatedAt} />
+        <ViewportReveal>
+          <DashboardHeader role={data.role} generatedAt={data.generatedAt} />
+        </ViewportReveal>
 
         <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <KpiCard
-            icon={<Building2 className="h-5 w-5" />}
-            label={data.role === "BMS_ADMIN" ? "Tenants / Sites" : "Assigned Sites"}
-            value={
-              data.role === "BMS_ADMIN"
-                ? `${formatNumber(kpis.totalTenants)} / ${formatNumber(
-                    kpis.totalSites
-                  )}`
-                : formatNumber(kpis.totalSites)
-            }
-            hint="Access controlled by backend"
-          />
+          <ViewportReveal delay={0.02}>
+            <KpiCard
+              icon={<Building2 className="h-5 w-5" />}
+              label={data.role === "BMS_ADMIN" ? "Tenants / Sites" : "Assigned Sites"}
+              value={
+                data.role === "BMS_ADMIN"
+                  ? `${formatNumber(kpis.totalTenants)} / ${formatNumber(
+                      kpis.totalSites
+                    )}`
+                  : formatNumber(kpis.totalSites)
+              }
+              hint="Access controlled by backend"
+            />
+          </ViewportReveal>
 
-          <KpiCard
-            icon={<Cpu className="h-5 w-5" />}
-            label="Total HVACs"
-            value={formatNumber(kpis.totalHvacs)}
-            hint={`${formatNumber(kpis.activeHvacs)} active machines`}
-          />
+          <ViewportReveal delay={0.06}>
+            <KpiCard
+              icon={<Cpu className="h-5 w-5" />}
+              label="Total HVACs"
+              value={formatNumber(kpis.totalHvacs)}
+              hint={`${formatNumber(kpis.activeHvacs)} active machines`}
+            />
+          </ViewportReveal>
 
-          <KpiCard
-            icon={<AlertTriangle className="h-5 w-5" />}
-            label="Failed HVACs"
-            value={formatNumber(kpis.failedHvacs)}
-            hint={`${formatNumber(kpis.openAlerts)} open alerts`}
-            danger={kpis.failedHvacs > 0}
-          />
+          <ViewportReveal delay={0.1}>
+            <KpiCard
+              icon={<AlertTriangle className="h-5 w-5" />}
+              label="Failed HVACs"
+              value={formatNumber(kpis.failedHvacs)}
+              hint={`${formatNumber(kpis.openAlerts)} open alerts`}
+              danger={kpis.failedHvacs > 0}
+            />
+          </ViewportReveal>
 
-          <KpiCard
-            icon={<Thermometer className="h-5 w-5" />}
-            label="Average Temperature"
-            value={formatTemp(kpis.averageTemperature)}
-            hint={`${formatNumber(kpis.highRiskSites)} high-risk site(s)`}
-          />
+          <ViewportReveal delay={0.14}>
+            <KpiCard
+              icon={<Thermometer className="h-5 w-5" />}
+              label="Average Temperature"
+              value={formatTemp(kpis.averageTemperature)}
+              hint={`${formatNumber(kpis.highRiskSites)} high-risk site(s)`}
+            />
+          </ViewportReveal>
         </section>
 
-        <AiInsightsPanel insights={data.aiInsights} role={data.role} />
+        <ViewportReveal>
+          <AiInsightsPanel insights={data.aiInsights} role={data.role} />
+        </ViewportReveal>
 
-        <DashboardChartsSection data={data} />
+        <ViewportReveal>
+          <DashboardChartsSection data={data} />
+        </ViewportReveal>
 
         <section className="mt-6 grid gap-5 xl:grid-cols-[1.5fr_1fr]">
-          <div className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/70">
-                  Role-based operations
-                </p>
-                <h2 className="mt-2 text-xl font-semibold text-white">
-                  {roleTitle(data.role)}
-                </h2>
-                <p className="mt-1 text-sm text-slate-300">
-                  Showing only the tenant and site data allowed for your role.
-                </p>
+          <ViewportReveal>
+            <div className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/70">
+                    Role-based operations
+                  </p>
+                  <h2 className="mt-2 text-xl font-semibold text-white">
+                    {roleTitle(data.role)}
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-300">
+                    Showing only the tenant and site data allowed for your role.
+                  </p>
+                </div>
+
+                <RiskFilter value={selectedRisk} onChange={setSelectedRisk} />
               </div>
 
-              <RiskFilter value={selectedRisk} onChange={setSelectedRisk} />
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                {filteredSites.map((site, index) => (
+                  <ViewportReveal
+                    key={site.siteId}
+                    delay={Math.min(index * 0.025, 0.18)}
+                    y={18}
+                  >
+                    <SiteHealthCard
+                      site={site}
+                      onOpen={() =>
+                        navigate(
+                          `/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`,
+                          {
+                            state: {
+                              tenantName: site.tenantName,
+                              siteName: site.siteName,
+                            },
+                          }
+                        )
+                      }
+                    />
+                  </ViewportReveal>
+                ))}
+
+                {filteredSites.length === 0 && (
+                  <ViewportReveal>
+                    <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+                      No sites found for this filter.
+                    </div>
+                  </ViewportReveal>
+                )}
+              </div>
             </div>
+          </ViewportReveal>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              {filteredSites.map((site) => (
-                <SiteHealthCard
-                  key={site.siteId}
-                  site={site}
-                  onOpen={() =>
-                    navigate(`/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`, {
-                      state: {
-                        tenantName: site.tenantName,
-                        siteName: site.siteName,
-                      },
-                    })
-                  }
-                />
-              ))}
-
-              {filteredSites.length === 0 && (
-                <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
-                  No sites found for this filter.
-                </div>
-              )}
+          <ViewportReveal delay={0.08}>
+            <div className="space-y-5">
+              <RiskSitesPanel sites={data.riskSites} />
             </div>
-          </div>
-
-          <div className="space-y-5">
-            {/* <AiInsightsPanel insights={data.aiInsights} role={data.role} /> */}
-
-            <RiskSitesPanel sites={data.riskSites} />
-          </div>
+          </ViewportReveal>
         </section>
 
         {data.role === "BMS_ADMIN" && (
-          <section className="mt-6 rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-violet-500/10 backdrop-blur-2xl">
-            <div className="mb-4 flex items-center gap-3">
-              <ShieldCheck className="h-5 w-5 text-violet-200" />
-              <div>
-                <h2 className="text-lg font-semibold text-white">
-                  Tenant comparison
-                </h2>
-                <p className="text-sm text-slate-300">
-                  Global comparison for admin decision making.
-                </p>
+          <ViewportReveal>
+            <section className="mt-6 rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-violet-500/10 backdrop-blur-2xl">
+              <div className="mb-4 flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-violet-200" />
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    Tenant comparison
+                  </h2>
+                  <p className="text-sm text-slate-300">
+                    Global comparison for admin decision making.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="overflow-hidden rounded-2xl border border-white/10">
-              <table className="min-w-full divide-y divide-white/10 text-sm">
-                <thead className="bg-white/4 text-left text-xs uppercase tracking-wider text-slate-400">
-                  <tr>
-                    <th className="px-4 py-3">Tenant</th>
-                    <th className="px-4 py-3">Sites</th>
-                    <th className="px-4 py-3">HVACs</th>
-                    <th className="px-4 py-3">Failed</th>
-                    <th className="px-4 py-3">Open alerts</th>
-                    <th className="px-4 py-3">Avg temp</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  {data.tenants.map((tenant) => (
-                    <tr
-                      key={tenant.tenantId}
-                      className="text-slate-200 hover:bg-white/4"
-                    >
-                      <td className="px-4 py-3 font-medium text-white">
-                        {tenant.tenantName}
-                      </td>
-                      <td className="px-4 py-3">{tenant.totalSites}</td>
-                      <td className="px-4 py-3">{tenant.totalHvacs}</td>
-                      <td className="px-4 py-3 text-rose-200">
-                        {tenant.failedHvacs}
-                      </td>
-                      <td className="px-4 py-3 text-amber-200">
-                        {tenant.openAlerts}
-                      </td>
-                      <td className="px-4 py-3">
-                        {formatTemp(tenant.averageTemperature)}
-                      </td>
+              <div className="overflow-hidden rounded-2xl border border-white/10">
+                <table className="min-w-full divide-y divide-white/10 text-sm">
+                  <thead className="bg-white/4 text-left text-xs uppercase tracking-wider text-slate-400">
+                    <tr>
+                      <th className="px-4 py-3">Tenant</th>
+                      <th className="px-4 py-3">Sites</th>
+                      <th className="px-4 py-3">HVACs</th>
+                      <th className="px-4 py-3">Failed</th>
+                      <th className="px-4 py-3">Open alerts</th>
+                      <th className="px-4 py-3">Avg temp</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {data.tenants.map((tenant) => (
+                      <tr
+                        key={tenant.tenantId}
+                        className="text-slate-200 hover:bg-white/4"
+                      >
+                        <td className="px-4 py-3 font-medium text-white">
+                          {tenant.tenantName}
+                        </td>
+                        <td className="px-4 py-3">{tenant.totalSites}</td>
+                        <td className="px-4 py-3">{tenant.totalHvacs}</td>
+                        <td className="px-4 py-3 text-rose-200">
+                          {tenant.failedHvacs}
+                        </td>
+                        <td className="px-4 py-3 text-amber-200">
+                          {tenant.openAlerts}
+                        </td>
+                        <td className="px-4 py-3">
+                          {formatTemp(tenant.averageTemperature)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </ViewportReveal>
         )}
       </main>
     </div>
@@ -350,17 +438,15 @@ function KpiCard({
   hint,
   danger = false,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
   hint: string;
   danger?: boolean;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-3xl border p-5 shadow-2xl backdrop-blur-2xl ${
+    <div
+      className={`h-full rounded-3xl border p-5 shadow-2xl backdrop-blur-2xl ${
         danger
           ? "border-rose-300/20 bg-rose-500/10 shadow-rose-500/10"
           : "border-white/10 bg-white/6 shadow-cyan-500/10"
@@ -376,7 +462,7 @@ function KpiCard({
       <p className="mt-5 text-sm text-slate-400">{label}</p>
       <p className="mt-2 text-3xl font-bold text-white">{value}</p>
       <p className="mt-2 text-xs text-slate-400">{hint}</p>
-    </motion.div>
+    </div>
   );
 }
 
@@ -422,11 +508,7 @@ function SiteHealthCard({
   onOpen: () => void;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-xl shadow-black/20"
-    >
+    <div className="h-full rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-xl shadow-black/20">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-white">{site.siteName}</h3>
@@ -464,8 +546,16 @@ function SiteHealthCard({
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-        <MiniMetric icon={<Cpu className="h-4 w-4" />} label="HVACs" value={site.totalHvacs} />
-        <MiniMetric icon={<Zap className="h-4 w-4" />} label="Active" value={site.activeHvacs} />
+        <MiniMetric
+          icon={<Cpu className="h-4 w-4" />}
+          label="HVACs"
+          value={site.totalHvacs}
+        />
+        <MiniMetric
+          icon={<Zap className="h-4 w-4" />}
+          label="Active"
+          value={site.activeHvacs}
+        />
         <MiniMetric
           icon={<AlertTriangle className="h-4 w-4" />}
           label="Failed"
@@ -501,7 +591,7 @@ function SiteHealthCard({
           Open site
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -511,7 +601,7 @@ function MiniMetric({
   value,
   danger = false,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: number;
   danger?: boolean;
@@ -571,24 +661,23 @@ function AiInsightsPanel({
           </div>
         )}
 
-        {insights.map((insight) => (
-          <div
-            key={`${insight.title}-${insight.severity}`}
-            className="rounded-2xl border border-white/10 bg-slate-950/50 p-4"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-semibold text-white">{insight.title}</h3>
-              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] text-slate-300">
-                {insight.severity}
-              </span>
-            </div>
+        {insights.map((insight, index) => (
+          <ViewportReveal key={`${insight.title}-${insight.severity}`} delay={index * 0.04} y={14}>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-semibold text-white">{insight.title}</h3>
+                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] text-slate-300">
+                  {insight.severity}
+                </span>
+              </div>
 
-            <p className="mt-2 text-sm text-slate-300">{insight.message}</p>
-            <p className="mt-3 text-sm text-cyan-100">
-              {role === "TECHNICIAN" ? "Technician action: " : "Recommended action: "}
-              {insight.recommendedAction}
-            </p>
-          </div>
+              <p className="mt-2 text-sm text-slate-300">{insight.message}</p>
+              <p className="mt-3 text-sm text-cyan-100">
+                {role === "TECHNICIAN" ? "Technician action: " : "Recommended action: "}
+                {insight.recommendedAction}
+              </p>
+            </div>
+          </ViewportReveal>
         ))}
       </div>
     </div>
@@ -619,50 +708,49 @@ function RiskSitesPanel({
           </div>
         )}
 
-        {sites.map((site) => (
-          <div
-            key={site.siteId}
-            className="rounded-2xl border border-white/10 bg-slate-950/50 p-4"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="font-medium text-white">{site.siteName}</h3>
-                <p className="text-xs text-slate-400">{site.tenantName}</p>
+        {sites.map((site, index) => (
+          <ViewportReveal key={site.siteId} delay={Math.min(index * 0.035, 0.2)} y={14}>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-medium text-white">{site.siteName}</h3>
+                  <p className="text-xs text-slate-400">{site.tenantName}</p>
+                </div>
+
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs ${riskBadgeClass(
+                    site.riskLevel
+                  )}`}
+                >
+                  {site.riskLevel}
+                </span>
               </div>
 
-              <span
-                className={`rounded-full border px-3 py-1 text-xs ${riskBadgeClass(
-                  site.riskLevel
-                )}`}
-              >
-                {site.riskLevel}
-              </span>
+              <p className="mt-3 text-sm text-slate-300">{site.reason}</p>
+
+              <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs text-slate-400">
+                <div className="rounded-xl bg-white/4 p-2">
+                  <p className="text-rose-100">{site.failedHvacs}</p>
+                  <p>Failed</p>
+                </div>
+
+                <div className="rounded-xl bg-white/4 p-2">
+                  <p className="text-amber-100">{site.openAlerts}</p>
+                  <p>Alerts</p>
+                </div>
+
+                <div className="rounded-xl bg-white/4 p-2">
+                  <p className="text-slate-100">{site.offlineHvacs}</p>
+                  <p>Offline</p>
+                </div>
+
+                <div className="rounded-xl bg-white/4 p-2">
+                  <p className="text-cyan-100">{site.maintenanceDue}</p>
+                  <p>Due</p>
+                </div>
+              </div>
             </div>
-
-            <p className="mt-3 text-sm text-slate-300">{site.reason}</p>
-
-            <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs text-slate-400">
-              <div className="rounded-xl bg-white/4 p-2">
-                <p className="text-rose-100">{site.failedHvacs}</p>
-                <p>Failed</p>
-              </div>
-
-              <div className="rounded-xl bg-white/4 p-2">
-                <p className="text-amber-100">{site.openAlerts}</p>
-                <p>Alerts</p>
-              </div>
-
-              <div className="rounded-xl bg-white/4 p-2">
-                <p className="text-slate-100">{site.offlineHvacs}</p>
-                <p>Offline</p>
-              </div>
-
-              <div className="rounded-xl bg-white/4 p-2">
-                <p className="text-cyan-100">{site.maintenanceDue}</p>
-                <p>Due</p>
-              </div>
-            </div>
-          </div>
+          </ViewportReveal>
         ))}
       </div>
     </div>

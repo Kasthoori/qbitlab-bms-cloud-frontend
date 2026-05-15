@@ -30,6 +30,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.69.0",
+    "react-intersection-observer": "^10.0.3",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.8.1",
     "sockjs-client": "^1.6.1",
