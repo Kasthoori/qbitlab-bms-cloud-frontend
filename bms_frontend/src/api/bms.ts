@@ -555,6 +555,77 @@ export type OpenAiHvacInsightResponse = {
 };
 
 
+// ============= HVAC Point Mapping Types =============
+
+export type HvacPointMappingProtocol = "SIMULATOR" | "BACNET" | "MODBUS" | string;
+
+export type HvacPointMappingRequest = {
+  edgeControllerId?: string | null;
+
+  protocol: HvacPointMappingProtocol;
+
+  externalDeviceId: string;
+  unitName?: string | null;
+
+  temperaturePoint?: string | null;
+  setpointPoint?: string | null;
+  onoffPoint?: string | null;
+  fanSpeedPoint?: string | null;
+  flowRatePoint?: string | null;
+  faultPoint?: string | null;
+  ambientTempPoint?: string | null;
+
+  writableSetpoint?: boolean;
+  writableOnoff?: boolean;
+  writableFanSpeed?: boolean;
+  writableFlowRate?: boolean;
+  writableRestart?: boolean;
+
+  minSetpoint?: number | null;
+  maxSetpoint?: number | null;
+
+  enabled?: boolean;
+};
+
+export type HvacPointMappingResponse = {
+  id: string;
+
+  tenantId: string;
+  siteId: string;
+  hvacId: string;
+  edgeControllerId?: string | null;
+
+  protocol: HvacPointMappingProtocol;
+  externalDeviceId: string;
+  unitName?: string | null;
+
+  temperaturePoint?: string | null;
+  setpointPoint?: string | null;
+  onoffPoint?: string | null;
+  fanSpeedPoint?: string | null;
+  flowRatePoint?: string | null;
+  faultPoint?: string | null;
+  ambientTempPoint?: string | null;
+
+  writableSetpoint?: boolean;
+  writableOnoff?: boolean;
+  writableFanSpeed?: boolean;
+  writableFlowRate?: boolean;
+  writableRestart?: boolean;
+
+  minSetpoint?: number | null;
+  maxSetpoint?: number | null;
+
+  enabled?: boolean;
+  configVersion?: number;
+
+  points?: Record<string, string>;
+
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+
 
 export const BmsApi = {
 
@@ -1163,6 +1234,78 @@ export const BmsApi = {
             {
                 method: "POST",
                 handle403Redirect: false,
+            }
+        ),
+
+
+        // ============= HVAC Point Mapping APIs =============
+
+    getHvacPointMapping: async (
+    tenantId: string,
+    siteId: string,
+    hvacId: string
+    ): Promise<HvacPointMappingResponse | null> => {
+        const response = await api<HvacPointMappingResponse | null>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        );
+
+        return response ?? null;
+    },
+    
+    upsertHvacPointMapping: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        req: HvacPointMappingRequest
+    ): Promise<HvacPointMappingResponse> =>
+        await api<HvacPointMappingResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping`,
+            {
+                method: "PUT",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        ),
+
+    createSimulatorPointMappingDefaults: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        params: {
+            edgeControllerId: string;
+            externalDeviceId: string;
+            unitName: string;
+        }
+    ): Promise<HvacPointMappingResponse> => {
+        const query = new URLSearchParams({
+            edgeControllerId: params.edgeControllerId,
+            externalDeviceId: params.externalDeviceId,
+            unitName: params.unitName,
+        }).toString();
+
+        return await api<HvacPointMappingResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping/simulator-defaults?${query}`,
+            {
+                method: "POST",
+            }
+        );
+    },
+
+    deleteHvacPointMapping: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string
+    ): Promise<void> =>
+        await api<void>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping`,
+            {
+                method: "DELETE",
             }
         ),
 

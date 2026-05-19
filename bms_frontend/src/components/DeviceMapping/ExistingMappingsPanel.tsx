@@ -1,15 +1,17 @@
 import type { HvacDeviceMappingDto } from "@/api/bms";
-import { Link2, Trash2 } from "lucide-react";
+import { Link2, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type Props = {
   mappings: HvacDeviceMappingDto[];
   onUnmap: (mappingId: string) => void;
+  onConfigurePoints: (mapping: HvacDeviceMappingDto) => void;
   busy?: boolean;
 };
 
 export default function ExistingMappingsPanel({
   mappings,
   onUnmap,
+  onConfigurePoints,
   busy = false,
 }: Props) {
   return (
@@ -18,7 +20,7 @@ export default function ExistingMappingsPanel({
         <div>
           <h2 className="text-xl font-semibold text-white">Existing Mappings</h2>
           <p className="mt-1 text-sm text-slate-400">
-            Review current logical-to-device mappings.
+            Review logical-to-device mappings and configure point references.
           </p>
         </div>
 
@@ -43,6 +45,7 @@ export default function ExistingMappingsPanel({
                 <th className="px-4 py-3 font-semibold text-right">Action</th>
               </tr>
             </thead>
+
             <tbody>
               {mappings.map((mapping, index) => (
                 <tr
@@ -71,14 +74,25 @@ export default function ExistingMappingsPanel({
                   </td>
 
                   <td className="px-4 py-3 text-right">
-                    <button
-                      className="inline-flex items-center gap-2 rounded-2xl bg-rose-500/90 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
-                      onClick={() => onUnmap(mapping.mappingId)}
-                      disabled={busy}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Unmap
-                    </button>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button
+                        className="inline-flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => onConfigurePoints(mapping)}
+                        disabled={busy}
+                      >
+                        <SlidersHorizontal className="h-4 w-4" />
+                        Configure Points
+                      </button>
+
+                      <button
+                        className="inline-flex items-center gap-2 rounded-2xl bg-rose-500/90 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => onUnmap(mapping.mappingId)}
+                        disabled={busy}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Unmap
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
