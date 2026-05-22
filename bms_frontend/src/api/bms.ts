@@ -373,12 +373,8 @@ export type HvacCommandType =
   | "SIMULATE_FAULT";
 
 export type CreateHvacCommandRequest = {
-  edgeControllerId: string;
-  hvacId: string;
-  externalDeviceId: string;
-  protocol: string;
   commandType: HvacCommandType;
-  payload: Record<string, unknown>;
+  value?: string | number | boolean | null;
 };
 
 export type EdgeCommandResponse = {
@@ -410,6 +406,226 @@ export type SiteEdgeAssignmentResponse = {
 };
 
 
+// ============= Dashboard Types =============
+
+export type DashboardRole = "BMS_ADMIN" | "SITE_MANAGER" | "TECHNICIAN";
+
+export type RiskLevel = "HEALTHY" | "WARNING" | "CRITICAL";
+
+export type DashboardKpiDto = {
+  totalTenants: number;
+  totalSites: number;
+  totalHvacs: number;
+
+  activeHvacs: number;
+  failedHvacs: number;
+  offlineHvacs: number;
+
+  openAlerts: number;
+  maintenanceDue: number;
+  highRiskSites: number;
+
+  averageTemperature: number | null;
+};
+
+export type DashboardTenantSummaryDto = {
+  tenantId: string;
+  tenantName: string;
+
+  totalSites: number;
+  totalHvacs: number;
+  failedHvacs: number;
+  openAlerts: number;
+
+  averageTemperature: number | null;
+};
+
+export type DashboardSiteCardDto = {
+  tenantId: string;
+  tenantName: string;
+
+  siteId: string;
+  siteName: string;
+  address: string | null;
+
+  totalHvacs: number;
+  activeHvacs: number;
+  failedHvacs: number;
+  offlineHvacs: number;
+  openAlerts: number;
+  maintenanceDue: number;
+
+  averageTemperature: number | null;
+  averageSetpoint: number | null;
+
+  healthScore: number;
+  riskLevel: RiskLevel;
+  riskReason: string;
+
+  latestTelemetryTime: string | null;
+};
+
+export type DashboardRiskSiteDto = {
+  tenantId: string;
+  tenantName: string;
+
+  siteId: string;
+  siteName: string;
+
+  riskScore: number;
+  riskLevel: RiskLevel;
+  reason: string;
+
+  failedHvacs: number;
+  openAlerts: number;
+  offlineHvacs: number;
+  maintenanceDue: number;
+};
+
+export type DashboardAiInsightDto = {
+  title: string;
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  message: string;
+  recommendedAction: string;
+};
+
+export type DashboardOverviewResponse = {
+  role: DashboardRole;
+  userEmail: string;
+  generatedAt: string;
+
+  kpis: DashboardKpiDto;
+
+  tenants: DashboardTenantSummaryDto[];
+  sites: DashboardSiteCardDto[];
+  riskSites: DashboardRiskSiteDto[];
+  aiInsights: DashboardAiInsightDto[];
+};
+
+
+// ============= HVAC AI Insight Types =============
+
+export type HvacConditionLabel =
+  | "GOOD"
+  | "WATCH"
+  | "WARNING"
+  | "CRITICAL"
+  | "NO_DATA";
+
+export type HvacInsightResponse = {
+  tenantId: string;
+  siteId: string;
+  hvacId: string;
+
+  deviceId?: string | null;
+  unitName?: string | null;
+
+  conditionLabel: HvacConditionLabel;
+  riskScore: number;
+  summary: string;
+
+  avgTemperature?: number | null;
+  avgSetpoint?: number | null;
+  maxTemperature?: number | null;
+  minTemperature?: number | null;
+
+  avgFanSpeed?: number | null;
+  avgFlowRate?: number | null;
+
+  totalSamples?: number | null;
+  faultSamples?: number | null;
+  faultRatePercent?: number | null;
+
+  temperatureDeviation?: number | null;
+  estimatedRuntimeHours?: number | null;
+  estimatedEnergyRiskPercent?: number | null;
+
+  firstTelemetryTime?: string | null;
+  lastTelemetryTime?: string | null;
+
+  ruleFindings: string[];
+  recommendations: string[];
+};
+
+export type OpenAiHvacInsightResponse = {
+  aiSummary: string;
+  technicianAdvice: string;
+  managerAdvice: string;
+  safetyNote: string;
+};
+
+
+// ============= HVAC Point Mapping Types =============
+
+export type HvacPointMappingProtocol = "SIMULATOR" | "BACNET" | "MODBUS" | string;
+
+export type HvacPointMappingRequest = {
+  edgeControllerId?: string | null;
+
+  protocol: HvacPointMappingProtocol;
+
+  externalDeviceId: string;
+  unitName?: string | null;
+
+  temperaturePoint?: string | null;
+  setpointPoint?: string | null;
+  onoffPoint?: string | null;
+  fanSpeedPoint?: string | null;
+  flowRatePoint?: string | null;
+  faultPoint?: string | null;
+  ambientTempPoint?: string | null;
+
+  writableSetpoint?: boolean;
+  writableOnoff?: boolean;
+  writableFanSpeed?: boolean;
+  writableFlowRate?: boolean;
+  writableRestart?: boolean;
+
+  minSetpoint?: number | null;
+  maxSetpoint?: number | null;
+
+  enabled?: boolean;
+};
+
+export type HvacPointMappingResponse = {
+  id: string;
+
+  tenantId: string;
+  siteId: string;
+  hvacId: string;
+  edgeControllerId?: string | null;
+
+  protocol: HvacPointMappingProtocol;
+  externalDeviceId: string;
+  unitName?: string | null;
+
+  temperaturePoint?: string | null;
+  setpointPoint?: string | null;
+  onoffPoint?: string | null;
+  fanSpeedPoint?: string | null;
+  flowRatePoint?: string | null;
+  faultPoint?: string | null;
+  ambientTempPoint?: string | null;
+
+  writableSetpoint?: boolean;
+  writableOnoff?: boolean;
+  writableFanSpeed?: boolean;
+  writableFlowRate?: boolean;
+  writableRestart?: boolean;
+
+  minSetpoint?: number | null;
+  maxSetpoint?: number | null;
+
+  enabled?: boolean;
+  configVersion?: number;
+
+  points?: Record<string, string>;
+
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+
 
 export const BmsApi = {
 
@@ -435,9 +651,32 @@ export const BmsApi = {
             `/api/tenants/query/${tenantId}/sites?page=${page}&size=${size}`
         ),
 
+    // Read only endpoint for HVACs under a Site - for TECHNICIAN / SITE_MANAGER / FACILITY_MANAGER
+    getReadableSiteEdgeAssignment: async (
+            tenantId: string,
+            siteId: string
+        ): Promise<SiteEdgeAssignmentResponse> =>
+            await api<SiteEdgeAssignmentResponse>(
+                `/api/tenants/${tenantId}/sites/${siteId}/edge-assignment`,
+                {
+                    method: "GET",
+                    handle403Redirect: false,
+                }
+        ),
+
     getHvacsByTenantSite: async (tenantId: string, siteId: string) => await api<HvacDto[]>(`/api/hvacs/query/${tenantId}/sites/${siteId}/hvacs`),
 
     getCurrentUser: async () => await api<CurrentUserDto>("/api/me"),
+
+    // ============= Dashboard APIs =============
+
+    getDashboardOverview: async (): Promise<DashboardOverviewResponse> =>
+        await api<DashboardOverviewResponse>("/api/dashboard/overview", {
+            method: "GET",
+        }),
+        
+    // ============= Tenant / Site / HVAC Management APIs =============
+
     getHvacSiteDetails: async (tenantId: string, siteId: string) =>
         await api<HvacDto[]>(
             `/api/tenants/${tenantId}/sites/${siteId}/hvacs/details`
@@ -934,6 +1173,141 @@ export const BmsApi = {
                 method: "GET",
             }
     ),
+
+
+
+    listReadableHvacCommands: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeCommandResponse[]> =>
+        await api<EdgeCommandResponse[]>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvac-commands`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        ),
+
+    createReadableHvacCommand: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        req: CreateHvacCommandRequest
+    ): Promise<EdgeCommandResponse> =>
+        await api<EdgeCommandResponse>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/commands`,
+            {
+                method: "POST",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                handle403Redirect: false,
+            }
+        ),
+
+
+    // ============= HVAC AI Insight APIs =============
+
+    getHvacRuleBasedInsight: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        rangeHours = 24
+    ): Promise<HvacInsightResponse> =>
+        await api<HvacInsightResponse>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/insights/rule-based?rangeHours=${rangeHours}`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        ),
+
+    getHvacOpenAiAssistance: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        rangeHours = 24
+    ): Promise<OpenAiHvacInsightResponse> =>
+        await api<OpenAiHvacInsightResponse>(
+            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/insights/openai-assistance?rangeHours=${rangeHours}`,
+            {
+                method: "POST",
+                handle403Redirect: false,
+            }
+        ),
+
+
+        // ============= HVAC Point Mapping APIs =============
+
+    getHvacPointMapping: async (
+    tenantId: string,
+    siteId: string,
+    hvacId: string
+    ): Promise<HvacPointMappingResponse | null> => {
+        const response = await api<HvacPointMappingResponse | null>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        );
+
+        return response ?? null;
+    },
+    
+    upsertHvacPointMapping: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        req: HvacPointMappingRequest
+    ): Promise<HvacPointMappingResponse> =>
+        await api<HvacPointMappingResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping`,
+            {
+                method: "PUT",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            }
+        ),
+
+    createSimulatorPointMappingDefaults: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string,
+        params: {
+            edgeControllerId: string;
+            externalDeviceId: string;
+            unitName: string;
+        }
+    ): Promise<HvacPointMappingResponse> => {
+        const query = new URLSearchParams({
+            edgeControllerId: params.edgeControllerId,
+            externalDeviceId: params.externalDeviceId,
+            unitName: params.unitName,
+        }).toString();
+
+        return await api<HvacPointMappingResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping/simulator-defaults?${query}`,
+            {
+                method: "POST",
+            }
+        );
+    },
+
+    deleteHvacPointMapping: async (
+        tenantId: string,
+        siteId: string,
+        hvacId: string
+    ): Promise<void> =>
+        await api<void>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping`,
+            {
+                method: "DELETE",
+            }
+        ),
 
 
     

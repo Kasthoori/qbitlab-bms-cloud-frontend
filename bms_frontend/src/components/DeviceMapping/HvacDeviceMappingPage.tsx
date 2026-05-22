@@ -4,14 +4,22 @@ import {
   type DiscoveredHvacDeviceDto,
   type HvacDeviceMappingDto,
   type HvacDto,
+  type SiteEdgeAssignmentResponse,
 } from "@/api/bms";
 import { useCallback, useEffect, useMemo, useState, type FC } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, RefreshCw, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  RefreshCw,
+  Sparkles,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
 
 import DiscoveredDevicesPanel from "./DiscoveredDevicesPanel";
 import LogicalHvacsPanel from "./LogicalHvacsPanel";
 import ExistingMappingsPanel from "./ExistingMappingsPanel";
+import HvacPointMappingPanel from "./HvacPointMappingPanel";
 
 const HvacDeviceMappingPage: FC = () => {
   const navigate = useNavigate();
@@ -25,7 +33,11 @@ const HvacDeviceMappingPage: FC = () => {
   const [discoveredDevices, setDiscoveredDevices] = useState<DiscoveredHvacDeviceDto[]>([]);
   const [logicalHvacs, setLogicalHvacs] = useState<HvacDto[]>([]);
   const [mappings, setMappings] = useState<HvacDeviceMappingDto[]>([]);
+  const [edgeAssignment, setEdgeAssignment] = useState<SiteEdgeAssignmentResponse | null>(null);
+
   const [draggingDeviceId, setDraggingDeviceId] = useState<string | null>(null);
+  const [selectedPointMapping, setSelectedPointMapping] =
+    useState<HvacDeviceMappingDto | null>(null);
 
   const loadAll = useCallback(async () => {
     if (!tenantId || !siteId) {
@@ -37,15 +49,58 @@ const HvacDeviceMappingPage: FC = () => {
     setErrorMessage(null);
 
     try {
-      const [devices, hvacs, existingMappings] = await Promise.all([
-        BmsApi.getDiscoveredDevices(tenantId, siteId),
-        BmsApi.getHvacsByTenantSite(tenantId, siteId),
-        BmsApi.getHvacMappings(tenantId, siteId),
-      ]);
+      const [devices, hvacs, existingMappings, assignmentResult] =
+        await Promise.allSettled([
+          BmsApi.getDiscoveredDevices(tenantId, siteId),
+          BmsApi.getHvacsByTenantSite(tenantId, siteId),
+          BmsApi.getHvacMappings(tenantId, siteId),
+          BmsApi.getSiteEdgeAssignment(tenantId, siteId),
+        ]);
 
-      setDiscoveredDevices(Array.isArray(devices) ? devices : []);
-      setLogicalHvacs(Array.isArray(hvacs) ? hvacs : []);
-      setMappings(Array.isArray(existingMappings) ? existingMappings : []);
+      if (devices.status === "fulfilled") {
+        const safeDevices = Array.isArray(devices.value) ? devices.value : [];
+        setDiscoveredDevices(safeDevices);
+        console.log("[HVAC MAPPING] Discovered devices:", safeDevices);
+      } else {
+        console.warn("[HVAC MAPPING] Failed to load discovered devices:", devices.reason);
+        setDiscoveredDevices([]);
+      }
+
+      if (hvacs.status === "fulfilled") {
+        const safeHvacs = Array.isArray(hvacs.value) ? hvacs.value : [];
+        setLogicalHvacs(safeHvacs);
+        console.log("[HVAC MAPPING] Logical HVACs:", safeHvacs);
+      } else {
+        console.warn("[HVAC MAPPING] Failed to load logical HVACs:", hvacs.reason);
+        setLogicalHvacs([]);
+      }
+
+      if (existingMappings.status === "fulfilled") {
+        const safeMappings = Array.isArray(existingMappings.value)
+          ? existingMappings.value
+          : [];
+        setMappings(safeMappings);
+        console.log("[HVAC MAPPING] Existing mappings:", safeMappings);
+      } else {
+        console.warn("[HVAC MAPPING] Failed to load existing mappings:", existingMappings.reason);
+        setMappings([]);
+      }
+
+      if (assignmentResult.status === "fulfilled") {
+        setEdgeAssignment(assignmentResult.value);
+        console.log("[HVAC MAPPING] Edge assignment:", assignmentResult.value);
+      } else {
+        console.warn("[HVAC MAPPING] Failed to load edge assignment:", assignmentResult.reason);
+        setEdgeAssignment(null);
+      }
+
+      const rejected = [devices, hvacs, existingMappings].find(
+        (item) => item.status === "rejected"
+      );
+
+      if (rejected && rejected.status === "rejected") {
+        throw rejected.reason;
+      }
     } catch (error: any) {
       setErrorMessage(
         error?.response?.data?.message ||
@@ -73,14 +128,33 @@ const HvacDeviceMappingPage: FC = () => {
       mappings
         .map((m) => m.externalDeviceId)
         .filter((id): id is string => Boolean(id))
+        .map((id) => id.trim().toLowerCase())
     );
   }, [mappings]);
 
   const availableDiscoveredDevices = useMemo(() => {
-    return discoveredDevices.filter(
-      (d) => !!d.discoveredDeviceId && !mappedDeviceIds.has(d.discoveredDeviceId)
-    );
+    return discoveredDevices.filter((device) => {
+      const externalId = device.externalDeviceId || device.discoveredDeviceId;
+      const dragId = device.discoveredDeviceId || device.externalDeviceId;
+
+      if (!externalId || !dragId) {
+        return false;
+      }
+
+      return !mappedDeviceIds.has(externalId.trim().toLowerCase());
+    });
   }, [discoveredDevices, mappedDeviceIds]);
+
+  const getProtocolForMapping = (mapping: HvacDeviceMappingDto): string => {
+    const device = discoveredDevices.find(
+      (d) =>
+        d.externalDeviceId === mapping.externalDeviceId ||
+        d.discoveredDeviceId === mapping.externalDeviceId ||
+        d.discoveredDeviceId === mapping.mappingId
+    );
+
+    return (device?.protocol || "SIMULATOR").toUpperCase();
+  };
 
   const handleStartDrag = (deviceId: string) => {
     setDraggingDeviceId(deviceId);
@@ -99,11 +173,15 @@ const HvacDeviceMappingPage: FC = () => {
 
     try {
       const selectedDevice = discoveredDevices.find(
-        (d) => d.discoveredDeviceId === discoveredDeviceId
+        (d) =>
+          d.discoveredDeviceId === discoveredDeviceId ||
+          d.externalDeviceId === discoveredDeviceId
       );
 
       if (!selectedDevice) {
-        throw new Error("Selected discovered device was not found.");
+        throw new Error(
+          `Selected discovered device was not found. Drag ID: ${discoveredDeviceId}`
+        );
       }
 
       const created = await BmsApi.createHvacMapping(tenantId, siteId, {
@@ -116,7 +194,28 @@ const HvacDeviceMappingPage: FC = () => {
         return [...withoutSameHvac, created];
       });
 
-      setSuccessMessage("HVAC mapped successfully.");
+      const protocol = (selectedDevice.protocol || "SIMULATOR").toUpperCase();
+
+      if (protocol === "SIMULATOR" && edgeAssignment?.edgeControllerId) {
+        await BmsApi.createSimulatorPointMappingDefaults(
+          tenantId,
+          siteId,
+          created.hvacId,
+          {
+            edgeControllerId: edgeAssignment.edgeControllerId,
+            externalDeviceId: created.externalDeviceId,
+            unitName:
+              created.unitName ||
+              selectedDevice.deviceName ||
+              created.externalDeviceId,
+          }
+        );
+
+        setSuccessMessage("HVAC mapped and simulator point defaults created.");
+      } else {
+        setSuccessMessage("HVAC mapped successfully. Configure points before running edge.");
+      }
+
       await loadAll();
     } catch (error: any) {
       setErrorMessage(
@@ -130,7 +229,7 @@ const HvacDeviceMappingPage: FC = () => {
 
       window.setTimeout(() => {
         setSuccessMessage(null);
-      }, 2500);
+      }, 3000);
     }
   };
 
@@ -143,6 +242,7 @@ const HvacDeviceMappingPage: FC = () => {
 
     try {
       await BmsApi.unmapByMappingId(tenantId, siteId, mappingId);
+      setSelectedPointMapping(null);
       setSuccessMessage("Mapping removed successfully.");
       await loadAll();
     } catch (error: any) {
@@ -158,6 +258,16 @@ const HvacDeviceMappingPage: FC = () => {
         setSuccessMessage(null);
       }, 2500);
     }
+  };
+
+  const handleConfigurePoints = (mapping: HvacDeviceMappingDto) => {
+    setSelectedPointMapping(mapping);
+
+    window.setTimeout(() => {
+      document
+        .getElementById("point-mapping-panel")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   };
 
   if (!tenantId || !siteId) {
@@ -192,13 +302,21 @@ const HvacDeviceMappingPage: FC = () => {
 
           <h1 className="mt-3 text-3xl font-bold text-white">HVAC Device Mapping</h1>
           <p className="mt-2 text-slate-400">
-            Drag a real discovered device and drop it onto a logical BMS HVAC.
+            Drag a discovered device onto a logical BMS HVAC, then configure its
+            telemetry and command points.
           </p>
 
           <p className="mt-3 text-sm text-slate-500">
             <span className="font-medium text-slate-300">Tenant:</span> {tenantId}
             <span className="mx-2 text-slate-600">•</span>
             <span className="font-medium text-slate-300">Site:</span> {siteId}
+          </p>
+
+          <p className="mt-2 text-sm text-slate-500">
+            <span className="font-medium text-slate-300">Edge:</span>{" "}
+            {edgeAssignment?.edgeKey ||
+              edgeAssignment?.edgeControllerId ||
+              "No edge assigned"}
           </p>
         </div>
 
@@ -253,8 +371,23 @@ const HvacDeviceMappingPage: FC = () => {
           <ExistingMappingsPanel
             mappings={mappings}
             onUnmap={handleUnMap}
+            onConfigurePoints={handleConfigurePoints}
             busy={saving}
           />
+
+          {selectedPointMapping && (
+            <div id="point-mapping-panel">
+              <HvacPointMappingPanel
+                tenantId={tenantId}
+                siteId={siteId}
+                mapping={selectedPointMapping}
+                edgeControllerId={edgeAssignment?.edgeControllerId}
+                protocol={getProtocolForMapping(selectedPointMapping)}
+                onClose={() => setSelectedPointMapping(null)}
+                onSaved={() => void loadAll()}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

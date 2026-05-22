@@ -31,6 +31,7 @@ import UpdateUserProfile from "./components/UserManagement/UpdateUserProfile";
 import DeleteUserPage from "./components/UserManagement/DeleteUserPage";
 import ViewUsersPage from "./components/UserManagement/ViewUsersPage";
 import SimulatorHvacsRoute from "./components/Simulator/SimulatorHvacsRoute";
+import RoleBasedDashboardPage from "./components/Dashboard/RoleBasedDashboardPage";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -42,7 +43,8 @@ const AppRoutes: FC = () => {
   return (
     <Routes>
       {/* Default route */}
-      <Route path="/" element={<Navigate to="/buildings/user/tenants" replace />} />
+      {/* <Route path="/" element={<Navigate to="/buildings/user/tenants" replace />} /> */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       {/* ================= USER / TECHNICIAN ROUTES ================= */}
       <Route
@@ -208,6 +210,15 @@ const AppRoutes: FC = () => {
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/simulator-hvacs"
         element={<SimulatorHvacsRoute />}
+      />
+
+      <Route    
+        path="/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+            <RoleBasedDashboardPage />
+          </ProtectedRoute>
+        }
       />
     </Routes>
   );

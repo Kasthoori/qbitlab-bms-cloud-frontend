@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BmsApi,
+  type CurrentUserDto,
   type EdgeCommandResponse,
   type HvacCommandType,
 } from "@/api/bms";
@@ -27,9 +28,15 @@ type Props = {
   siteId: string;
 
   /**
-   * Required because backend HvacCommandEntity has edge_controller_id.
-   * Temporary testing: can pass hardcoded edgeControllerId.
-   * Production: fetch from edge_site_assignments for this tenant/site.
+   * Kept here because your page already passes this value.
+   * The current backend command endpoint only needs:
+   * - tenantId
+   * - siteId
+   * - hvacId
+   * - commandType
+   * - value
+   *
+   * Edge assignment is handled by backend / edge command polling flow.
    */
   edgeControllerId: string;
 
@@ -54,6 +61,19 @@ export default function HvacCommandPanel({
 
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUserDto | null>(null);
+
+  useEffect(() => {
+    BmsApi.getCurrentUser()
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
+  }, []);
+
+  const isTechnician = useMemo(() => {
+    return currentUser?.roles?.includes("ROLE_TECHNICIAN") ?? false;
+  }, [currentUser?.roles]);
+
+  const disableAdvancedTechnicianCommands = isTechnician;
 
   const canSendCommand = useMemo(() => {
     return Boolean(
@@ -97,10 +117,11 @@ export default function HvacCommandPanel({
     if (!tenantId || !siteId) return;
 
     try {
-      const data = await BmsApi.listHvacCommands(tenantId, siteId);
+      const data = await BmsApi.listReadableHvacCommands(tenantId, siteId);
       setRecentCommands(data);
     } catch (error) {
       console.error("Failed to load recent HVAC commands", error);
+      setRecentCommands([]);
     }
   }, [tenantId, siteId]);
 
@@ -110,7 +131,7 @@ export default function HvacCommandPanel({
 
   async function sendCommand(
     commandType: HvacCommandType,
-    payload: Record<string, unknown>
+    value?: boolean | number | null
   ) {
     if (!canSendCommand || !selectedHvac) {
       setStatusMessage(
@@ -119,18 +140,48 @@ export default function HvacCommandPanel({
       return;
     }
 
+    /**
+     * UI-level protection.
+     * Backend should also enforce this rule for production security.
+     */
+    const technicianBlockedCommands: HvacCommandType[] = [
+      "SET_FAN_SPEED",
+      "SET_FLOW_RATE",
+      "SET_AMBIENT_TEMP",
+    ];
+
+    if (isTechnician && technicianBlockedCommands.includes(commandType)) {
+      setStatusMessage(`Technician users cannot send ${commandType} commands.`);
+      return;
+    }
+
     try {
       setLoading(true);
       setStatusMessage(null);
 
-      await BmsApi.createHvacCommand(tenantId, siteId, {
-        edgeControllerId,
-        hvacId: selectedHvac.hvacId!,
-        externalDeviceId: selectedHvac.externalDeviceId!,
-        protocol: selectedHvac.protocol ?? "SIMULATOR",
-        commandType,
-        payload,
-      });
+      /**
+       * IMPORTANT:
+       * Backend HvacCommandRequest expects:
+       *
+       * {
+       *   "commandType": "SET_ON_OFF",
+       *   "value": false
+       * }
+       *
+       * Do not send:
+       * {
+       *   "payload": { "on": false }
+       * }
+       */
+      await BmsApi.createReadableHvacCommand(
+        tenantId,
+        siteId,
+        selectedHvac.hvacId!,
+        {
+          commandType,
+          value,
+        }
+      );
 
       setStatusMessage(`Command queued successfully: ${commandType}`);
 
@@ -153,7 +204,7 @@ export default function HvacCommandPanel({
     return (
       <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-slate-300 shadow-2xl backdrop-blur-xl">
         <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
-          BMS Admin Control
+          BMS Control
         </p>
 
         <h2 className="mt-2 text-xl font-semibold text-white">
@@ -161,7 +212,7 @@ export default function HvacCommandPanel({
         </h2>
 
         <p className="mt-2 text-sm text-slate-400">
-          Select a HVAC row to send simulator commands.
+          Select a HVAC row to send available commands.
         </p>
       </div>
     );
@@ -171,7 +222,7 @@ export default function HvacCommandPanel({
     <div className="rounded-3xl border border-cyan-300/20 bg-slate-950/75 p-5 text-slate-100 shadow-2xl shadow-cyan-500/10 backdrop-blur-xl">
       <div className="mb-5">
         <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
-          BMS Admin Control
+          BMS Control
         </p>
 
         <h2 className="mt-2 text-xl font-semibold text-white">
@@ -196,6 +247,13 @@ export default function HvacCommandPanel({
           <p className="mt-1 text-xs text-slate-500">
             Edge Controller ID: {edgeControllerId || "Missing"}
           </p>
+
+          {isTechnician && (
+            <p className="mt-3 rounded-2xl border border-amber-300/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Technician access: Fan speed, flow rate, and ambient temperature
+              simulation commands are disabled.
+            </p>
+          )}
         </div>
       </div>
 
@@ -222,7 +280,7 @@ export default function HvacCommandPanel({
               disabled={loading || !canSendCommand}
               onClick={() => {
                 setOnState(true);
-                sendCommand("SET_ON_OFF", { on: true });
+                sendCommand("SET_ON_OFF", true);
               }}
               className="rounded-2xl border border-emerald-300/20 bg-emerald-400/15 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -234,7 +292,7 @@ export default function HvacCommandPanel({
               disabled={loading || !canSendCommand}
               onClick={() => {
                 setOnState(false);
-                sendCommand("SET_ON_OFF", { on: false });
+                sendCommand("SET_ON_OFF", false);
               }}
               className="rounded-2xl border border-red-300/20 bg-red-400/15 px-4 py-2 text-sm font-medium text-red-100 transition hover:bg-red-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -261,11 +319,7 @@ export default function HvacCommandPanel({
             <button
               type="button"
               disabled={loading || !canSendCommand}
-              onClick={() =>
-                sendCommand("SET_SETPOINT", {
-                  setpoint: Number(setpoint),
-                })
-              }
+              onClick={() => sendCommand("SET_SETPOINT", Number(setpoint))}
               className="rounded-2xl border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Send
@@ -281,22 +335,27 @@ export default function HvacCommandPanel({
               type="number"
               value={fanSpeed}
               onChange={(event) => setFanSpeed(Number(event.target.value))}
-              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
+              disabled={disableAdvancedTechnicianCommands}
+              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-50"
             />
 
             <button
               type="button"
-              disabled={loading || !canSendCommand}
-              onClick={() =>
-                sendCommand("SET_FAN_SPEED", {
-                  fanSpeed: Number(fanSpeed),
-                })
+              disabled={
+                loading || !canSendCommand || disableAdvancedTechnicianCommands
               }
+              onClick={() => sendCommand("SET_FAN_SPEED", Number(fanSpeed))}
               className="rounded-2xl border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Send
             </button>
           </div>
+
+          {isTechnician && (
+            <p className="mt-2 text-xs text-amber-300">
+              Fan speed control is disabled for technician users.
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -307,22 +366,27 @@ export default function HvacCommandPanel({
               type="number"
               value={flowRate}
               onChange={(event) => setFlowRate(Number(event.target.value))}
-              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
+              disabled={disableAdvancedTechnicianCommands}
+              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-50"
             />
 
             <button
               type="button"
-              disabled={loading || !canSendCommand}
-              onClick={() =>
-                sendCommand("SET_FLOW_RATE", {
-                  flowRate: Number(flowRate),
-                })
+              disabled={
+                loading || !canSendCommand || disableAdvancedTechnicianCommands
               }
+              onClick={() => sendCommand("SET_FLOW_RATE", Number(flowRate))}
               className="rounded-2xl border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Send
             </button>
           </div>
+
+          {isTechnician && (
+            <p className="mt-2 text-xs text-amber-300">
+              Flow rate control is disabled for technician users.
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -335,22 +399,29 @@ export default function HvacCommandPanel({
               type="number"
               value={ambientTemp}
               onChange={(event) => setAmbientTemp(Number(event.target.value))}
-              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
+              disabled={disableAdvancedTechnicianCommands}
+              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50 disabled:cursor-not-allowed disabled:opacity-50"
             />
 
             <button
               type="button"
-              disabled={loading || !canSendCommand}
+              disabled={
+                loading || !canSendCommand || disableAdvancedTechnicianCommands
+              }
               onClick={() =>
-                sendCommand("SET_AMBIENT_TEMP", {
-                  ambientTemp: Number(ambientTemp),
-                })
+                sendCommand("SET_AMBIENT_TEMP", Number(ambientTemp))
               }
               className="rounded-2xl border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Send
             </button>
           </div>
+
+          {isTechnician && (
+            <p className="mt-2 text-xs text-amber-300">
+              Ambient temperature simulation is disabled for technician users.
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -360,7 +431,7 @@ export default function HvacCommandPanel({
             <button
               type="button"
               disabled={loading || !canSendCommand}
-              onClick={() => sendCommand("SIMULATE_FAULT", {})}
+              onClick={() => sendCommand("SIMULATE_FAULT", null)}
               className="rounded-2xl border border-red-300/20 bg-red-400/15 px-4 py-2 text-sm font-medium text-red-100 transition hover:bg-red-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Simulate Fault
@@ -369,7 +440,7 @@ export default function HvacCommandPanel({
             <button
               type="button"
               disabled={loading || !canSendCommand}
-              onClick={() => sendCommand("CLEAR_FAULT", {})}
+              onClick={() => sendCommand("CLEAR_FAULT", null)}
               className="rounded-2xl border border-emerald-300/20 bg-emerald-400/15 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Clear Fault
@@ -378,7 +449,7 @@ export default function HvacCommandPanel({
             <button
               type="button"
               disabled={loading || !canSendCommand}
-              onClick={() => sendCommand("RESTART_HVAC", {})}
+              onClick={() => sendCommand("RESTART_HVAC", null)}
               className="rounded-2xl border border-violet-300/20 bg-violet-400/15 px-4 py-2 text-sm font-medium text-violet-100 transition hover:bg-violet-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Restart HVAC
@@ -427,8 +498,10 @@ export default function HvacCommandPanel({
                     className="border-t border-white/10 text-slate-300"
                   >
                     <td className="px-3 py-2">{command.commandType}</td>
-                    <td className="px-3 py-2">{command.externalDeviceId}</td>
-                    <td className="px-3 py-2">{command.protocol}</td>
+                    <td className="px-3 py-2">
+                      {command.externalDeviceId ?? "-"}
+                    </td>
+                    <td className="px-3 py-2">{command.protocol ?? "-"}</td>
                   </tr>
                 ))
               )}
