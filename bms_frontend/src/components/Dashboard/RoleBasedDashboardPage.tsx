@@ -296,7 +296,7 @@ export default function RoleBasedDashboardPage() {
                       site={site}
                       onOpen={() =>
                         navigate(
-                          `/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`,
+                          `/user/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`,
                           {
                             state: {
                               tenantName: site.tenantName,
@@ -662,7 +662,8 @@ function AiInsightsPanel({
         )}
 
         {insights.map((insight, index) => (
-          <ViewportReveal key={`${insight.title}-${insight.severity}`} delay={index * 0.04} y={14}>
+          // <ViewportReveal key={`${insight.title}-${insight.severity}`} delay={index * 0.04} y={14}>
+          <ViewportReveal key={`${insight.title}-${insight.severity}-${index}`} delay={index * 0.04} y={14} >
             <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="font-semibold text-white">{insight.title}</h3>
