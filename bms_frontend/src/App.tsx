@@ -32,6 +32,7 @@ import DeleteUserPage from "./components/UserManagement/DeleteUserPage";
 import ViewUsersPage from "./components/UserManagement/ViewUsersPage";
 import SimulatorHvacsRoute from "./components/Simulator/SimulatorHvacsRoute";
 import RoleBasedDashboardPage from "./components/Dashboard/RoleBasedDashboardPage";
+import EdgeControllerSetupPage from "./components/Edge/EdgeControllerSetupPage";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -217,6 +218,15 @@ const AppRoutes: FC = () => {
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
             <RoleBasedDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/edge-controller"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <EdgeControllerSetupPage />
           </ProtectedRoute>
         }
       />

@@ -405,6 +405,72 @@ export type SiteEdgeAssignmentResponse = {
   siteId: string;
 };
 
+// ============= Edge Controller Registration Types =============
+
+export type EdgeRegisterRequest = {
+  name: string;
+  networkId?: string | null;
+  ipAddress?: string | null;
+  notes?: string | null;
+};
+
+export type EdgeRegisterResponse = {
+  edgeControllerId: string;
+  tenantId: string;
+  siteId: string;
+
+  edgeKey: string;
+
+  /**
+   * Plain secret is returned only once during register/rotate.
+   * Do not store this in localStorage.
+   */
+  edgeSecret: string;
+
+  name: string;
+  networkId?: string | null;
+  ipAddress?: string | null;
+  status: string;
+
+  registeredAt?: string | null;
+  configYaml: string;
+};
+
+export type EdgeControllerViewResponse = {
+  edgeControllerId: string;
+  assignmentId: string;
+
+  tenantId: string;
+  siteId: string;
+
+  edgeKey: string;
+  name: string;
+  networkId?: string | null;
+  ipAddress?: string | null;
+  status: string;
+  notes?: string | null;
+
+  active: boolean;
+
+  lastSeenAt?: string | null;
+  registeredAt?: string | null;
+  revokedAt?: string | null;
+  assignedAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type EdgeRotateSecretResponse = {
+  edgeControllerId: string;
+  edgeKey: string;
+
+  /**
+   * Plain secret is returned only once after rotation.
+   */
+  edgeSecret: string;
+
+  configYaml: string;
+};
+
 
 // ============= Dashboard Types =============
 
@@ -1306,6 +1372,62 @@ export const BmsApi = {
             `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping`,
             {
                 method: "DELETE",
+            }
+        ),
+
+
+        // ============= Edge Controller Registration APIs =============
+
+    getSiteEdgeController: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeControllerViewResponse> =>
+        await api<EdgeControllerViewResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-controller`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        ),
+
+    registerSiteEdgeController: async (
+        tenantId: string,
+        siteId: string,
+        req: EdgeRegisterRequest
+    ): Promise<EdgeRegisterResponse> =>
+        await api<EdgeRegisterResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-controller/register`,
+            {
+                method: "POST",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                handle403Redirect: false,
+            }
+        ),
+
+    rotateSiteEdgeSecret: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeRotateSecretResponse> =>
+        await api<EdgeRotateSecretResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-controller/rotate-secret`,
+            {
+                method: "POST",
+                handle403Redirect: false,
+            }
+        ),
+
+    revokeSiteEdgeController: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeControllerViewResponse> =>
+        await api<EdgeControllerViewResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-controller/revoke`,
+            {
+                method: "POST",
+                handle403Redirect: false,
             }
         ),
 
