@@ -204,8 +204,22 @@ export default function SiteHvacDetailsPage() {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2.5 text-sm font-medium text-cyan-300">
-                Real-time telemetry view
+            <div className="flex flex-wrap items-center gap-3">
+                {(currentUserRole === "ADMIN" || currentUserRole === "BMS_ADMIN") && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`/admin/tenants/${tenantId}/sites/${siteId}/edge-controller`)
+                    }
+                    className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-300/20"
+                  >
+                    Edge Controller
+                  </button>
+                )}
+
+                <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2.5 text-sm font-medium text-cyan-300">
+                  Real-time telemetry view
+                </div>
               </div>
             </div>
           </div>

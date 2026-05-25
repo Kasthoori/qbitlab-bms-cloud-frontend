@@ -361,39 +361,96 @@ export type UpdateSimulatorHvacRequest = {
 
 // ============= HVAC Command Types =============
 
-// Used by BMS_ADMIN to send commands to Simulator / BACnet / Modbus
+export type UserRole = "ADMIN" | "BMS_ADMIN" | "SITE_MANAGER" | "TECHNICIAN";
+
+export type HvacProtocol = "SIMULATOR" | "BACNET" | "MODBUS" | string;
+
 export type HvacCommandType =
-  | "SET_ON_OFF"
   | "SET_SETPOINT"
-  | "SET_FAN_SPEED"
-  | "SET_FLOW_RATE"
-  | "SET_AMBIENT_TEMP"
-  | "CLEAR_FAULT"
+  | "SET_ON_OFF"
   | "RESTART_HVAC"
-  | "SIMULATE_FAULT";
+  | "ACKNOWLEDGE_ALERT"
+  | "ADD_MAINTENANCE_NOTE"
+  | "SIMULATE_FAULT"
+  | "CLEAR_FAULT"
+  | "FORCE_TEMPERATURE"
+  | "FORCE_FLOW_RATE";
+
+export type HvacCommandStatus =
+  | "PENDING"
+  | "PICKED_UP"
+  | "COMPLETED"
+  | "FAILED"
+  | "REJECTED"
+  | "EXPIRED"
+  | "CANCELLED"
+  | string;
 
 export type CreateHvacCommandRequest = {
+  edgeControllerId: string;
+  hvacId: string;
+  externalDeviceId: string;
+  protocol: HvacProtocol;
   commandType: HvacCommandType;
-  value?: string | number | boolean | null;
+  payload?: Record<string, unknown>;
+  note?: string;
 };
 
 export type EdgeCommandResponse = {
   commandId: string;
+
   tenantId: string;
   siteId: string;
-  edgeControllerId?: string;
   hvacId: string;
-  externalDeviceId: string;
-  protocol: string;
-  commandType: HvacCommandType | string;
-  payload: Record<string, unknown>;
 
-  status?: string;
-  createdAt?: string;
-  deliveredAt?: string | null;
-  executedAt?: string | null;
+  edgeControllerId?: string;
+  externalDeviceId: string;
+  protocol: HvacProtocol;
+
+  commandType: HvacCommandType | string;
+  payload?: Record<string, unknown>;
+
+  status?: HvacCommandStatus;
+
+  requestedByEmail?: string | null;
+  requestedByRole?: string | null;
+
+  rejectedReason?: string | null;
+  safetyCheckResult?: string | null;
   errorMessage?: string | null;
+
+  requestedAt?: string | null;
+  pickedUpAt?: string | null;
+  completedAt?: string | null;
+  failedAt?: string | null;
+  expiresAt?: string | null;
 };
+
+export type HvacCommandPermissions = {
+  canSetSetpoint: boolean;
+  canSetOnOff: boolean;
+  canRestart: boolean;
+  canSimulateFault: boolean;
+  canClearFault: boolean;
+  canForceTelemetry: boolean;
+};
+// export type EdgeCommandResponse = {
+//   commandId: string;
+//   tenantId: string;
+//   siteId: string;
+//   edgeControllerId?: string;
+//   hvacId: string;
+//   externalDeviceId: string;
+//   protocol: string;
+//   commandType: HvacCommandType | string;
+//   payload: Record<string, unknown>;
+
+//   status?: string;
+//   createdAt?: string;
+//   deliveredAt?: string | null;
+//   executedAt?: string | null;
+//   errorMessage?: string | null;
+// };
 
 export type SiteEdgeAssignmentResponse = {
   assignmentId: string;
@@ -403,6 +460,72 @@ export type SiteEdgeAssignmentResponse = {
   status: string;
   tenantId: string;
   siteId: string;
+};
+
+// ============= Edge Controller Registration Types =============
+
+export type EdgeRegisterRequest = {
+  name: string;
+  networkId?: string | null;
+  ipAddress?: string | null;
+  notes?: string | null;
+};
+
+export type EdgeRegisterResponse = {
+  edgeControllerId: string;
+  tenantId: string;
+  siteId: string;
+
+  edgeKey: string;
+
+  /**
+   * Plain secret is returned only once during register/rotate.
+   * Do not store this in localStorage.
+   */
+  edgeSecret: string;
+
+  name: string;
+  networkId?: string | null;
+  ipAddress?: string | null;
+  status: string;
+
+  registeredAt?: string | null;
+  configYaml: string;
+};
+
+export type EdgeControllerViewResponse = {
+  edgeControllerId: string;
+  assignmentId: string;
+
+  tenantId: string;
+  siteId: string;
+
+  edgeKey: string;
+  name: string;
+  networkId?: string | null;
+  ipAddress?: string | null;
+  status: string;
+  notes?: string | null;
+
+  active: boolean;
+
+  lastSeenAt?: string | null;
+  registeredAt?: string | null;
+  revokedAt?: string | null;
+  assignedAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type EdgeRotateSecretResponse = {
+  edgeControllerId: string;
+  edgeKey: string;
+
+  /**
+   * Plain secret is returned only once after rotation.
+   */
+  edgeSecret: string;
+
+  configYaml: string;
 };
 
 
@@ -1149,6 +1272,7 @@ export const BmsApi = {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                handle403Redirect: false,
             }
         ),
 
@@ -1306,6 +1430,62 @@ export const BmsApi = {
             `/api/admin/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/point-mapping`,
             {
                 method: "DELETE",
+            }
+        ),
+
+
+        // ============= Edge Controller Registration APIs =============
+
+    getSiteEdgeController: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeControllerViewResponse> =>
+        await api<EdgeControllerViewResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-controller`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        ),
+
+    registerSiteEdgeController: async (
+        tenantId: string,
+        siteId: string,
+        req: EdgeRegisterRequest
+    ): Promise<EdgeRegisterResponse> =>
+        await api<EdgeRegisterResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-controller/register`,
+            {
+                method: "POST",
+                body: JSON.stringify(req),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                handle403Redirect: false,
+            }
+        ),
+
+    rotateSiteEdgeSecret: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeRotateSecretResponse> =>
+        await api<EdgeRotateSecretResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-controller/rotate-secret`,
+            {
+                method: "POST",
+                handle403Redirect: false,
+            }
+        ),
+
+    revokeSiteEdgeController: async (
+        tenantId: string,
+        siteId: string
+    ): Promise<EdgeControllerViewResponse> =>
+        await api<EdgeControllerViewResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/edge-controller/revoke`,
+            {
+                method: "POST",
+                handle403Redirect: false,
             }
         ),
 
