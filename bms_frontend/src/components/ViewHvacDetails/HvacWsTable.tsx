@@ -15,8 +15,6 @@ import {
   Fan,
   Gauge,
   Thermometer,
-  //Wifi,
-  //WifiOff,
   Wind,
   TriangleAlert,
   Boxes,
@@ -42,12 +40,13 @@ function resolveExternalDeviceId(row: any): string | undefined {
 /**
  * SockJS expects an HTTP/HTTPS endpoint, not ws:// or wss://.
  *
- * For your current setup:
- *   frontend: https://localhost:5173
- *   backend:  http://192.168.68.64:8084
+ * Recommended:
+ * - Set VITE_WS_BASE_URL in .env
  *
- * Use:
- *   VITE_WS_BASE_URL=http://192.168.68.64:8084/ws
+ * Example:
+ * VITE_WS_BASE_URL=http://localhost:8084/ws
+ * or
+ * VITE_WS_BASE_URL=https://localhost:8084/ws
  */
 function resolveSockJsEndpoint(): string {
   const envUrl = import.meta.env.VITE_WS_BASE_URL?.trim();
@@ -56,7 +55,10 @@ function resolveSockJsEndpoint(): string {
     return envUrl;
   }
 
-  return "http://192.168.68.64:8084/ws";
+  const protocol = window.location.protocol === "https:" ? "https" : "http";
+  const hostname = window.location.hostname || "localhost";
+
+  return `${protocol}://${hostname}:8084/ws`;
 }
 
 type HvacWsTableProps = {
@@ -64,11 +66,12 @@ type HvacWsTableProps = {
   siteId: string;
 
   /**
-   * Required because backend hvac_commands table stores edge_controller_id.
-   * Temporary testing: you can pass this as hardcoded value from parent page.
-   * Production: fetch from edge_site_assignments for this tenant/site.
+   * Optional because older/simple pages only display HVAC telemetry.
+   *
+   * Command-enabled pages should pass edgeControllerId.
+   * If missing, the command panel is hidden safely.
    */
-  edgeControllerId: string;
+  edgeControllerId?: string;
 
   onSelectHvac?: (hvac: HvacDto) => void;
   selectedHvacId?: string;
@@ -87,7 +90,6 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
   const [rows, setRows] = useState<HvacSiteDetailsDto[]>([]);
   const [selectedHvac, setSelectedHvac] = useState<any | null>(null);
 
-  //const [connected, setConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,10 +101,12 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
   const hasLoadedOnceRef = useRef<boolean>(false);
 
   /**
-   * Used to avoid showing "closed" as an error when React unmounts/remounts
-   * the component during normal lifecycle or Vite dev refresh.
+   * Prevents normal React cleanup / Vite refresh WebSocket closes
+   * from being treated as real connection errors.
    */
   const manuallyClosingRef = useRef<boolean>(false);
+
+  const canUseCommandPanel = Boolean(edgeControllerId && edgeControllerId.trim());
 
   const mergeMappedRowsWithLiveData = useCallback(
     (mappedRows: HvacSiteDetailsDto[]): HvacSiteDetailsDto[] => {
@@ -191,6 +195,12 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
     [tenantId, siteId, mergeMappedRowsWithLiveData]
   );
 
+  /**
+   * Reload mapped HVAC rows when tenant/site changes.
+   *
+   * This resets local live-state cache so data from another site
+   * is not accidentally shown.
+   */
   useEffect(() => {
     hasLoadedOnceRef.current = false;
     liveByDeviceIdRef.current = new Map();
@@ -200,11 +210,18 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
     setSelectedHvac(null);
     setError(null);
     setLoading(true);
-    //setConnected(false);
 
     loadMappedRows(true);
   }, [tenantId, siteId, loadMappedRows]);
 
+  /**
+   * Background refresh for mapped rows.
+   *
+   * WebSocket updates live telemetry, but this interval catches:
+   * - new mappings
+   * - renamed HVACs
+   * - backend changes
+   */
   useEffect(() => {
     if (!tenantId || !siteId) return;
 
@@ -215,6 +232,12 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
     return () => window.clearInterval(interval);
   }, [tenantId, siteId, loadMappedRows]);
 
+  /**
+   * WebSocket/STOMP subscription for live HVAC telemetry.
+   *
+   * Only this component updates live telemetry state, avoiding
+   * full dashboard refreshes for every telemetry message.
+   */
   useEffect(() => {
     if (!tenantId || !siteId) return;
 
@@ -223,51 +246,35 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
 
     manuallyClosingRef.current = false;
 
-    /**
-     * Clean up any previous client before creating a new one.
-     * This prevents duplicate connections when tenant/site changes.
-     */
     if (clientRef.current) {
       manuallyClosingRef.current = true;
       subscriptionRef.current?.unsubscribe();
       subscriptionRef.current = null;
       clientRef.current.deactivate();
       clientRef.current = null;
-      //setConnected(false);
       manuallyClosingRef.current = false;
     }
 
     const client = new Client({
-      webSocketFactory: () => {
-        console.log("[HVAC WS] SockJS endpoint:", wsEndpoint);
-        return new SockJS(wsEndpoint) as unknown as WebSocket;
-      },
+      webSocketFactory: () => new SockJS(wsEndpoint) as unknown as WebSocket,
 
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
 
-      debug: (message) => {
-        console.log("[HVAC STOMP]", message);
-      },
+      /**
+       * Keep this disabled in production/dev performance testing.
+       * Too much STOMP logging can make Chrome/Vivaldi CPU usage high.
+       */
+      debug: () => undefined,
 
       onConnect: () => {
-        console.log("[HVAC WS] Connected");
-        console.log("[HVAC WS] Subscribing to:", topic);
-
-        //setConnected(true);
-
         subscriptionRef.current?.unsubscribe();
 
         subscriptionRef.current = client.subscribe(topic, (message: IMessage) => {
           try {
             const parsed = JSON.parse(message.body);
 
-            /**
-             * Backend may send:
-             * 1. an array of HVAC current states
-             * 2. a single HVAC current state object
-             */
             const liveRows = Array.isArray(parsed)
               ? (parsed as HvacCurrentState[])
               : ([parsed] as HvacCurrentState[]);
@@ -351,32 +358,21 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
             });
           } catch (parseError) {
             console.error("[HVAC WS] Error parsing payload:", parseError);
-            console.error("[HVAC WS] Raw message body:", message.body);
           }
         });
       },
 
-      onDisconnect: () => {
-        console.log("[HVAC WS] Disconnected");
-        //setConnected(false);
-      },
-
       onStompError: (frame) => {
-        //setConnected(false);
         console.error("[HVAC WS] STOMP error:", frame.headers["message"]);
         console.error("[HVAC WS] STOMP details:", frame.body);
       },
 
       onWebSocketError: (event) => {
-        //setConnected(false);
         console.error("[HVAC WS] WebSocket error:", event);
       },
 
       onWebSocketClose: (event) => {
-        //setConnected(false);
-
         if (manuallyClosingRef.current) {
-          console.log("[HVAC WS] WebSocket closed during cleanup.");
           return;
         }
 
@@ -395,11 +391,12 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
 
       client.deactivate();
       clientRef.current = null;
-
-      //setConnected(false);
     };
   }, [tenantId, siteId, updateRows]);
 
+  /**
+   * Refresh mapped rows when browser tab becomes active again.
+   */
   useEffect(() => {
     const handleFocus = () => {
       loadMappedRows(false);
@@ -422,11 +419,13 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
   const avgTemp = useMemo(() => {
     const values = rows
       .map((row) => row.temperature)
-      .filter((v): v is number => v !== null && v !== undefined);
+      .filter((value): value is number => value !== null && value !== undefined);
 
     if (!values.length) return "-";
 
-    return (values.reduce((sum, v) => sum + v, 0) / values.length).toFixed(1);
+    return (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(
+      1
+    );
   }, [rows]);
 
   const formatNumber = (value?: number | null, digits = 2) => {
@@ -464,7 +463,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {error && rows.length > 0 && (
         <div className="flex items-start gap-3 rounded-3xl border border-amber-400/20 bg-amber-500/10 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.20)] backdrop-blur-xl">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
@@ -474,7 +473,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className={`${glassCard} p-5`}>
           <div className="mb-2 flex items-center gap-2 text-sm text-slate-400">
             <Activity className="h-4 w-4 text-emerald-300" />
@@ -488,9 +487,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
             <TriangleAlert className="h-4 w-4 text-amber-300" />
             Faults
           </div>
-          <div className="text-4xl font-bold text-amber-300">
-            {faultCount}
-          </div>
+          <div className="text-4xl font-bold text-amber-300">{faultCount}</div>
         </div>
 
         <div className={`${glassCard} p-5`}>
@@ -512,7 +509,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
         </div>
       </div>
 
-      <div className={`${glassCard} p-6`}>
+      <div className={`${glassCard} min-w-0 p-6`}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
@@ -526,27 +523,12 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
 
             <p className="mt-1 text-sm text-slate-400">
               Live HVAC data for mapped devices only. Click a row to send
-              commands.
+              commands when an edge controller is available.
             </p>
           </div>
-
-          {/* <span
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${
-              connected
-                ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
-                : "border border-rose-400/20 bg-rose-500/10 text-rose-300"
-            }`}
-          >
-            {connected ? (
-              <Wifi className="h-3.5 w-3.5" />
-            ) : (
-              <WifiOff className="h-3.5 w-3.5" />
-            )}
-            {connected ? "CONNECTED" : "DISCONNECTED"}
-          </span> */}
         </div>
 
-        <div className="overflow-x-auto rounded-3xl border border-white/10">
+        <div className="min-w-0 overflow-x-auto rounded-3xl border border-white/10">
           <table className="min-w-full border-collapse">
             <thead className="bg-white/5">
               <tr className="text-left text-xs uppercase tracking-wider text-slate-400">
@@ -588,6 +570,7 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
                       onClick={() => {
                         const selected = {
                           hvacId: row.hvacId,
+                          edgeControllerId: edgeControllerId ?? "",
                           deviceId: externalDeviceId,
                           externalDeviceId,
                           hvacName: row.hvacName,
@@ -601,9 +584,6 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
                           fault: row.fault,
                           telemetryTime: row.telemetryTime ?? undefined,
                         };
-
-                        console.log("[HVAC TABLE] Row clicked:", row);
-                        console.log("[HVAC TABLE] Selected command HVAC:", selected);
 
                         setSelectedHvac(selected);
                         onSelectHvac?.(selected as HvacDto);
@@ -712,12 +692,21 @@ const HvacWsTable: FC<HvacWsTableProps> = ({
         </div>
       </div>
 
-      <HvacCommandPanel
-        tenantId={tenantId}
-        siteId={siteId}
-        edgeControllerId={edgeControllerId}
-        selectedHvac={selectedHvac}
-      />
+      {canUseCommandPanel ? (
+        <HvacCommandPanel
+          tenantId={tenantId}
+          siteId={siteId}
+          edgeControllerId={edgeControllerId as string}
+          selectedHvac={selectedHvac}
+        />
+      ) : (
+        <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-5 text-sm text-amber-200 shadow-[0_12px_40px_rgba(0,0,0,0.20)] backdrop-blur-xl">
+          Command panel is hidden because this page did not receive an edge
+          controller id. Open the site HVAC details page or pass
+          <span className="mx-1 font-semibold">edgeControllerId</span>
+          to enable commands.
+        </div>
+      )}
     </div>
   );
 };

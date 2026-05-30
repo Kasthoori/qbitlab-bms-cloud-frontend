@@ -189,8 +189,10 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="relative h-screen w-64 bg-slate-950 text-slate-100 border-r border-slate-800">
-      <div className="px-5 py-4 text-xl font-semibold">QbitLab BMS</div>
+    <aside className="relative h-screen w-64 min-w-64 max-w-64 shrink-0 flex-none overflow-hidden bg-slate-950 text-slate-100 border-r border-slate-800">
+      <div className="whitespace-nowrap px-5 py-4 text-xl font-semibold">
+        QbitLab BMS
+      </div>
 
       <nav className="px-3 py-2 space-y-1">
         {navItems.map((item) => (
@@ -204,7 +206,7 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="absolute bottom-0 w-64 px-5 py-3 text-xs text-slate-500">
+      <div className="absolute bottom-0 left-0 right-0 px-5 py-3 text-xs text-slate-500">
         @ 2026 QbitLab. All rights reserved.
       </div>
     </aside>
