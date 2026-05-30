@@ -43,6 +43,24 @@ type TimeFilter =
   | "LAST_24_HOURS"
   | "CUSTOM";
 
+function normalizeRole(role: string): string {
+  return role.startsWith("ROLE_") ? role.replace("ROLE_", "") : role;
+}
+
+function activeStatus(status?: string | null) {
+  return status === "PENDING" || status === "PICKED_UP";
+}
+
+/**
+ * Keeps the command panel inside the available page width.
+ *
+ * Left sidebar target width is 204px, matching the other stable pages.
+ * This prevents the command console from widening the route and visually
+ * shrinking the left navigation after an HVAC row is selected.
+ */
+const PANEL_SAFE_WIDTH =
+  "w-full min-w-0 max-w-[calc(100vw-204px)] overflow-x-hidden";
+
 export default function HvacCommandPanel({
   tenantId,
   siteId,
@@ -71,29 +89,35 @@ export default function HvacCommandPanel({
   );
   const [currentUser, setCurrentUser] = useState<CurrentUserDto | null>(null);
 
-  /*
-   * Loads the currently logged-in user once when this command panel mounts.
-   * We use this user role information to show/disable command buttons.
-   */
   useEffect(() => {
     BmsApi.getCurrentUser()
       .then(setCurrentUser)
       .catch(() => setCurrentUser(null));
   }, []);
 
-  const roles = currentUser?.roles ?? [];
+  const roles = useMemo(() => {
+    return (currentUser?.roles ?? []).map(normalizeRole);
+  }, [currentUser?.roles]);
 
   const isAdmin = useMemo(() => {
-    return roles.includes("ROLE_ADMIN") || roles.includes("ROLE_BMS_ADMIN");
+    return roles.includes("ADMIN") || roles.includes("BMS_ADMIN");
   }, [roles]);
 
   const isSiteManager = useMemo(() => {
-    return roles.includes("ROLE_SITE_MANAGER");
+    return roles.includes("SITE_MANAGER");
   }, [roles]);
 
   const isTechnician = useMemo(() => {
-    return roles.includes("ROLE_TECHNICIAN");
+    return roles.includes("TECHNICIAN");
   }, [roles]);
+
+  const canAuditCommands = useMemo(() => {
+    return isAdmin || isSiteManager;
+  }, [isAdmin, isSiteManager]);
+
+  const isTechnicianOnly = useMemo(() => {
+    return isTechnician && !canAuditCommands;
+  }, [isTechnician, canAuditCommands]);
 
   const canSendCommand = useMemo(() => {
     return Boolean(
@@ -150,7 +174,6 @@ export default function HvacCommandPanel({
     filter: TimeFilter
   ) {
     if (filter === "ALL_TIME") return true;
-
     if (!command.requestedAt) return false;
 
     const requestedAt = new Date(command.requestedAt);
@@ -198,9 +221,7 @@ export default function HvacCommandPanel({
       commandFilter === "ALL"
         ? recentCommands
         : commandFilter === "ACTIVE"
-        ? recentCommands.filter((command) =>
-            ["PENDING", "PICKED_UP"].includes(command.status ?? "")
-          )
+        ? recentCommands.filter((command) => activeStatus(command.status))
         : recentCommands.filter((command) => command.status === commandFilter);
 
     return statusFiltered.filter((command) =>
@@ -217,16 +238,15 @@ export default function HvacCommandPanel({
   ]);
 
   const hasActiveCommands = useMemo(() => {
-    return recentCommands.some((command) =>
-      ["PENDING", "PICKED_UP"].includes(command.status ?? "")
+    const tableHasActiveCommand = recentCommands.some((command) =>
+      activeStatus(command.status)
     );
-  }, [recentCommands]);
 
-  /*
-   * Synchronizes the command input controls with the selected HVAC row.
-   * When the user clicks another HVAC in the telemetry table, this updates
-   * local on/off and setpoint controls to match that selected HVAC state.
-   */
+    const bannerHasActiveCommand = activeStatus(lastCommand?.status);
+
+    return tableHasActiveCommand || bannerHasActiveCommand;
+  }, [recentCommands, lastCommand?.status]);
+
   useEffect(() => {
     if (!selectedHvac) return;
 
@@ -239,10 +259,6 @@ export default function HvacCommandPanel({
     selectedHvac?.setpoint,
   ]);
 
-  /*
-   * Clears the previous command result message when the selected HVAC changes.
-   * This prevents old success/rejected messages from appearing for a different HVAC.
-   */
   useEffect(() => {
     setStatusMessage(null);
     setLastCommand(null);
@@ -252,7 +268,7 @@ export default function HvacCommandPanel({
     if (!tenantId || !siteId) return;
 
     try {
-      const data = await BmsApi.listReadableHvacCommands(tenantId, siteId);
+      const data = await BmsApi.listHvacCommands(tenantId, siteId);
       setRecentCommands(data);
     } catch (error) {
       console.error("Failed to load recent HVAC commands", error);
@@ -260,26 +276,14 @@ export default function HvacCommandPanel({
     }
   }, [tenantId, siteId]);
 
-  /*
-   * Loads the command history whenever tenant/site changes or when the refresh
-   * function is recreated. This gives the table initial data when the panel opens.
-   */
   useEffect(() => {
     refreshRecentCommands();
   }, [refreshRecentCommands]);
 
-  /*
-   * Automatically refreshes the command table without refreshing the full page.
-   *
-   * If there are active commands, refresh every 3 seconds so the UI quickly shows:
-   * PENDING -> PICKED_UP -> COMPLETED / FAILED / EXPIRED.
-   *
-   * If there are no active commands, refresh every 10 seconds to reduce API calls.
-   */
   useEffect(() => {
     if (!tenantId || !siteId) return;
 
-    const intervalMs = hasActiveCommands ? 3000 : 10000;
+    const intervalMs = hasActiveCommands ? 2000 : 10000;
 
     const intervalId = window.setInterval(() => {
       refreshRecentCommands();
@@ -307,11 +311,47 @@ export default function HvacCommandPanel({
       return command.errorMessage || "Command expired before edge picked it up.";
     }
 
+    if (command.status === "COMPLETED") {
+      return (
+        command.safetyCheckResult ||
+        `Command completed successfully: ${command.commandType}`
+      );
+    }
+
+    if (command.status === "PICKED_UP") {
+      return `Command picked up by edge controller: ${command.commandType}`;
+    }
+
     return (
       command.safetyCheckResult ||
       `Command queued successfully: ${command.commandType}`
     );
   }
+
+  useEffect(() => {
+    if (!lastCommand?.commandId) return;
+
+    const updatedCommand = recentCommands.find(
+      (command) => command.commandId === lastCommand.commandId
+    );
+
+    if (!updatedCommand) return;
+
+    if (
+      updatedCommand.status !== lastCommand.status ||
+      updatedCommand.completedAt !== lastCommand.completedAt ||
+      updatedCommand.errorMessage !== lastCommand.errorMessage
+    ) {
+      setLastCommand(updatedCommand);
+      setStatusMessage(getCommandMessage(updatedCommand));
+    }
+  }, [
+    recentCommands,
+    lastCommand?.commandId,
+    lastCommand?.status,
+    lastCommand?.completedAt,
+    lastCommand?.errorMessage,
+  ]);
 
   async function sendCommand(
     commandType: HvacCommandType,
@@ -361,31 +401,24 @@ export default function HvacCommandPanel({
               value,
             };
 
-      const command = await BmsApi.createReadableHvacCommand(
-        tenantId,
-        siteId,
-        selectedHvac.hvacId!,
-        {
-          edgeControllerId,
-          hvacId: selectedHvac.hvacId!,
-          externalDeviceId: selectedHvac.externalDeviceId!,
-          protocol,
-          commandType,
-          payload,
-        }
-      );
+      const command = await BmsApi.createHvacCommand(tenantId, siteId, {
+        edgeControllerId,
+        hvacId: selectedHvac.hvacId!,
+        externalDeviceId: selectedHvac.externalDeviceId!,
+        protocol,
+        commandType,
+        payload,
+      });
 
       setLastCommand(command);
       setStatusMessage(getCommandMessage(command));
-
-      /*
-       * Optimistic update:
-       * Put the newly returned command at the top of the table immediately,
-       * then still refresh from backend to get the authoritative latest state.
-       */
       setRecentCommands((prev) => [command, ...prev]);
 
       await refreshRecentCommands();
+
+      window.setTimeout(() => {
+        refreshRecentCommands();
+      }, 1200);
     } catch (error: any) {
       console.error(error);
 
@@ -438,9 +471,8 @@ export default function HvacCommandPanel({
   const commandCounts = useMemo(() => {
     return {
       ALL: recentCommands.length,
-      ACTIVE: recentCommands.filter((command) =>
-        ["PENDING", "PICKED_UP"].includes(command.status ?? "")
-      ).length,
+      ACTIVE: recentCommands.filter((command) => activeStatus(command.status))
+        .length,
       COMPLETED: recentCommands.filter(
         (command) => command.status === "COMPLETED"
       ).length,
@@ -454,7 +486,9 @@ export default function HvacCommandPanel({
 
   if (!selectedHvac) {
     return (
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-5 text-slate-300 shadow-2xl backdrop-blur-xl">
+      <div
+        className={`${PANEL_SAFE_WIDTH} rounded-3xl border border-white/10 bg-white/5 p-5 text-slate-300 shadow-2xl backdrop-blur-xl`}
+      >
         <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
           BMS Control
         </p>
@@ -471,8 +505,10 @@ export default function HvacCommandPanel({
   }
 
   return (
-    <div className="rounded-3xl border border-cyan-300/20 bg-slate-950/75 p-5 text-slate-100 shadow-2xl shadow-cyan-500/10 backdrop-blur-xl">
-      <div className="mb-5">
+    <div
+      className={`${PANEL_SAFE_WIDTH} rounded-3xl border border-cyan-300/20 bg-slate-950/75 p-4 text-slate-100 shadow-2xl shadow-cyan-500/10 backdrop-blur-xl sm:p-5`}
+    >
+      <div className="mb-5 min-w-0">
         <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
           BMS Control
         </p>
@@ -491,12 +527,12 @@ export default function HvacCommandPanel({
             </span>
           </p>
 
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 break-all text-xs text-slate-500">
             Protocol: {selectedHvac.protocol ?? "UNKNOWN"} · External ID:{" "}
             {selectedHvac.externalDeviceId ?? "N/A"}
           </p>
 
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 break-all text-xs text-slate-500">
             Edge Controller ID: {edgeControllerId || "Missing"}
           </p>
 
@@ -531,6 +567,8 @@ export default function HvacCommandPanel({
             lastCommand?.status === "FAILED" ||
             lastCommand?.status === "EXPIRED"
               ? "border-red-300/20 bg-red-500/10 text-red-100"
+              : lastCommand?.status === "COMPLETED"
+              ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
               : "border-cyan-300/20 bg-cyan-500/10 text-cyan-100"
           }`}
         >
@@ -547,11 +585,17 @@ export default function HvacCommandPanel({
               Expires: {new Date(lastCommand.expiresAt).toLocaleString()}
             </p>
           )}
+
+          {lastCommand?.completedAt && (
+            <p className="mt-1 text-xs opacity-80">
+              Completed: {new Date(lastCommand.completedAt).toLocaleString()}
+            </p>
+          )}
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4">
           <h3 className="text-sm font-semibold text-white">Power Control</h3>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -585,10 +629,10 @@ export default function HvacCommandPanel({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4">
           <h3 className="text-sm font-semibold text-white">Setpoint</h3>
 
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex min-w-0 gap-2">
             <input
               type="number"
               value={setpoint}
@@ -596,14 +640,14 @@ export default function HvacCommandPanel({
               max={30}
               step={0.5}
               onChange={(event) => setSetpoint(Number(event.target.value))}
-              className="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
+              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
             />
 
             <button
               type="button"
               disabled={loading || !canSendCommand || !canSetSetpoint}
               onClick={() => sendCommand("SET_SETPOINT", Number(setpoint))}
-              className="rounded-2xl border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 rounded-2xl border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Send
             </button>
@@ -614,7 +658,7 @@ export default function HvacCommandPanel({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4">
           <h3 className="text-sm font-semibold text-white">Restart</h3>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -633,7 +677,7 @@ export default function HvacCommandPanel({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4">
           <h3 className="text-sm font-semibold text-white">Simulator / Dev</h3>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -672,28 +716,29 @@ export default function HvacCommandPanel({
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="mt-6 w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-4">
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <h3 className="text-sm font-semibold text-white">
-              Recent Commands
+              {isTechnicianOnly ? "My Recent Commands" : "Recent Commands"}
             </h3>
             <p className="mt-1 text-xs text-slate-500">
-              Showing latest command lifecycle events. Use status and time
-              filters to inspect command history.
+              {isTechnicianOnly
+                ? "Only commands created by you are shown. Backend filtering is active."
+                : "Showing latest command lifecycle events. Use status and time filters to inspect command history."}
             </p>
           </div>
 
           <button
             type="button"
             onClick={refreshRecentCommands}
-            className="rounded-xl border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:bg-white/10"
+            className="shrink-0 rounded-xl border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:bg-white/10"
           >
             Refresh
           </button>
         </div>
 
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mb-3 flex min-w-0 flex-wrap items-center gap-2">
           {(["ALL", "ACTIVE", "COMPLETED", "REJECTED", "EXPIRED"] as const).map(
             (filter) => (
               <button
@@ -796,8 +841,8 @@ export default function HvacCommandPanel({
           </div>
         )}
 
-        <div className="max-h-[320px] overflow-auto rounded-2xl border border-white/10">
-          <table className="w-full min-w-[980px] text-left text-sm">
+        <div className="max-h-80 w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[860px] table-auto text-left text-sm">
             <thead className="sticky top-0 z-10 bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-3 py-2">Command</th>
@@ -808,6 +853,11 @@ export default function HvacCommandPanel({
                 <th className="px-3 py-2">Expires</th>
                 <th className="px-3 py-2">Picked Up</th>
                 <th className="px-3 py-2">Completed</th>
+                {canAuditCommands && (
+                  <th className="whitespace-nowrap px-2 py-2">
+                    Requested By
+                  </th>
+                )}
               </tr>
             </thead>
 
@@ -815,10 +865,12 @@ export default function HvacCommandPanel({
               {filteredCommands.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={canAuditCommands ? 9 : 8}
                     className="px-3 py-4 text-center text-slate-500"
                   >
-                    No commands for this filter.
+                    {isTechnicianOnly
+                      ? "You have no commands for this filter."
+                      : "No commands for this filter."}
                   </td>
                 </tr>
               ) : (
@@ -831,7 +883,7 @@ export default function HvacCommandPanel({
                       {command.commandType}
                     </td>
 
-                    <td className="max-w-[160px] truncate px-3 py-2 text-xs text-slate-400">
+                    <td className="max-w-[140px] truncate px-3 py-2 text-xs text-slate-400">
                       {formatPayload(command.payload)}
                     </td>
 
@@ -845,7 +897,7 @@ export default function HvacCommandPanel({
                       </span>
                     </td>
 
-                    <td className="max-w-[300px] truncate px-3 py-2 text-xs text-slate-400">
+                    <td className="max-w-[250px] truncate px-3 py-2 text-xs text-slate-400">
                       {command.rejectedReason ||
                         command.errorMessage ||
                         command.safetyCheckResult ||
@@ -867,6 +919,14 @@ export default function HvacCommandPanel({
                     <td className="whitespace-nowrap px-3 py-2 text-xs">
                       {formatDateTime(command.completedAt)}
                     </td>
+
+                    {canAuditCommands && (
+                      <td className="max-w-[180px] truncate whitespace-nowrap px-2 py-2 text-xs text-slate-400">
+                        {command.requestedByEmail ||
+                          command.requestedByRole ||
+                          "-"}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -875,9 +935,9 @@ export default function HvacCommandPanel({
         </div>
 
         <p className="mt-3 text-xs text-slate-500">
-          Commands are validated by backend safety rules, queued, picked up by
-          the Python edge controller, then completed or failed. Active commands
-          auto-refresh faster.
+          {isTechnicianOnly
+            ? "Commands are validated by backend safety rules. This view only shows your own command activity."
+            : "Commands are validated by backend safety rules, queued, picked up by the Python edge controller, then completed or failed. Active commands auto-refresh faster."}
         </p>
       </div>
     </div>

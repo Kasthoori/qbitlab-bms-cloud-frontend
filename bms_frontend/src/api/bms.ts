@@ -2,6 +2,7 @@ import type { Key } from "react";
 import { api }  from "./http";
 import { BACKEND_URL as API_BASE_URL } from "@/utils/config";
 import type { BmsUserResponse, CreateBmsUserRequest } from "@/types/userManagement";
+import { keycloak } from "@/keycloak";
 
 export type TenantDto = {
     tenantName?: string;
@@ -361,7 +362,79 @@ export type UpdateSimulatorHvacRequest = {
 
 // ============= HVAC Command Types =============
 
-export type UserRole = "ADMIN" | "BMS_ADMIN" | "SITE_MANAGER" | "TECHNICIAN";
+//export type UserRole = "ADMIN" | "BMS_ADMIN" | "SITE_MANAGER" | "TECHNICIAN";
+export type UserRole =
+  | "ADMIN"
+  | "BMS_ADMIN"
+  | "SITE_MANAGER"
+  | "FACILITY_MANAGER"
+  | "TECHNICIAN"
+  | string;
+
+
+
+
+export function normalizeRole(role: string): string {
+  return role.startsWith("ROLE_") ? role.replace("ROLE_", "") : role;
+}
+
+export function normalizeRoles(roles: string[] | undefined): string[] {
+  return (roles ?? []).map(normalizeRole);
+}
+
+export function hasBmsRole(
+  roles: string[] | undefined,
+  role: string
+): boolean {
+  return normalizeRoles(roles).includes(role);
+}
+
+export function canAuditCommands(roles: string[] | undefined): boolean {
+  const normalized = normalizeRoles(roles);
+
+  return (
+    normalized.includes("ADMIN") ||
+    normalized.includes("BMS_ADMIN") ||
+    normalized.includes("SITE_MANAGER")
+  );
+}
+
+export function canViewFullMaintenanceHistory(
+  roles: string[] | undefined
+): boolean {
+  const normalized = normalizeRoles(roles);
+
+  return (
+    normalized.includes("ADMIN") ||
+    normalized.includes("BMS_ADMIN") ||
+    normalized.includes("SITE_MANAGER")
+  );
+}
+
+export function canReviewMaintenanceNotes(
+  roles: string[] | undefined
+): boolean {
+  const normalized = normalizeRoles(roles);
+
+  return (
+    normalized.includes("ADMIN") ||
+    normalized.includes("BMS_ADMIN") ||
+    normalized.includes("SITE_MANAGER")
+  );
+}
+
+export function isTechnicianOnly(roles: string[] | undefined): boolean {
+  const normalized = normalizeRoles(roles);
+
+  return (
+    normalized.includes("TECHNICIAN") &&
+    !normalized.includes("ADMIN") &&
+    !normalized.includes("BMS_ADMIN") &&
+    !normalized.includes("SITE_MANAGER")
+  );
+}
+
+
 
 export type HvacProtocol = "SIMULATOR" | "BACNET" | "MODBUS" | string;
 
@@ -749,6 +822,118 @@ export type HvacPointMappingResponse = {
 };
 
 
+// ============= Command Audit Report Types =============
+
+export type CommandAuditStatus =
+  | "PENDING"
+  | "PICKED_UP"
+  | "COMPLETED"
+  | "FAILED"
+  | "REJECTED"
+  | "EXPIRED"
+  | "CANCELLED"
+  | string;
+
+export type CommandAuditRowResponse = {
+  commandId: string;
+  tenantId: string;
+  siteId: string;
+  hvacId?: string | null;
+  edgeControllerId?: string | null;
+
+  externalDeviceId?: string | null;
+  protocol?: string | null;
+  commandType?: string | null;
+  payload?: string | null;
+  status?: CommandAuditStatus | null;
+
+  requestedByUserId?: string | null;
+  requestedByEmail?: string | null;
+  requestedByRole?: string | null;
+  requestedByDisplayName?: string | null;
+
+  sourceScreen?: string | null;
+  sourceIp?: string | null;
+  userAgent?: string | null;
+
+  safetyCheckResult?: string | null;
+  rejectedReason?: string | null;
+  errorMessage?: string | null;
+  auditNote?: string | null;
+
+  requestedAt?: string | null;
+  expiresAt?: string | null;
+  pickedUpAt?: string | null;
+  completedAt?: string | null;
+  failedAt?: string | null;
+
+  auditCreatedAt?: string | null;
+};
+
+export type CommandAuditSummaryResponse = {
+  totalCommands: number;
+  completedCommands: number;
+  pendingCommands: number;
+  pickedUpCommands: number;
+  rejectedCommands: number;
+  failedCommands: number;
+  expiredCommands: number;
+};
+
+export type CommandAuditReportResponse = {
+  summary: CommandAuditSummaryResponse;
+  rows: CommandAuditRowResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+};
+
+export type CommandAuditReportQuery = {
+  from?: string;
+  to?: string;
+  status?: string;
+  commandType?: string;
+  requestedByEmail?: string;
+  requestedByRole?: string;
+  externalDeviceId?: string;
+  page?: number;
+  size?: number;
+};
+
+function buildCommandAuditQuery(
+  params?: CommandAuditReportQuery,
+  includePagination = true
+): string {
+  if (!params) return "";
+
+  const query = new URLSearchParams();
+
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  if (params.status && params.status !== "ALL") query.set("status", params.status);
+  if (params.commandType && params.commandType !== "ALL") {
+    query.set("commandType", params.commandType);
+  }
+  if (params.requestedByEmail) {
+    query.set("requestedByEmail", params.requestedByEmail);
+  }
+  if (params.requestedByRole && params.requestedByRole !== "ALL") {
+    query.set("requestedByRole", params.requestedByRole);
+  }
+  if (params.externalDeviceId) {
+    query.set("externalDeviceId", params.externalDeviceId);
+  }
+
+  if (includePagination) {
+    query.set("page", String(params.page ?? 0));
+    query.set("size", String(params.size ?? 50));
+  }
+
+  const value = query.toString();
+  return value ? `?${value}` : "";
+}
+
 
 export const BmsApi = {
 
@@ -1113,7 +1298,7 @@ export const BmsApi = {
     }),
 
 
-        // ============= HVAC Maintenance Notes APIs =============
+  // ============= HVAC Maintenance Notes APIs =============
 
     createHvacMaintenanceNote: async (
         tenantId: string,
@@ -1121,14 +1306,11 @@ export const BmsApi = {
         externalDeviceId: string,
         req: CreateHvacMaintenanceNoteRequest
     ): Promise<HvacMaintenanceNoteDto> => {
+        if (!externalDeviceId || externalDeviceId.trim() === "") {
+            throw new Error("externalDeviceId is missing in createHvacMaintenanceNote");
+        }
 
-         console.log("create note externalDeviceId =", externalDeviceId);
-
-            if (!externalDeviceId || externalDeviceId.trim() === "") {
-                throw new Error("externalDeviceId is missing in createHvacMaintenanceNote");
-            }
-
-       return await api<HvacMaintenanceNoteDto>(
+        return await api<HvacMaintenanceNoteDto>(
             `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes`,
             {
                 method: "POST",
@@ -1136,8 +1318,10 @@ export const BmsApi = {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                handle403Redirect: false,
             }
-    )},
+        );
+    },
 
     getHvacMaintenanceNotes: async (
         tenantId: string,
@@ -1145,15 +1329,20 @@ export const BmsApi = {
         externalDeviceId: string,
         noteType?: HvacMaintenanceNoteType | "ALL"
     ): Promise<HvacMaintenanceNoteDto[]> => {
+        if (!externalDeviceId || externalDeviceId.trim() === "") {
+            throw new Error("externalDeviceId is missing in getHvacMaintenanceNotes");
+        }
+
         const query =
             noteType && noteType !== "ALL"
-                ? `?noteType=${noteType}`
+                ? `?noteType=${encodeURIComponent(noteType)}`
                 : "";
 
         return await api<HvacMaintenanceNoteDto[]>(
             `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes${query}`,
             {
                 method: "GET",
+                handle403Redirect: false,
             }
         );
     },
@@ -1163,15 +1352,20 @@ export const BmsApi = {
         siteId: string,
         externalDeviceId: string,
         noteId: string
-    ): Promise<HvacMaintenanceNoteDto> =>
-        await api<HvacMaintenanceNoteDto>(
+    ): Promise<HvacMaintenanceNoteDto> => {
+        if (!externalDeviceId || externalDeviceId.trim() === "") {
+            throw new Error("externalDeviceId is missing in reviewHvacMaintenanceNote");
+        }
+
+        return await api<HvacMaintenanceNoteDto>(
             `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes/${noteId}/review`,
             {
                 method: "PUT",
+                handle403Redirect: false,
             }
-        ),
-
-
+        );
+    },
+    
     markHvacFailureGone: async (
         tenantId: string,
         siteId: string,
@@ -1276,16 +1470,28 @@ export const BmsApi = {
             }
         ),
 
+    // listHvacCommands: async (
+    //     tenantId: string,
+    //     siteId: string
+    // ): Promise<EdgeCommandResponse[]> =>
+    //     await api<EdgeCommandResponse[]>(
+    //         `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-commands`,
+    //         {
+    //             method: "GET",
+    //         }
+    //     ),
+
     listHvacCommands: async (
-        tenantId: string,
-        siteId: string
-    ): Promise<EdgeCommandResponse[]> =>
-        await api<EdgeCommandResponse[]>(
-            `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-commands`,
-            {
-                method: "GET",
-            }
-        ),
+         tenantId: string,
+         siteId: string
+        ): Promise<EdgeCommandResponse[]> =>
+            await api<EdgeCommandResponse[]>(
+                `/api/admin/tenants/${tenantId}/sites/${siteId}/hvac-commands`,
+                {
+                    method: "GET",
+                    handle403Redirect: false,
+                }
+            ),
 
     getSiteEdgeAssignment: async (
         tenantId: string,
@@ -1434,7 +1640,7 @@ export const BmsApi = {
         ),
 
 
-        // ============= Edge Controller Registration APIs =============
+    // ============= Edge Controller Registration APIs =============
 
     getSiteEdgeController: async (
         tenantId: string,
@@ -1490,5 +1696,152 @@ export const BmsApi = {
         ),
 
 
+    // ============= Command Audit Report APIs =============
+
+    getCommandAuditReport: async (
+        tenantId: string,
+        siteId: string,
+        params?: CommandAuditReportQuery
+    ): Promise<CommandAuditReportResponse> => {
+        const query = buildCommandAuditQuery(params, true);
+
+        return await api<CommandAuditReportResponse>(
+            `/api/admin/tenants/${tenantId}/sites/${siteId}/reports/command-audit${query}`,
+            {
+                method: "GET",
+                handle403Redirect: false,
+            }
+        );
+    },
+
+    getCommandAuditCsvUrl: (
+        tenantId: string,
+        siteId: string,
+        params?: Omit<CommandAuditReportQuery, "page" | "size">
+    ): string => {
+        const query = buildCommandAuditQuery(params, false);
+
+        return `${API_BASE_URL}/api/admin/tenants/${tenantId}/sites/${siteId}/reports/command-audit/csv${query}`;
+    },
+
+  downloadCommandAuditCsv: async (
+        tenantId: string,
+        siteId: string,
+        params?: Omit<CommandAuditReportQuery, "page" | "size">
+    ): Promise<void> => {
+        const query = buildCommandAuditQuery(params, false);
+
+        if (!keycloak) {
+            throw new Error("Keycloak not initialized. Please log in again.");
+        }
+
+        try {
+            await keycloak.updateToken(30);
+        } catch (error) {
+            await keycloak.login();
+            throw error;
+        }
+
+        if (!keycloak.token) {
+            throw new Error("No access token. Please log in again.");
+        }
+
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/tenants/${tenantId}/sites/${siteId}/reports/command-audit/csv${query}`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${keycloak.token}`,
+                },
+            }
+        );
+
+        if (response.status === 401) {
+            await keycloak.login();
+            throw new Error("Unauthorized. Please log in again.");
+        }
+
+        if (response.status === 403) {
+            throw new Error("Forbidden. You do not have permission to export this report.");
+        }
+
+        if (!response.ok) {
+            throw new Error(`CSV export failed: HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = `command-audit-${siteId}.csv`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        window.URL.revokeObjectURL(downloadUrl);
+    },
+
+
+
+    downloadCommandAuditPdf: async (
+        tenantId: string,
+        siteId: string,
+        params?: Omit<CommandAuditReportQuery, "page" | "size">
+    ): Promise<void> => {
+        const query = buildCommandAuditQuery(params, false);
+
+        if (!keycloak) {
+            throw new Error("Keycloak not initialized. Please log in again.");
+        }
+
+        try {
+            await keycloak.updateToken(30);
+        } catch (error) {
+            await keycloak.login();
+            throw error;
+        }
+
+        if (!keycloak.token) {
+            throw new Error("No access token. Please log in again.");
+        }
+
+        const response = await fetch(
+            `${API_BASE_URL}/api/admin/tenants/${tenantId}/sites/${siteId}/reports/command-audit/pdf${query}`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${keycloak.token}`,
+                },
+            }
+        );
+
+        if (response.status === 401) {
+            await keycloak.login();
+            throw new Error("Unauthorized. Please log in again.");
+        }
+
+        if (response.status === 403) {
+            throw new Error("Forbidden. You do not have permission to export this report.");
+        }
+
+        if (!response.ok) {
+            throw new Error(`PDF export failed: HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = `command-audit-${siteId}.pdf`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        window.URL.revokeObjectURL(downloadUrl);
+    },
     
 };

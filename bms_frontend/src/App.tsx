@@ -33,6 +33,7 @@ import ViewUsersPage from "./components/UserManagement/ViewUsersPage";
 import SimulatorHvacsRoute from "./components/Simulator/SimulatorHvacsRoute";
 import RoleBasedDashboardPage from "./components/Dashboard/RoleBasedDashboardPage";
 import EdgeControllerSetupPage from "./components/Edge/EdgeControllerSetupPage";
+import CommandAuditReportPage from "./components/Reports/CommandAuditReportPage";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -44,10 +45,10 @@ const AppRoutes: FC = () => {
   return (
     <Routes>
       {/* Default route */}
-      {/* <Route path="/" element={<Navigate to="/buildings/user/tenants" replace />} /> */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       {/* ================= USER / TECHNICIAN ROUTES ================= */}
+
       <Route
         path="/hvac"
         element={
@@ -103,6 +104,7 @@ const AppRoutes: FC = () => {
       />
 
       {/* ================= ADMIN ROUTES ================= */}
+
       <Route
         path="/admin/update-tenant"
         element={
@@ -158,6 +160,24 @@ const AppRoutes: FC = () => {
       />
 
       <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/simulator-hvacs"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <SimulatorHvacsRoute />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/edge-controller"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <EdgeControllerSetupPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/admin/users"
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
@@ -171,15 +191,6 @@ const AppRoutes: FC = () => {
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
             <UpdateUserProfile />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/onboarding"
-        element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
-            <OnboardingPage />
           </ProtectedRoute>
         }
       />
@@ -202,18 +213,18 @@ const AppRoutes: FC = () => {
         }
       />
 
-      {/* 🚫 ACCESS DENIED */}
-      <Route path="/access-denied" element={<AccessDeniedPage />} />
-
-      {/* Unknown routes */}
-      <Route path="*" element={<Navigate to="/access-denied" replace />} />
-
       <Route
-        path="/admin/tenants/:tenantId/sites/:siteId/simulator-hvacs"
-        element={<SimulatorHvacsRoute />}
+        path="/onboarding"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
+            <OnboardingPage />
+          </ProtectedRoute>
+        }
       />
 
-      <Route    
+      {/* ================= DASHBOARD ================= */}
+
+      <Route
         path="/dashboard"
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
@@ -222,14 +233,40 @@ const AppRoutes: FC = () => {
         }
       />
 
+      {/* ================= REPORTS ================= */}
+
+      {/*
+        Generic Command Audit route.
+        Use this from the left navigation.
+        User can paste/select tenantId and siteId inside the report page.
+      */}
       <Route
-        path="/admin/tenants/:tenantId/sites/:siteId/edge-controller"
+        path="/reports/command-audit"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
-            <EdgeControllerSetupPage />
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+            <CommandAuditReportPage />
           </ProtectedRoute>
         }
       />
+
+      {/*
+        Site-specific Command Audit route.
+        Use this later from Site Details / Site Dashboard buttons.
+      */}
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/reports/command-audit"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+            <CommandAuditReportPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ================= FALLBACK ROUTES - KEEP LAST ================= */}
+
+      <Route path="/access-denied" element={<AccessDeniedPage />} />
+
+      <Route path="*" element={<Navigate to="/access-denied" replace />} />
     </Routes>
   );
 };
