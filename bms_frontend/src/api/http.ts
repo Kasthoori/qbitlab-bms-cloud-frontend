@@ -77,9 +77,18 @@ export async function api<T>(
     headers: finalHeaders,
   });
 
+  // if (res.status === 401) {
+  //   await keycloak.login();
+  //   throw { status: 401, message: "Unauthorized" } as ApiError;
+  // }
+
   if (res.status === 401) {
-    await keycloak.login();
-    throw { status: 401, message: "Unauthorized" } as ApiError;
+    console.error("API returned 401 Unauthorized. Token may be invalid or backend issuer config may be wrong.");
+
+    throw {
+      status: 401,
+      message: "Unauthorized. Please check backend Keycloak issuer configuration.",
+    } as ApiError;
   }
 
   if (res.status === 403) {

@@ -1756,9 +1756,14 @@ export const BmsApi = {
             }
         );
 
+        // if (response.status === 401) {
+        //     await keycloak.login();
+        //     throw new Error("Unauthorized. Please log in again.");
+        // }
+
         if (response.status === 401) {
-            await keycloak.login();
-            throw new Error("Unauthorized. Please log in again.");
+            console.error("Backend returned 401. Not redirecting to Keycloak again to avoid login loop.");
+            throw new Error("Unauthorized");
         }
 
         if (response.status === 403) {

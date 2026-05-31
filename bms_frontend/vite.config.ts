@@ -7,8 +7,8 @@ import basicSsl from "@vitejs/plugin-basic-ssl";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
-  const backendIp = env.VITE_BASE_IP || "localhost";
-  const backendTarget = `http://${backendIp}:8084`;
+  // Backend now goes through Caddy HTTPS reverse proxy
+  const backendTarget = env.VITE_BACKEND_PROXY_TARGET || "https://bms-api.test";
 
   console.log("[VITE] Backend proxy target:", backendTarget);
   console.log("[VITE] Keycloak URL:", env.VITE_KEYCLOAK_URL);
@@ -16,11 +16,7 @@ export default defineConfig(({ mode }) => {
   return {
     logLevel: "info" as const,
 
-    plugins: [
-      react(),
-      basicSsl(),
-      tailwindcss(),
-    ],
+    plugins: [react(), basicSsl(), tailwindcss()],
 
     resolve: {
       alias: {

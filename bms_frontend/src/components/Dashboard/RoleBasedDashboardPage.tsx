@@ -61,18 +61,15 @@ function roleTitle(role: string) {
 /**
  * ViewportReveal
  *
- * Uses React Intersection Observer.
+ * Immediate render + animation only.
  *
- * Behavior:
- * - Appears when entering viewport
- * - Disappears when leaving viewport
- * - triggerOnce: false means animation repeats while scrolling
- * - rootMargin gives smoother reveal before the item fully enters the screen
+ * Use this for important above-the-fold dashboard content that should appear
+ * immediately, such as the dashboard header and KPI cards.
  */
 function ViewportReveal({
   children,
   delay = 0,
-  y = 26,
+  y = 18,
   className = "",
 }: {
   children: ReactNode;
@@ -80,33 +77,12 @@ function ViewportReveal({
   y?: number;
   className?: string;
 }) {
-  const { ref, inView } = useInView({
-    threshold: 0.14,
-    triggerOnce: false,
-    rootMargin: "0px 0px -8% 0px",
-  });
-
   return (
     <motion.div
-      ref={ref}
-      initial={false}
-      animate={
-        inView
-          ? {
-              opacity: 1,
-              y: 0,
-              scale: 1,
-              filter: "blur(0px)",
-            }
-          : {
-              opacity: 0,
-              y,
-              scale: 0.985,
-              filter: "blur(6px)",
-            }
-      }
+      initial={{ opacity: 0, y, scale: 0.99 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
-        duration: 0.45,
+        duration: 0.38,
         delay,
         ease: [0.22, 1, 0.36, 1],
       }}
@@ -114,6 +90,123 @@ function ViewportReveal({
     >
       {children}
     </motion.div>
+  );
+}
+
+/**
+ * ViewportLoadOnce
+ *
+ * Production-safe lazy loading for dashboard sections/cards.
+ *
+ * Behavior:
+ * - Before entering viewport: shows skeleton fallback.
+ * - First time entering viewport: mounts the real component.
+ * - After first mount: keeps the component mounted forever.
+ *
+ * This avoids the dangerous pattern:
+ *   {inView && <Component />}
+ *
+ * because that pattern unmounts the component when scrolling away and can cause:
+ * - blank dashboard sections
+ * - repeated chart mounting
+ * - Recharts width/height calculation issues
+ * - repeated animations
+ * - bad UX when scrolling up and down
+ */
+function ViewportLoadOnce({
+  children,
+  fallback,
+  delay = 0,
+  y = 18,
+  className = "",
+}: {
+  children: ReactNode;
+  fallback?: ReactNode;
+  delay?: number;
+  y?: number;
+  className?: string;
+}) {
+  const { ref, inView } = useInView({
+    /**
+     * triggerOnce true means:
+     * - starts as false
+     * - becomes true when entering viewport
+     * - stays true forever after first viewport entry
+     *
+     * This gives "load once when visible" behavior without setState/useEffect.
+     */
+    triggerOnce: true,
+
+    /**
+     * Loads slightly before the user reaches the section.
+     * Use "0px" if you want it to load only when exactly visible.
+     */
+    rootMargin: "350px 0px",
+
+    threshold: 0.05,
+  });
+
+  return (
+    <div ref={ref} className={className}>
+      {inView ? (
+        <motion.div
+          initial={{ opacity: 0, y, scale: 0.99 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{
+            duration: 0.38,
+            delay,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+        >
+          {children}
+        </motion.div>
+      ) : (
+        fallback ?? <DashboardSkeletonCard />
+      )}
+    </div>
+  );
+}
+function DashboardSkeletonCard({
+  minHeight = "min-h-[220px]",
+}: {
+  minHeight?: string;
+}) {
+  return (
+    <div
+      className={`${minHeight} animate-pulse rounded-3xl border border-white/10 bg-white/4 p-5 shadow-2xl shadow-cyan-500/5 backdrop-blur-2xl`}
+    >
+      <div className="h-4 w-36 rounded-full bg-white/10" />
+      <div className="mt-4 h-7 w-56 rounded-full bg-white/10" />
+      <div className="mt-6 grid gap-3">
+        <div className="h-16 rounded-2xl bg-white/10" />
+        <div className="h-16 rounded-2xl bg-white/10" />
+        <div className="h-16 rounded-2xl bg-white/10" />
+      </div>
+    </div>
+  );
+}
+
+function SiteCardSkeleton() {
+  return (
+    <div className="min-h-80 animate-pulse rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-xl shadow-black/20">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="h-5 w-40 rounded-full bg-white/10" />
+          <div className="mt-3 h-3 w-28 rounded-full bg-white/10" />
+          <div className="mt-4 h-3 w-52 rounded-full bg-white/10" />
+        </div>
+        <div className="h-7 w-20 rounded-full bg-white/10" />
+      </div>
+
+      <div className="mt-6 h-2 rounded-full bg-white/10" />
+
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <div className="h-20 rounded-2xl bg-white/10" />
+        <div className="h-20 rounded-2xl bg-white/10" />
+        <div className="h-20 rounded-2xl bg-white/10" />
+        <div className="h-20 rounded-2xl bg-white/10" />
+      </div>
+    </div>
   );
 }
 
@@ -127,6 +220,12 @@ export default function RoleBasedDashboardPage() {
     "ALL" | "CRITICAL" | "WARNING" | "HEALTHY"
   >("ALL");
 
+  /**
+   * Loads role-based dashboard data once when the page opens.
+   *
+   * The viewport lazy loading below does NOT re-fetch data.
+   * It only controls when expensive UI sections are mounted.
+   */
   useEffect(() => {
     let cancelled = false;
 
@@ -139,9 +238,14 @@ export default function RoleBasedDashboardPage() {
 
         if (!cancelled) {
           setData(response);
+
+          console.log("Dashboard overview response:", response);
+          console.log("Dashboard sites:", response.sites);
+          console.log("Dashboard riskSites:", response.riskSites);
+          console.log("Dashboard aiInsights:", response.aiInsights);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load dashboard overview:", err);
 
         if (!cancelled) {
           setError(
@@ -163,13 +267,13 @@ export default function RoleBasedDashboardPage() {
   }, []);
 
   const filteredSites = useMemo(() => {
-    if (!data) return [];
+    const sites = data?.sites ?? [];
 
     if (selectedRisk === "ALL") {
-      return data.sites;
+      return sites;
     }
 
-    return data.sites.filter((site) => site.riskLevel === selectedRisk);
+    return sites.filter((site) => site.riskLevel === selectedRisk);
   }, [data, selectedRisk]);
 
   if (loading) {
@@ -199,16 +303,18 @@ export default function RoleBasedDashboardPage() {
   }
 
   const { kpis } = data;
+  const aiInsights = data.aiInsights ?? [];
+  const riskSites = data.riskSites ?? [];
 
   return (
-    <div className="min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute left-[-10%] top-[-10%] h-80 w-80 rounded-full bg-cyan-500/20 blur-3xl" />
         <div className="absolute right-[-10%] top-[20%] h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="absolute bottom-[-15%] left-[25%] h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
       </div>
 
-      <main className="relative z-10 px-5 py-6 md:px-8 lg:px-10">
+      <main className="relative z-10 px-5 py-6 pb-12 md:px-8 lg:px-10">
         <ViewportReveal>
           <DashboardHeader role={data.role} generatedAt={data.generatedAt} />
         </ViewportReveal>
@@ -217,7 +323,9 @@ export default function RoleBasedDashboardPage() {
           <ViewportReveal delay={0.02}>
             <KpiCard
               icon={<Building2 className="h-5 w-5" />}
-              label={data.role === "BMS_ADMIN" ? "Tenants / Sites" : "Assigned Sites"}
+              label={
+                data.role === "BMS_ADMIN" ? "Tenants / Sites" : "Assigned Sites"
+              }
               value={
                 data.role === "BMS_ADMIN"
                   ? `${formatNumber(kpis.totalTenants)} / ${formatNumber(
@@ -258,16 +366,8 @@ export default function RoleBasedDashboardPage() {
           </ViewportReveal>
         </section>
 
-        <ViewportReveal>
-          <AiInsightsPanel insights={data.aiInsights} role={data.role} />
-        </ViewportReveal>
-
-        <ViewportReveal>
-          <DashboardChartsSection data={data} />
-        </ViewportReveal>
-
         <section className="mt-6 grid gap-5 xl:grid-cols-[1.5fr_1fr]">
-          <ViewportReveal>
+          <ViewportLoadOnce fallback={<DashboardSkeletonCard minHeight="min-h-[520px]" />}>
             <div className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -275,7 +375,7 @@ export default function RoleBasedDashboardPage() {
                     Role-based operations
                   </p>
                   <h2 className="mt-2 text-xl font-semibold text-white">
-                    {roleTitle(data.role)}
+                    Site health overview
                   </h2>
                   <p className="mt-1 text-sm text-slate-300">
                     Showing only the tenant and site data allowed for your role.
@@ -287,10 +387,11 @@ export default function RoleBasedDashboardPage() {
 
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
                 {filteredSites.map((site, index) => (
-                  <ViewportReveal
+                  <ViewportLoadOnce
                     key={site.siteId}
                     delay={Math.min(index * 0.025, 0.18)}
-                    y={18}
+                    y={14}
+                    fallback={<SiteCardSkeleton />}
                   >
                     <SiteHealthCard
                       site={site}
@@ -306,29 +407,36 @@ export default function RoleBasedDashboardPage() {
                         )
                       }
                     />
-                  </ViewportReveal>
+                  </ViewportLoadOnce>
                 ))}
 
                 {filteredSites.length === 0 && (
-                  <ViewportReveal>
-                    <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
-                      No sites found for this filter.
-                    </div>
-                  </ViewportReveal>
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+                    No sites found for this filter.
+                  </div>
                 )}
               </div>
             </div>
-          </ViewportReveal>
+          </ViewportLoadOnce>
 
-          <ViewportReveal delay={0.08}>
-            <div className="space-y-5">
-              <RiskSitesPanel sites={data.riskSites} />
-            </div>
-          </ViewportReveal>
+          <ViewportLoadOnce
+            delay={0.08}
+            fallback={<DashboardSkeletonCard minHeight="min-h-[420px]" />}
+          >
+            <RiskSitesPanel sites={riskSites} />
+          </ViewportLoadOnce>
         </section>
 
+        <ViewportLoadOnce fallback={<DashboardSkeletonCard minHeight="min-h-[360px]" />}>
+          <DashboardChartsSection data={data} />
+        </ViewportLoadOnce>
+
+        <ViewportLoadOnce fallback={<DashboardSkeletonCard minHeight="min-h-[520px]" />}>
+          <AiInsightsPanel insights={aiInsights} role={data.role} />
+        </ViewportLoadOnce>
+
         {data.role === "BMS_ADMIN" && (
-          <ViewportReveal>
+          <ViewportLoadOnce fallback={<DashboardSkeletonCard minHeight="min-h-[360px]" />}>
             <section className="mt-6 rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-violet-500/10 backdrop-blur-2xl">
               <div className="mb-4 flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-violet-200" />
@@ -342,7 +450,7 @@ export default function RoleBasedDashboardPage() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-white/10">
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
                 <table className="min-w-full divide-y divide-white/10 text-sm">
                   <thead className="bg-white/4 text-left text-xs uppercase tracking-wider text-slate-400">
                     <tr>
@@ -354,8 +462,9 @@ export default function RoleBasedDashboardPage() {
                       <th className="px-4 py-3">Avg temp</th>
                     </tr>
                   </thead>
+
                   <tbody className="divide-y divide-white/10">
-                    {data.tenants.map((tenant) => (
+                    {(data.tenants ?? []).map((tenant) => (
                       <tr
                         key={tenant.tenantId}
                         className="text-slate-200 hover:bg-white/4"
@@ -380,7 +489,7 @@ export default function RoleBasedDashboardPage() {
                 </table>
               </div>
             </section>
-          </ViewportReveal>
+          </ViewportLoadOnce>
         )}
       </main>
     </div>
@@ -414,8 +523,9 @@ function DashboardHeader({
           </div>
 
           <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300">
-            AI-ready operational dashboard for HVAC health, site risk, maintenance
-            priority, tenant comparison, alerts, and technician actions.
+            AI-ready operational dashboard for HVAC health, site risk,
+            maintenance priority, tenant comparison, alerts, and technician
+            actions.
           </p>
         </div>
 
@@ -631,15 +741,20 @@ function AiInsightsPanel({
   role: string;
 }) {
   return (
-    <div className="mt-8 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.07] p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
-      <div className="flex items-center justify-between gap-4">
+    <div className="mt-6 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.07] p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
             <Sparkles className="h-5 w-5" />
           </div>
 
           <div>
-            <h2 className="text-lg font-semibold text-white">AI assistance</h2>
+            <h2 className="text-lg font-semibold text-white">
+              AI assistance{" "}
+              <span className="text-sm font-normal text-cyan-200/70">
+                ({insights.length})
+              </span>
+            </h2>
             <p className="text-sm text-slate-300">
               Rule-based insights now. Ask OpenAI for deeper explanation.
             </p>
@@ -654,31 +769,34 @@ function AiInsightsPanel({
         </button>
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 max-h-130 space-y-3 overflow-y-auto pr-2">
         {insights.length === 0 && (
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-sm text-emerald-100">
-            No critical AI insights at the moment. Sites appear stable for your role view.
+            No critical AI insights at the moment. Sites appear stable for your
+            role view.
           </div>
         )}
 
         {insights.map((insight, index) => (
-          // <ViewportReveal key={`${insight.title}-${insight.severity}`} delay={index * 0.04} y={14}>
-          <ViewportReveal key={`${insight.title}-${insight.severity}-${index}`} delay={index * 0.04} y={14} >
-            <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="font-semibold text-white">{insight.title}</h3>
-                <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] text-slate-300">
-                  {insight.severity}
-                </span>
-              </div>
-
-              <p className="mt-2 text-sm text-slate-300">{insight.message}</p>
-              <p className="mt-3 text-sm text-cyan-100">
-                {role === "TECHNICIAN" ? "Technician action: " : "Recommended action: "}
-                {insight.recommendedAction}
-              </p>
+          <div
+            key={`${insight.title}-${insight.severity}-${index}`}
+            className="rounded-2xl border border-white/10 bg-slate-950/50 p-4"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-semibold text-white">{insight.title}</h3>
+              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] text-slate-300">
+                {insight.severity}
+              </span>
             </div>
-          </ViewportReveal>
+
+            <p className="mt-2 text-sm text-slate-300">{insight.message}</p>
+            <p className="mt-3 text-sm text-cyan-100">
+              {role === "TECHNICIAN"
+                ? "Technician action: "
+                : "Recommended action: "}
+              {insight.recommendedAction}
+            </p>
+          </div>
         ))}
       </div>
     </div>
@@ -709,49 +827,50 @@ function RiskSitesPanel({
           </div>
         )}
 
-        {sites.map((site, index) => (
-          <ViewportReveal key={site.siteId} delay={Math.min(index * 0.035, 0.2)} y={14}>
-            <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-medium text-white">{site.siteName}</h3>
-                  <p className="text-xs text-slate-400">{site.tenantName}</p>
-                </div>
-
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs ${riskBadgeClass(
-                    site.riskLevel
-                  )}`}
-                >
-                  {site.riskLevel}
-                </span>
+        {sites.map((site) => (
+          <div
+            key={site.siteId}
+            className="rounded-2xl border border-white/10 bg-slate-950/50 p-4"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-medium text-white">{site.siteName}</h3>
+                <p className="text-xs text-slate-400">{site.tenantName}</p>
               </div>
 
-              <p className="mt-3 text-sm text-slate-300">{site.reason}</p>
+              <span
+                className={`rounded-full border px-3 py-1 text-xs ${riskBadgeClass(
+                  site.riskLevel
+                )}`}
+              >
+                {site.riskLevel}
+              </span>
+            </div>
 
-              <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs text-slate-400">
-                <div className="rounded-xl bg-white/4 p-2">
-                  <p className="text-rose-100">{site.failedHvacs}</p>
-                  <p>Failed</p>
-                </div>
+            <p className="mt-3 text-sm text-slate-300">{site.reason}</p>
 
-                <div className="rounded-xl bg-white/4 p-2">
-                  <p className="text-amber-100">{site.openAlerts}</p>
-                  <p>Alerts</p>
-                </div>
+            <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs text-slate-400">
+              <div className="rounded-xl bg-white/4 p-2">
+                <p className="text-rose-100">{site.failedHvacs}</p>
+                <p>Failed</p>
+              </div>
 
-                <div className="rounded-xl bg-white/4 p-2">
-                  <p className="text-slate-100">{site.offlineHvacs}</p>
-                  <p>Offline</p>
-                </div>
+              <div className="rounded-xl bg-white/4 p-2">
+                <p className="text-amber-100">{site.openAlerts}</p>
+                <p>Alerts</p>
+              </div>
 
-                <div className="rounded-xl bg-white/4 p-2">
-                  <p className="text-cyan-100">{site.maintenanceDue}</p>
-                  <p>Due</p>
-                </div>
+              <div className="rounded-xl bg-white/4 p-2">
+                <p className="text-slate-100">{site.offlineHvacs}</p>
+                <p>Offline</p>
+              </div>
+
+              <div className="rounded-xl bg-white/4 p-2">
+                <p className="text-cyan-100">{site.maintenanceDue}</p>
+                <p>Due</p>
               </div>
             </div>
-          </ViewportReveal>
+          </div>
         ))}
       </div>
     </div>
