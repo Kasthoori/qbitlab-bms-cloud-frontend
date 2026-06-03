@@ -272,6 +272,8 @@ export type HvacMaintenanceNoteDto = {
 
   createdAt: string;
   updatedAt: string;
+
+  workflow?: HvacMaintenanceWorkflowDto | null;
 };
 
 export type CreateHvacMaintenanceNoteRequest = {
@@ -287,6 +289,87 @@ export type CreateHvacMaintenanceNoteRequest = {
   machineRestartedAt?: string;
 
   technicianName?: string;
+};
+
+
+export type HvacMaintenanceWorkflowStatus =
+  | "SUBMITTED"
+  | "NEEDS_CLARIFICATION"
+  | "RESUBMITTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "CLOSED";
+
+export type HvacMaintenanceMessageType =
+  | "COMMENT"
+  | "CLARIFICATION_REQUEST"
+  | "TECHNICIAN_REPLY"
+  | "MANAGER_REVIEW"
+  | "SYSTEM_EVENT";
+
+export type HvacMaintenanceWorkflowDto = {
+  workflowId: string;
+  noteId: string;
+  workflowStatus: HvacMaintenanceWorkflowStatus;
+
+  reviewComment?: string | null;
+  rejectedReason?: string | null;
+
+  submittedAt?: string | null;
+  resubmittedAt?: string | null;
+  clarificationRequestedAt?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  closedAt?: string | null;
+
+  lastActionByUserId?: string | null;
+  lastActionByEmail?: string | null;
+  lastActionByRole?: string | null;
+  lastActionAt?: string | null;
+
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type HvacMaintenanceMessageAttachmentDto = {
+  attachmentId: string;
+  messageId: string;
+  noteId: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  downloadUrl: string;
+  uploadedAt: string;
+};
+
+export type HvacMaintenanceNoteMessageDto = {
+  messageId: string;
+  noteId: string;
+
+  senderUserId?: string | null;
+  senderEmail?: string | null;
+  senderRole?: string | null;
+  senderDisplayName?: string | null;
+
+  messageType: HvacMaintenanceMessageType;
+  message: string;
+  createdAt: string;
+
+  attachments?: HvacMaintenanceMessageAttachmentDto[];
+};
+
+export type HvacMaintenanceNoteThreadDto = {
+  note: HvacMaintenanceNoteDto;
+  workflow?: HvacMaintenanceWorkflowDto | null;
+  messages: HvacMaintenanceNoteMessageDto[];
+};
+
+export type CreateMaintenanceNoteMessageRequest = {
+  message: string;
+};
+
+export type RequestMaintenanceClarificationRequest = {
+  message: string;
 };
 
 
@@ -935,6 +1018,45 @@ function buildCommandAuditQuery(
 }
 
 
+// ======================== Dashboard Types ========================
+
+export type DashboardNotificationType = "ALARM" | "MESSAGE" | string;
+
+export type DashboardNotificationSeverity =
+  | "INFO"
+  | "WARNING"
+  | "CRITICAL"
+  | "HEALTHY"
+  | string;
+
+export type DashboardNotificationItemDto = {
+  id: string;
+  type: DashboardNotificationType;
+  severity: DashboardNotificationSeverity;
+  title: string;
+  message: string;
+
+  tenantId?: string | null;
+  tenantName?: string | null;
+
+  siteId?: string | null;
+  siteName?: string | null;
+
+  hvacId?: string | null;
+  externalDeviceId?: string | null;
+
+  link: string;
+  createdAt?: string | null;
+};
+
+export type DashboardNotificationSummaryDto = {
+  alarmCount: number;
+  messageCount: number;
+  alarms: DashboardNotificationItemDto[];
+  messages: DashboardNotificationItemDto[];
+};
+
+
 export const BmsApi = {
 
     //getMyTenants: async () => await api<Page<TenantDto>>("/api/tenants/search"),
@@ -983,6 +1105,30 @@ export const BmsApi = {
             method: "GET",
         }),
         
+
+    getDashboardNotifications: async (): Promise<DashboardNotificationSummaryDto> =>
+    await api<DashboardNotificationSummaryDto>("/api/dashboard/notifications", {
+        method: "GET",
+        handle403Redirect: false,
+    }),
+
+    markDashboardNotificationAsRead: async (
+        notificationId: string
+        ): Promise<void> =>
+        await api<void>(`/api/dashboard/notifications/${notificationId}/read`, {
+            method: "PUT",
+            handle403Redirect: false,
+        }),
+
+        dismissDashboardNotification: async (
+        notificationId: string
+        ): Promise<void> =>
+        await api<void>(`/api/dashboard/notifications/${notificationId}/dismiss`, {
+            method: "PUT",
+            handle403Redirect: false,
+    }),
+
+
     // ============= Tenant / Site / HVAC Management APIs =============
 
     getHvacSiteDetails: async (tenantId: string, siteId: string) =>
@@ -1365,6 +1511,146 @@ export const BmsApi = {
             }
         );
     },
+
+
+    getHvacMaintenanceNoteThread: async (
+    tenantId: string,
+    siteId: string,
+    externalDeviceId: string,
+    noteId: string
+    ): Promise<HvacMaintenanceNoteThreadDto> => {
+    if (!externalDeviceId || externalDeviceId.trim() === "") {
+        throw new Error("externalDeviceId is missing in getHvacMaintenanceNoteThread");
+    }
+
+    return await api<HvacMaintenanceNoteThreadDto>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${encodeURIComponent(
+        externalDeviceId
+        )}/maintenance-notes/${noteId}/thread`,
+        {
+        method: "GET",
+        handle403Redirect: false,
+        }
+    );
+    },
+
+    requestHvacMaintenanceClarification: async (
+    tenantId: string,
+    siteId: string,
+    externalDeviceId: string,
+    noteId: string,
+    req: RequestMaintenanceClarificationRequest
+    ): Promise<HvacMaintenanceNoteThreadDto> => {
+    if (!externalDeviceId || externalDeviceId.trim() === "") {
+        throw new Error("externalDeviceId is missing in requestHvacMaintenanceClarification");
+    }
+
+    return await api<HvacMaintenanceNoteThreadDto>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${encodeURIComponent(
+        externalDeviceId
+        )}/maintenance-notes/${noteId}/request-clarification`,
+        {
+        method: "POST",
+        body: JSON.stringify(req),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        handle403Redirect: false,
+        }
+    );
+    },
+
+    replyToHvacMaintenanceThread: async (
+    tenantId: string,
+    siteId: string,
+    externalDeviceId: string,
+    noteId: string,
+    req: CreateMaintenanceNoteMessageRequest
+    ): Promise<HvacMaintenanceNoteThreadDto> => {
+    if (!externalDeviceId || externalDeviceId.trim() === "") {
+        throw new Error("externalDeviceId is missing in replyToHvacMaintenanceThread");
+    }
+
+    return await api<HvacMaintenanceNoteThreadDto>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${encodeURIComponent(
+        externalDeviceId
+        )}/maintenance-notes/${noteId}/reply`,
+        {
+        method: "POST",
+        body: JSON.stringify(req),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        handle403Redirect: false,
+        }
+    );
+    },
+
+    replyToHvacMaintenanceThreadWithAttachments: async (
+    tenantId: string,
+    siteId: string,
+    externalDeviceId: string,
+    noteId: string,
+    message: string,
+    files: File[]
+    ): Promise<HvacMaintenanceNoteThreadDto> => {
+    if (!externalDeviceId || externalDeviceId.trim() === "") {
+        throw new Error(
+        "externalDeviceId is missing in replyToHvacMaintenanceThreadWithAttachments"
+        );
+    }
+
+    const formData = new FormData();
+    formData.append("message", message);
+
+    files.forEach((file) => {
+        formData.append("files", file);
+    });
+
+    /*
+    * Do NOT set Content-Type manually for FormData.
+    * Browser must set multipart boundary automatically.
+    */
+    return await api<HvacMaintenanceNoteThreadDto>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${encodeURIComponent(
+        externalDeviceId
+        )}/maintenance-notes/${noteId}/reply-with-attachments`,
+        {
+        method: "POST",
+        body: formData,
+        handle403Redirect: false,
+        }
+    );
+    },
+
+    // this is helper method to load maintenance attachment image with proper authentication, since the downloadUrl is a pre-signed URL that requires the same auth token in the header to access the file.
+
+    getMaintenanceAttachmentObjectUrl: async (
+    downloadUrl: string
+    ): Promise<string> => {
+    const normalizedUrl = downloadUrl.startsWith("http")
+        ? downloadUrl
+        : `${API_BASE_URL}${downloadUrl}`;
+
+    await keycloak.updateToken(30);
+
+    const response = await fetch(normalizedUrl, {
+        method: "GET",
+        headers: {
+        Authorization: `Bearer ${keycloak.token}`,
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to load maintenance attachment image.");
+    }
+
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+    },
+
+
+    //========= End Hvac Maintenance Note APIs =============
     
     markHvacFailureGone: async (
         tenantId: string,
@@ -1848,5 +2134,7 @@ export const BmsApi = {
 
         window.URL.revokeObjectURL(downloadUrl);
     },
+
+
     
 };

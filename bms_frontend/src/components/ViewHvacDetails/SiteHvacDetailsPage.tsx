@@ -321,10 +321,10 @@ export default function SiteHvacDetailsPage() {
             </ViewportReveal>
 
             {/*
-              Maintenance History is intentionally NOT wrapped in ViewportReveal.
-              It is a long interactive panel, so animation can cause scroll jumping
-              and half-visible sections.
-            */}
+            Maintenance Workflow is intentionally NOT wrapped in ViewportReveal.
+            It contains filters, note cards, and a fixed drawer.
+            Wrapping long interactive panels in scroll animations can cause jumpy UX.
+          */}
             <div className="min-w-0 max-w-full overflow-x-hidden">
               <HvacMaintenanceNotesPanel
                 tenantId={tenantId}
