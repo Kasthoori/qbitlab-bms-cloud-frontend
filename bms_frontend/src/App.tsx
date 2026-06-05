@@ -34,6 +34,8 @@ import SimulatorHvacsRoute from "./components/Simulator/SimulatorHvacsRoute";
 import RoleBasedDashboardPage from "./components/Dashboard/RoleBasedDashboardPage";
 import EdgeControllerSetupPage from "./components/Edge/EdgeControllerSetupPage";
 import CommandAuditReportPage from "./components/Reports/CommandAuditReportPage";
+import ComplianceEvidenceReportPage from "./components/Reports/ComplianceEvidenceReportPage";
+import EnergyPowerDashboardPage from "./components/Energy/EnergyPowerDashboardPage";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -103,6 +105,16 @@ const AppRoutes: FC = () => {
         }
       />
 
+      <Route
+        path="/user/tenants/:tenantId/sites/:siteId/energy"
+        element={
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER", "TECHNICIAN"]}
+          >
+            <EnergyPowerDashboardPage />
+          </ProtectedRoute>
+        }
+      />
       {/* ================= ADMIN ROUTES ================= */}
 
       <Route
@@ -214,6 +226,17 @@ const AppRoutes: FC = () => {
       />
 
       <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/energy"
+        element={
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER", "TECHNICIAN"]}
+          >
+            <EnergyPowerDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/onboarding"
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
@@ -235,11 +258,6 @@ const AppRoutes: FC = () => {
 
       {/* ================= REPORTS ================= */}
 
-      {/*
-        Generic Command Audit route.
-        Use this from the left navigation.
-        User can paste/select tenantId and siteId inside the report page.
-      */}
       <Route
         path="/reports/command-audit"
         element={
@@ -249,15 +267,38 @@ const AppRoutes: FC = () => {
         }
       />
 
-      {/*
-        Site-specific Command Audit route.
-        Use this later from Site Details / Site Dashboard buttons.
-      */}
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/reports/command-audit"
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
             <CommandAuditReportPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/*
+        Generic IQP Compliance Evidence route.
+        Use this from the left navigation.
+        User can paste/select tenantId and siteId inside the page.
+      */}
+      <Route
+        path="/reports/compliance-evidence"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+            <ComplianceEvidenceReportPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/*
+        Site-specific IQP Compliance Evidence route.
+        Use this later from Site Details / Site Dashboard buttons.
+      */}
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/reports/compliance-evidence"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+            <ComplianceEvidenceReportPage />
           </ProtectedRoute>
         }
       />

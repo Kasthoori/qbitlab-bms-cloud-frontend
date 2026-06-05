@@ -394,19 +394,30 @@ export default function RoleBasedDashboardPage() {
                     fallback={<SiteCardSkeleton />}
                   >
                     <SiteHealthCard
-                      site={site}
-                      onOpen={() =>
-                        navigate(
-                          `/user/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`,
-                          {
-                            state: {
-                              tenantName: site.tenantName,
-                              siteName: site.siteName,
-                            },
-                          }
-                        )
-                      }
-                    />
+                        site={site}
+                        onOpen={() =>
+                          navigate(
+                            `/user/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`,
+                            {
+                              state: {
+                                tenantName: site.tenantName,
+                                siteName: site.siteName,
+                              },
+                            }
+                          )
+                        }
+                        onOpenEnergy={() =>
+                          navigate(
+                            `/user/tenants/${site.tenantId}/sites/${site.siteId}/energy`,
+                            {
+                              state: {
+                                tenantName: site.tenantName,
+                                siteName: site.siteName,
+                              },
+                            }
+                          )
+                        }
+                      />
                   </ViewportLoadOnce>
                 ))}
 
@@ -613,9 +624,11 @@ function RiskFilter({
 function SiteHealthCard({
   site,
   onOpen,
+  onOpenEnergy,
 }: {
   site: DashboardSiteCardDto;
   onOpen: () => void;
+  onOpenEnergy: () => void;
 }) {
   return (
     <div className="h-full rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-xl shadow-black/20">
@@ -685,7 +698,7 @@ function SiteHealthCard({
         <p className="mt-1 text-sm text-slate-200">{site.riskReason}</p>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3">
+      {/* <div className="mt-5 flex items-center justify-between gap-3">
         <div className="text-xs text-slate-400">
           Avg temp:{" "}
           <span className="text-cyan-100">
@@ -700,6 +713,34 @@ function SiteHealthCard({
         >
           Open site
         </button>
+      </div> */}
+
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-slate-400">
+          Avg temp:{" "}
+          <span className="text-cyan-100">
+            {formatTemp(site.averageTemperature)}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onOpenEnergy}
+            className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-xs font-medium text-emerald-100 transition hover:bg-emerald-300/20"
+          >
+            Energy
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpen}
+            className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-300/20"
+          >
+            Open site
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -51,7 +51,7 @@ const SiteHvacTable: FC<SiteHvacTableProps> = ({ rows, connected }) => {
                 Unit
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Temp
+                Ambient Temp
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Setpoint

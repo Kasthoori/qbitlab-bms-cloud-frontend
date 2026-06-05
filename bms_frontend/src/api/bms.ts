@@ -372,6 +372,11 @@ export type RequestMaintenanceClarificationRequest = {
   message: string;
 };
 
+export type ReviewMaintenanceNoteRequest = {
+  reviewComment?: string | null;
+  rejectedReason?: string | null;
+};
+
 
 // ============= Simulator HVAC Types =============
 
@@ -1056,6 +1061,20 @@ export type DashboardNotificationSummaryDto = {
   messages: DashboardNotificationItemDto[];
 };
 
+// ============= Command Audit Report Types =============
+
+
+// ============= IQP Compliance Evidence Report Types =============
+
+export type ComplianceEvidenceReportRequest = {
+  siteId: string;
+  buildingName: string;
+  complianceScheduleRef: string;
+  systemIdentifier: string;
+  from: string;
+  to: string;
+};
+
 
 export const BmsApi = {
 
@@ -1494,22 +1513,94 @@ export const BmsApi = {
     },
 
     reviewHvacMaintenanceNote: async (
-        tenantId: string,
-        siteId: string,
-        externalDeviceId: string,
-        noteId: string
+    tenantId: string,
+    siteId: string,
+    externalDeviceId: string,
+    noteId: string,
+    req?: ReviewMaintenanceNoteRequest
     ): Promise<HvacMaintenanceNoteDto> => {
-        if (!externalDeviceId || externalDeviceId.trim() === "") {
-            throw new Error("externalDeviceId is missing in reviewHvacMaintenanceNote");
-        }
+    if (!externalDeviceId || externalDeviceId.trim() === "") {
+        throw new Error("externalDeviceId is missing in reviewHvacMaintenanceNote");
+    }
 
-        return await api<HvacMaintenanceNoteDto>(
-            `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${externalDeviceId}/maintenance-notes/${noteId}/review`,
-            {
-                method: "PUT",
-                handle403Redirect: false,
-            }
-        );
+    /*
+    * Production approval endpoint.
+    * Backend still keeps /review endpoint for backward compatibility.
+    */
+    return await api<HvacMaintenanceNoteDto>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${encodeURIComponent(
+        externalDeviceId
+        )}/maintenance-notes/${noteId}/approve`,
+        {
+        method: "PUT",
+        body: JSON.stringify(req ?? {}),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        handle403Redirect: false,
+        }
+      );
+    },
+
+
+    rejectHvacMaintenanceNote: async (
+    tenantId: string,
+    siteId: string,
+    externalDeviceId: string,
+    noteId: string,
+    req: ReviewMaintenanceNoteRequest
+    ): Promise<HvacMaintenanceNoteDto> => {
+    if (!externalDeviceId || externalDeviceId.trim() === "") {
+        throw new Error("externalDeviceId is missing in rejectHvacMaintenanceNote");
+    }
+
+    /*
+    * Rejects a technician maintenance workflow.
+    * Rejection reason is stored in backend workflow table.
+    */
+    return await api<HvacMaintenanceNoteDto>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${encodeURIComponent(
+        externalDeviceId
+        )}/maintenance-notes/${noteId}/reject`,
+        {
+        method: "PUT",
+        body: JSON.stringify(req),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        handle403Redirect: false,
+        }
+    );
+    },
+
+    closeHvacMaintenanceWorkflow: async (
+    tenantId: string,
+    siteId: string,
+    externalDeviceId: string,
+    noteId: string,
+    req?: ReviewMaintenanceNoteRequest
+    ): Promise<HvacMaintenanceNoteDto> => {
+    if (!externalDeviceId || externalDeviceId.trim() === "") {
+        throw new Error("externalDeviceId is missing in closeHvacMaintenanceWorkflow");
+    }
+
+    /*
+    * Closes the workflow after manager/admin final decision.
+    * Closed workflows cannot receive more replies from backend.
+    */
+    return await api<HvacMaintenanceNoteDto>(
+        `/api/tenants/${tenantId}/sites/${siteId}/hvacs/${encodeURIComponent(
+        externalDeviceId
+        )}/maintenance-notes/${noteId}/close`,
+        {
+        method: "PUT",
+        body: JSON.stringify(req ?? {}),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        handle403Redirect: false,
+        }
+    );
     },
 
 
@@ -2127,6 +2218,86 @@ export const BmsApi = {
         const link = document.createElement("a");
         link.href = downloadUrl;
         link.download = `command-audit-${siteId}.pdf`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        window.URL.revokeObjectURL(downloadUrl);
+    },
+
+
+// ============= Command Audit Report APIs =============
+
+    // ============= IQP Compliance Evidence Report APIs =============
+
+    downloadComplianceEvidenceReportPdf: async (
+        req: ComplianceEvidenceReportRequest
+    ): Promise<void> => {
+        if (!keycloak) {
+            throw new Error("Keycloak not initialized. Please log in again.");
+        }
+
+        try {
+            await keycloak.updateToken(30);
+        } catch (error) {
+            await keycloak.login();
+            throw error;
+        }
+
+        if (!keycloak.token) {
+            throw new Error("No access token. Please log in again.");
+        }
+
+        /*
+        * PDF export uses fetch directly because the response is a binary PDF blob.
+        * Do not use api<T>() here because normal API wrapper is for JSON responses.
+        */
+        const response = await fetch(
+            `${API_BASE_URL}/api/reports/compliance-evidence/pdf`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${keycloak.token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(req),
+            }
+        );
+
+        if (response.status === 401) {
+            console.error("Backend returned 401 during compliance PDF export.");
+            throw new Error("Unauthorized. Please log in again.");
+        }
+
+        if (response.status === 403) {
+            throw new Error("Forbidden. You do not have permission to export this report.");
+        }
+
+        if (!response.ok) {
+            throw new Error(`Compliance evidence PDF export failed: HTTP ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+
+        const contentDisposition = response.headers.get("Content-Disposition");
+        const filenameMatch = contentDisposition?.match(/filename="?([^"]+)"?/);
+
+        const safeSystemIdentifier = req.systemIdentifier
+            .trim()
+            .replace(/[^a-zA-Z0-9_-]/g, "-");
+
+        const filename =
+            filenameMatch?.[1] ??
+            `iqp-compliance-evidence-${safeSystemIdentifier}-${req.from.substring(
+                0,
+                10
+            )}-to-${req.to.substring(0, 10)}.pdf`;
+
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = filename;
 
         document.body.appendChild(link);
         link.click();

@@ -11,6 +11,7 @@ import {
   LayoutTemplate,
   Fan,
   Sparkles,
+  FileCheck2,
 } from "lucide-react";
 import { BmsApi, type SiteDto, type TenantDto } from "@/api/bms";
 
@@ -31,6 +32,10 @@ export default function UserViewSites() {
   const [sites, setSites] = useState<SiteDto[]>([]);
   const [search, setSearch] = useState("");
 
+  /*
+   * Loads tenant details and all sites for the selected tenant.
+   * This page needs both because report buttons require tenantId + siteId.
+   */
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,6 +73,10 @@ export default function UserViewSites() {
     }
   }
 
+  /*
+   * Filters site cards locally by visible site fields.
+   * This avoids unnecessary backend calls while user is typing.
+   */
   const filteredSites = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return sites;
@@ -95,24 +104,35 @@ export default function UserViewSites() {
   }
 
   function handleViewPlans(siteId: string) {
-    if (!tenantId) return;
-    navigate(`/buildings/user/tenants/${tenantId}/sites/${siteId}/floor-plans/view`);
+    if (!tenantId || !siteId) return;
+
+    navigate(
+      `/buildings/user/tenants/${tenantId}/sites/${siteId}/floor-plans/view`
+    );
   }
 
   function handleViewHvacs(siteId: string, siteName?: string) {
-    if (!tenantId) return;
+    if (!tenantId || !siteId) return;
 
     navigate(`/user/tenants/${tenantId}/sites/${siteId}/hvacs`, {
       state: { siteName: siteName ?? "Selected Site" },
     });
   }
 
-  if (loading) {
-    return (
-      <div className={`${glassCard} p-6 text-slate-300`}>
-        Loading sites...
-      </div>
+  function handleComplianceReport(siteId: string) {
+    if (!tenantId || !siteId) return;
+
+    /*
+     * Opens site-specific IQP Compliance Evidence Report.
+     * Tenant ID and Site ID will auto-fill on the report page from route params.
+     */
+    navigate(
+      `/admin/tenants/${tenantId}/sites/${siteId}/reports/compliance-evidence`
     );
+  }
+
+  if (loading) {
+    return <div className={`${glassCard} p-6 text-slate-300`}>Loading sites...</div>;
   }
 
   if (errorMessage) {
@@ -157,7 +177,8 @@ export default function UserViewSites() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm text-slate-300">
-              Select a site to view floor plans and HVAC equipment for this tenant.
+              Select a site to view floor plans, HVAC equipment, or compliance
+              evidence reports.
             </p>
           </div>
 
@@ -184,7 +205,8 @@ export default function UserViewSites() {
           <div>
             <h2 className="text-xl font-semibold text-white">Available Sites</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Choose a site to continue to plans or HVAC equipment.
+              Choose a site to continue to plans, HVAC equipment, or compliance
+              reports.
             </p>
           </div>
 
@@ -240,7 +262,9 @@ export default function UserViewSites() {
                               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                                 Address
                               </p>
-                              <p className="text-sm text-slate-200">{locationText}</p>
+                              <p className="text-sm text-slate-200">
+                                {locationText}
+                              </p>
                             </div>
                           </div>
                         )}
@@ -252,7 +276,9 @@ export default function UserViewSites() {
                               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                                 Timezone
                               </p>
-                              <p className="text-sm text-slate-200">{site.timezone}</p>
+                              <p className="text-sm text-slate-200">
+                                {site.timezone}
+                              </p>
                             </div>
                           </div>
                         )}
@@ -264,7 +290,8 @@ export default function UserViewSites() {
                             Open this site
                           </p>
                           <p className="text-xs text-slate-400">
-                            View floor plans or inspect HVAC equipment
+                            View plans, inspect HVACs, or export compliance
+                            evidence
                           </p>
                         </div>
 
@@ -285,6 +312,15 @@ export default function UserViewSites() {
                           >
                             <Fan className="h-4 w-4" />
                             View HVACs
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleComplianceReport(siteId)}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-2.5 text-sm font-medium text-emerald-200 transition hover:bg-emerald-400/20 hover:text-white"
+                          >
+                            <FileCheck2 className="h-4 w-4" />
+                            Compliance Report
                           </button>
                         </div>
                       </div>

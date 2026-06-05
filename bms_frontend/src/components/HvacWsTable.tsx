@@ -89,7 +89,7 @@ const HvacWsTable:FC = () => {
                                     Unit
                                 </th>
                                 <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300">
-                                    Temp (°C)
+                                    AMBIENT TEMP (°C)
                                 </th>
                                 <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300">
                                     Setpoint (°C)
