@@ -36,6 +36,8 @@ import EdgeControllerSetupPage from "./components/Edge/EdgeControllerSetupPage";
 import CommandAuditReportPage from "./components/Reports/CommandAuditReportPage";
 import ComplianceEvidenceReportPage from "./components/Reports/ComplianceEvidenceReportPage";
 import EnergyPowerDashboardPage from "./components/Energy/EnergyPowerDashboardPage";
+import EnergyMeterMappingPage from "./components/Energy/EnergyMeterMappingPage";
+import EnergyMeterPointMappingPage from "./components/Energy/EnergyMeterPointMappingPage";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -46,7 +48,6 @@ const AppRoutes: FC = () => {
 
   return (
     <Routes>
-      {/* Default route */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       {/* ================= USER / TECHNICIAN ROUTES ================= */}
@@ -115,6 +116,7 @@ const AppRoutes: FC = () => {
           </ProtectedRoute>
         }
       />
+
       {/* ================= ADMIN ROUTES ================= */}
 
       <Route
@@ -237,6 +239,24 @@ const AppRoutes: FC = () => {
       />
 
       <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/energy/mapping"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+            <EnergyMeterMappingPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/tenants/:tenantId/sites/:siteId/energy/meters/:energyMeterId/point-mapping"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+            <EnergyMeterPointMappingPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/onboarding"
         element={
           <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN"]}>
@@ -276,11 +296,6 @@ const AppRoutes: FC = () => {
         }
       />
 
-      {/*
-        Generic IQP Compliance Evidence route.
-        Use this from the left navigation.
-        User can paste/select tenantId and siteId inside the page.
-      */}
       <Route
         path="/reports/compliance-evidence"
         element={
@@ -290,10 +305,6 @@ const AppRoutes: FC = () => {
         }
       />
 
-      {/*
-        Site-specific IQP Compliance Evidence route.
-        Use this later from Site Details / Site Dashboard buttons.
-      */}
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/reports/compliance-evidence"
         element={

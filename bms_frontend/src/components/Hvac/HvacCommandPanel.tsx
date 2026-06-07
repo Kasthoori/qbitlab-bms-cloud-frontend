@@ -43,6 +43,9 @@ type TimeFilter =
   | "LAST_24_HOURS"
   | "CUSTOM";
 
+const MIN_SETPOINT = 16;
+const MAX_SETPOINT = 30;
+
 function normalizeRole(role: string): string {
   return role.startsWith("ROLE_") ? role.replace("ROLE_", "") : role;
 }
@@ -89,6 +92,10 @@ export default function HvacCommandPanel({
   );
   const [currentUser, setCurrentUser] = useState<CurrentUserDto | null>(null);
 
+  /**
+   * Load current user once.
+   * Used for role-based command visibility and audit visibility.
+   */
   useEffect(() => {
     BmsApi.getCurrentUser()
       .then(setCurrentUser)
@@ -221,8 +228,8 @@ export default function HvacCommandPanel({
       commandFilter === "ALL"
         ? recentCommands
         : commandFilter === "ACTIVE"
-        ? recentCommands.filter((command) => activeStatus(command.status))
-        : recentCommands.filter((command) => command.status === commandFilter);
+          ? recentCommands.filter((command) => activeStatus(command.status))
+          : recentCommands.filter((command) => command.status === commandFilter);
 
     return statusFiltered.filter((command) =>
       isCommandInsideTimeFilter(command, timeFilter)
@@ -247,6 +254,9 @@ export default function HvacCommandPanel({
     return tableHasActiveCommand || bannerHasActiveCommand;
   }, [recentCommands, lastCommand?.status]);
 
+  /**
+   * Keep local form controls aligned with selected HVAC live state.
+   */
   useEffect(() => {
     if (!selectedHvac) return;
 
@@ -259,6 +269,9 @@ export default function HvacCommandPanel({
     selectedHvac?.setpoint,
   ]);
 
+  /**
+   * Clear previous command banner when a different HVAC is selected.
+   */
   useEffect(() => {
     setStatusMessage(null);
     setLastCommand(null);
@@ -276,10 +289,17 @@ export default function HvacCommandPanel({
     }
   }, [tenantId, siteId]);
 
+  /**
+   * Load recent commands when panel opens.
+   */
   useEffect(() => {
     refreshRecentCommands();
   }, [refreshRecentCommands]);
 
+  /**
+   * Auto-refresh command lifecycle.
+   * Active commands refresh faster because status changes from PENDING -> PICKED_UP -> COMPLETED/FAILED.
+   */
   useEffect(() => {
     if (!tenantId || !siteId) return;
 
@@ -328,6 +348,9 @@ export default function HvacCommandPanel({
     );
   }
 
+  /**
+   * Update the status banner when the last submitted command changes in the refreshed table.
+   */
   useEffect(() => {
     if (!lastCommand?.commandId) return;
 
@@ -352,6 +375,67 @@ export default function HvacCommandPanel({
     lastCommand?.completedAt,
     lastCommand?.errorMessage,
   ]);
+
+  /**
+   * Builds backend-compatible and edge-compatible payloads.
+   *
+   * Production target contract:
+   * - SET_ON_OFF      -> { on: true/false }
+   * - SET_SETPOINT    -> { setpoint: 22 }
+   * - SIMULATE_FAULT  -> { fault: true, reason: "..." }
+   * - CLEAR_FAULT     -> { fault: false }
+   * - RESTART_HVAC    -> {}
+   *
+   * Current backend compatibility:
+   * - value is also sent because the current backend validator still accepts/expects it.
+   * - Once backend validation is permanently updated to semantic fields, remove value.
+   */
+  function buildCommandPayload(
+    commandType: HvacCommandType,
+    value?: boolean | number | string | null
+  ): Record<string, unknown> {
+    switch (commandType) {
+      case "SET_ON_OFF": {
+        const on = Boolean(value);
+
+        return {
+          value: on,
+          on,
+        };
+      }
+
+      case "SET_SETPOINT": {
+        const setpointValue = Number(value);
+
+        return {
+          value: setpointValue,
+          setpoint: setpointValue,
+        };
+      }
+
+      case "SIMULATE_FAULT": {
+        const reason = String(value ?? "Manual simulated fault");
+
+        return {
+          value: reason,
+          fault: true,
+          reason,
+        };
+      }
+
+      case "CLEAR_FAULT":
+        return {
+          value: false,
+          fault: false,
+        };
+
+      case "RESTART_HVAC":
+        return {};
+
+      default:
+        return {};
+    }
+  }
 
   async function sendCommand(
     commandType: HvacCommandType,
@@ -389,17 +473,27 @@ export default function HvacCommandPanel({
       return;
     }
 
+    if (commandType === "SET_SETPOINT") {
+      const setpointValue = Number(value);
+
+      if (
+        Number.isNaN(setpointValue) ||
+        setpointValue < MIN_SETPOINT ||
+        setpointValue > MAX_SETPOINT
+      ) {
+        setStatusMessage(
+          `Setpoint must be between ${MIN_SETPOINT}°C and ${MAX_SETPOINT}°C.`
+        );
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       setStatusMessage(null);
       setLastCommand(null);
 
-      const payload =
-        value === null || value === undefined
-          ? {}
-          : {
-              value,
-            };
+      const payload = buildCommandPayload(commandType, value);
 
       const command = await BmsApi.createHvacCommand(tenantId, siteId, {
         edgeControllerId,
@@ -568,8 +662,8 @@ export default function HvacCommandPanel({
             lastCommand?.status === "EXPIRED"
               ? "border-red-300/20 bg-red-500/10 text-red-100"
               : lastCommand?.status === "COMPLETED"
-              ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
-              : "border-cyan-300/20 bg-cyan-500/10 text-cyan-100"
+                ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
+                : "border-cyan-300/20 bg-cyan-500/10 text-cyan-100"
           }`}
         >
           <p>{statusMessage}</p>
@@ -636,8 +730,8 @@ export default function HvacCommandPanel({
             <input
               type="number"
               value={setpoint}
-              min={16}
-              max={30}
+              min={MIN_SETPOINT}
+              max={MAX_SETPOINT}
               step={0.5}
               onChange={(event) => setSetpoint(Number(event.target.value))}
               className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
@@ -654,7 +748,8 @@ export default function HvacCommandPanel({
           </div>
 
           <p className="mt-2 text-xs text-slate-500">
-            Backend safety allows setpoint range 16°C to 30°C.
+            Backend safety allows setpoint range {MIN_SETPOINT}°C to{" "}
+            {MAX_SETPOINT}°C.
           </p>
         </div>
 

@@ -11,9 +11,11 @@ import {
   Loader2,
   PlugZap,
   RefreshCw,
+  Settings2,
   Sparkles,
   TrendingUp,
   Zap,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Area,
@@ -146,13 +148,15 @@ function EnergySkeletonCard({ minHeight = "min-h-[220px]" }: { minHeight?: strin
 
 export default function EnergyPowerDashboardPage() {
   const navigate = useNavigate();
-  const { siteId } = useParams();
+  const { tenantId, siteId } = useParams();
 
   const [overview, setOverview] = useState<EnergyOverviewResponse | null>(null);
   const [meters, setMeters] = useState<EnergyMeterSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const glassButton =
+  "inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 shadow-lg shadow-black/20 backdrop-blur-xl transition hover:bg-white/15";
 
   const resolvedSiteId = siteId ?? "";
 
@@ -265,7 +269,18 @@ export default function EnergyPowerDashboardPage() {
   }
 
   return (
+    
     <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="relative z-20 px-5 pt-6 md:px-8 lg:px-10">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className={glassButton}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </button>
+    </div>
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute left-[-10%] top-[-10%] h-80 w-80 rounded-full bg-cyan-500/20 blur-3xl" />
         <div className="absolute right-[-10%] top-[20%] h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
@@ -310,6 +325,19 @@ export default function EnergyPowerDashboardPage() {
                   {overview.onlineMeters} Online / {overview.offlineMeters} Offline
                 </p>
               </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    `/admin/tenants/${tenantId}/sites/${resolvedSiteId}/energy/mapping`
+                  )
+                }
+                className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/20"
+              >
+                <Settings2 className="h-4 w-4" />
+                Meter Mapping
+              </button>
 
               <button
                 type="button"

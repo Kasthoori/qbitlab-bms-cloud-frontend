@@ -29,6 +29,8 @@ const TenantsPage: FC = () => {
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  
+
   const refetch = async () => {
     try {
       if (tenants.length === 0) setLoading(true);
@@ -180,7 +182,7 @@ const TenantsPage: FC = () => {
             <button
               type="button"
               onClick={() => nav("/onboarding")}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 px-5 py-3 text-sm font-semibold text-white transition hover:scale-[1.02]"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-500 to-purple-500 px-5 py-3 text-sm font-semibold text-white transition hover:scale-[1.02]"
             >
               <Plus className="h-4 w-4" />
               New Tenant Setup
