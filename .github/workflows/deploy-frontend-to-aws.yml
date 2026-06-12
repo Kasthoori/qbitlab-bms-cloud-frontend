@@ -65,7 +65,7 @@ jobs:
             aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
 
             echo "Going to deployment folder..."
-            cd /opt/bms
+            cd /opt/bms-demo
 
             echo "Pulling latest frontend image..."
             docker compose --env-file .env.prod -f docker-compose.prod.yml pull frontend
