@@ -34,12 +34,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build frontend image
+      - name: Build frontend Docker image
         run: |
           docker build \
+            --build-arg VITE_API_BASE_URL=https://bms.qbitlabsbms.com \
+            --build-arg VITE_KEYCLOAK_URL=https://bms.qbitlabsbms.com/auth \
             -t ${{ env.FRONTEND_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
             ./bms_frontend
-
+          
       - name: Tag frontend image
         run: |
           docker tag \
