@@ -68,13 +68,13 @@ jobs:
             cd /opt/bms-demo
 
             echo "Pulling latest frontend image..."
-            docker compose --env-file .env.prod -f docker-compose.prod.yml pull frontend
+            docker compose --env-file .env -f docker-compose.prod.yml pull frontend
 
             echo "Restarting frontend..."
-            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d frontend
+            docker compose --env-file .env -f docker-compose.prod.yml up -d frontend
 
             echo "Restarting Caddy..."
-            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d caddy
+            docker compose --env-file .env -f docker-compose.prod.yml up -d caddy
 
             echo "Cleaning old unused Docker images..."
             docker image prune -f
