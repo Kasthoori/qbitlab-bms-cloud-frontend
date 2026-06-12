@@ -1,0 +1,10 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: qbitlabs-bms-frontend:local
+    container_name: qbitlabs-bms-frontend-local
+    restart: unless-stopped
+    ports:
+      - "3000:80"

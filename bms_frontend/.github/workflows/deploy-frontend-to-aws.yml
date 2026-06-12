@@ -1,0 +1,82 @@
+name: Deploy Frontend to AWS EC2
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-2
+  FRONTEND_ECR_REPOSITORY: bms-demo/frontend
+  IMAGE_TAG: latest
+
+jobs:
+  deploy:
+    name: Build Push Deploy Frontend
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout frontend source code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -t ${{ env.FRONTEND_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
+            .
+
+      - name: Tag frontend image
+        run: |
+          docker tag \
+            ${{ env.FRONTEND_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Push frontend image to ECR
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+      - name: Deploy frontend on EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AWS_EC2_HOST }}
+          username: ${{ secrets.AWS_EC2_USER }}
+          key: ${{ secrets.AWS_EC2_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            echo "Logging in to ECR..."
+            aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+
+            echo "Going to deployment folder..."
+            cd /opt/bms
+
+            echo "Pulling latest frontend image..."
+            docker compose --env-file .env.prod -f docker-compose.prod.yml pull frontend
+
+            echo "Restarting frontend..."
+            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d frontend
+
+            echo "Restarting Caddy..."
+            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d caddy
+
+            echo "Cleaning old unused Docker images..."
+            docker image prune -f
+
+            echo "Frontend deployment completed."
