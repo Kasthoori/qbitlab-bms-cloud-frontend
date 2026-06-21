@@ -18,12 +18,20 @@ import {
   type HvacPointMappingResponse,
 } from "@/api/bms";
 
+type SupportedProtocol =
+  | HvacPointMappingProtocol
+  | "SIMULATOR"
+  | "BACNET"
+  | "MODBUS"
+  | "MODBUS_TCP"
+  | "MODBUS_RTU";
+
 type Props = {
   tenantId: string;
   siteId: string;
   mapping: HvacDeviceMappingDto;
   edgeControllerId?: string | null;
-  protocol?: HvacPointMappingProtocol;
+  protocol?: SupportedProtocol;
   onClose: () => void;
   onSaved?: () => void;
 };
@@ -48,7 +56,7 @@ const DEFAULT_BACNET_POINTS = {
   ambientTempPoint: "analogInput:6",
 };
 
-const DEFAULT_MODBUS_POINTS = {
+const DEFAULT_MODBUS_TCP_POINTS = {
   temperaturePoint: "inputRegister:30001",
   setpointPoint: "holdingRegister:40001",
   onoffPoint: "coil:1",
@@ -58,25 +66,42 @@ const DEFAULT_MODBUS_POINTS = {
   ambientTempPoint: "inputRegister:30003",
 };
 
-function cleanProtocol(value?: string | null): HvacPointMappingProtocol {
+const DEFAULT_MODBUS_RTU_PT100_POINTS = {
+  temperaturePoint: "inputRegister:1:int16:scale=0.1",
+  setpointPoint: "",
+  onoffPoint: "",
+  fanSpeedPoint: "",
+  flowRatePoint: "",
+  faultPoint: "",
+  ambientTempPoint: "",
+};
+
+function cleanProtocol(value?: string | null): SupportedProtocol {
   const protocol = (value || "SIMULATOR").trim().toUpperCase();
 
   if (protocol === "BACNET") return "BACNET";
   if (protocol === "MODBUS") return "MODBUS";
+  if (protocol === "MODBUS_TCP") return "MODBUS_TCP";
+  if (protocol === "MODBUS_RTU") return "MODBUS_RTU";
 
   return "SIMULATOR";
 }
 
-function getDefaultPointsForProtocol(protocol: HvacPointMappingProtocol) {
+function protocolForRequest(protocol: SupportedProtocol): HvacPointMappingProtocol {
+  return cleanProtocol(protocol) as HvacPointMappingProtocol;
+}
+
+function getDefaultPointsForProtocol(protocol: SupportedProtocol) {
   const p = cleanProtocol(protocol);
 
   if (p === "BACNET") return DEFAULT_BACNET_POINTS;
-  if (p === "MODBUS") return DEFAULT_MODBUS_POINTS;
+  if (p === "MODBUS" || p === "MODBUS_TCP") return DEFAULT_MODBUS_TCP_POINTS;
+  if (p === "MODBUS_RTU") return DEFAULT_MODBUS_RTU_PT100_POINTS;
 
   return DEFAULT_SIMULATOR_POINTS;
 }
 
-function getDefaultWritableForProtocol(protocol: HvacPointMappingProtocol) {
+function getDefaultWritableForProtocol(protocol: SupportedProtocol) {
   const p = cleanProtocol(protocol);
 
   if (p === "SIMULATOR") {
@@ -85,6 +110,16 @@ function getDefaultWritableForProtocol(protocol: HvacPointMappingProtocol) {
       writableOnoff: true,
       writableFanSpeed: true,
       writableFlowRate: true,
+      writableRestart: false,
+    };
+  }
+
+  if (p === "MODBUS_RTU") {
+    return {
+      writableSetpoint: false,
+      writableOnoff: false,
+      writableFanSpeed: false,
+      writableFlowRate: false,
       writableRestart: false,
     };
   }
@@ -98,7 +133,7 @@ function getDefaultWritableForProtocol(protocol: HvacPointMappingProtocol) {
   };
 }
 
-function getProtocolInfo(protocol: HvacPointMappingProtocol) {
+function getProtocolInfo(protocol: SupportedProtocol) {
   const p = cleanProtocol(protocol);
 
   if (p === "BACNET") {
@@ -115,16 +150,30 @@ function getProtocolInfo(protocol: HvacPointMappingProtocol) {
     };
   }
 
-  if (p === "MODBUS") {
+  if (p === "MODBUS" || p === "MODBUS_TCP") {
     return {
-      title: "Modbus register/coil references",
+      title: "Modbus TCP register/coil references",
       description:
-        "Use Modbus references from scanner/register map. Example: holdingRegister:40001 or coil:1.",
+        "Use Modbus TCP references from scanner/register map. Example: holdingRegister:40001 or coil:1.",
       examples: [
         "Temperature: inputRegister:30001",
         "Setpoint: holdingRegister:40001",
         "On/Off: coil:1",
         "Fault: discreteInput:1",
+      ],
+    };
+  }
+
+  if (p === "MODBUS_RTU") {
+    return {
+      title: "Modbus RTU / PT100 point references",
+      description:
+        "Use Modbus RTU point refs from the real serial sensor. PT100 is read-only, so only temperature should be mapped.",
+      examples: [
+        "Temperature: inputRegister:1:int16:scale=0.1",
+        "Slave/unit id is configured in edge-device-config.yml",
+        "Leave setpoint, on/off, fan, flow, fault empty for PT100",
+        "All writable flags should be unchecked",
       ],
     };
   }
@@ -145,7 +194,7 @@ function getProtocolInfo(protocol: HvacPointMappingProtocol) {
 function buildDefaultForm(
   mapping: HvacDeviceMappingDto,
   edgeControllerId?: string | null,
-  protocol: HvacPointMappingProtocol = "SIMULATOR"
+  protocol: SupportedProtocol = "SIMULATOR"
 ): HvacPointMappingRequest {
   const clean = cleanProtocol(protocol);
   const points = getDefaultPointsForProtocol(clean);
@@ -153,7 +202,7 @@ function buildDefaultForm(
 
   return {
     edgeControllerId: edgeControllerId ?? null,
-    protocol: clean,
+    protocol: protocolForRequest(clean),
     externalDeviceId: mapping.externalDeviceId,
     unitName: mapping.unitName || mapping.externalDeviceId,
 
@@ -177,9 +226,11 @@ function responseToForm(
   response: HvacPointMappingResponse,
   fallback: HvacPointMappingRequest
 ): HvacPointMappingRequest {
+  const protocol = cleanProtocol(response.protocol ?? fallback.protocol);
+
   return {
     edgeControllerId: response.edgeControllerId ?? fallback.edgeControllerId,
-    protocol: cleanProtocol(response.protocol ?? fallback.protocol),
+    protocol: protocolForRequest(protocol),
     externalDeviceId: response.externalDeviceId ?? fallback.externalDeviceId,
     unitName: response.unitName ?? fallback.unitName,
 
@@ -228,6 +279,7 @@ export default function HvacPointMappingPanel({
 
   const currentProtocol = cleanProtocol(form.protocol);
   const isSimulator = currentProtocol === "SIMULATOR";
+  const isModbusRtu = currentProtocol === "MODBUS_RTU";
   const protocolInfo = getProtocolInfo(currentProtocol);
 
   const updateField = <K extends keyof HvacPointMappingRequest>(
@@ -247,7 +299,7 @@ export default function HvacPointMappingPanel({
 
     setForm((prev) => ({
       ...prev,
-      protocol: nextProtocol,
+      protocol: protocolForRequest(nextProtocol),
 
       temperaturePoint: points.temperaturePoint,
       setpointPoint: points.setpointPoint,
@@ -409,6 +461,7 @@ export default function HvacPointMappingPanel({
     simulator: string;
     bacnet: string;
     modbus: string;
+    modbusRtu: string;
     hint: string;
   }> = [
     {
@@ -417,6 +470,7 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.temperature",
       bacnet: "analogInput:1",
       modbus: "inputRegister:30001",
+      modbusRtu: "inputRegister:1:int16:scale=0.1",
       hint: "Read-only measured temperature",
     },
     {
@@ -425,7 +479,8 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.setpoint",
       bacnet: "analogValue:2",
       modbus: "holdingRegister:40001",
-      hint: "Writable command point",
+      modbusRtu: "",
+      hint: "Writable command point. Leave empty for PT100.",
     },
     {
       label: "On / Off",
@@ -433,7 +488,8 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.on_state",
       bacnet: "binaryValue:1",
       modbus: "coil:1",
-      hint: "Writable enable/disable point",
+      modbusRtu: "",
+      hint: "Writable enable/disable point. Leave empty for PT100.",
     },
     {
       label: "Fan Speed",
@@ -441,7 +497,8 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.fan_speed",
       bacnet: "multiStateValue:3",
       modbus: "holdingRegister:40002",
-      hint: "Writable only if verified",
+      modbusRtu: "",
+      hint: "Writable only if verified. Leave empty for PT100.",
     },
     {
       label: "Flow Rate",
@@ -449,7 +506,8 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.flow_rate",
       bacnet: "analogInput:5",
       modbus: "inputRegister:30002",
-      hint: "Usually read-only for real devices",
+      modbusRtu: "",
+      hint: "Usually read-only for real devices. Leave empty for PT100.",
     },
     {
       label: "Fault",
@@ -457,7 +515,8 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.fault",
       bacnet: "binaryInput:4",
       modbus: "discreteInput:1",
-      hint: "Read-only fault status",
+      modbusRtu: "",
+      hint: "Read-only fault status. Leave empty for PT100 unless verified.",
     },
     {
       label: "Ambient Temp",
@@ -465,13 +524,15 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.ambient_temperature",
       bacnet: "analogInput:6",
       modbus: "inputRegister:30003",
-      hint: "Optional ambient/reference temperature",
+      modbusRtu: "",
+      hint: "Optional ambient/reference temperature. Leave empty for PT100.",
     },
   ];
 
   const placeholderFor = (row: (typeof pointRows)[number]) => {
     if (currentProtocol === "BACNET") return row.bacnet;
-    if (currentProtocol === "MODBUS") return row.modbus;
+    if (currentProtocol === "MODBUS" || currentProtocol === "MODBUS_TCP") return row.modbus;
+    if (currentProtocol === "MODBUS_RTU") return row.modbusRtu;
     return row.simulator;
   };
 
@@ -489,7 +550,7 @@ export default function HvacPointMappingPanel({
           </h2>
 
           <p className="mt-2 text-sm text-slate-400">
-            Map QbitLabs fields to simulator, BACnet, or Modbus points.
+            Map QbitLabs fields to simulator, BACnet, Modbus TCP, or Modbus RTU points.
           </p>
 
           <div className="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-2">
@@ -560,6 +621,16 @@ export default function HvacPointMappingPanel({
             </div>
           </div>
 
+          {isModbusRtu && (
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              PT100 Modbus RTU is read-only. Keep only the temperature point filled:
+              <span className="ml-1 font-semibold">
+                inputRegister:1:int16:scale=0.1
+              </span>
+              . Leave command points empty and keep writable flags unchecked.
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-4">
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-300">
@@ -573,6 +644,8 @@ export default function HvacPointMappingPanel({
                 <option value="SIMULATOR">SIMULATOR</option>
                 <option value="BACNET">BACNET</option>
                 <option value="MODBUS">MODBUS</option>
+                <option value="MODBUS_TCP">MODBUS_TCP</option>
+                <option value="MODBUS_RTU">MODBUS_RTU</option>
               </select>
             </div>
 
@@ -589,7 +662,8 @@ export default function HvacPointMappingPanel({
                     event.target.value === "" ? null : Number(event.target.value)
                   )
                 }
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60"
+                disabled={isModbusRtu}
+                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
@@ -606,7 +680,8 @@ export default function HvacPointMappingPanel({
                     event.target.value === "" ? null : Number(event.target.value)
                   )
                 }
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60"
+                disabled={isModbusRtu}
+                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
@@ -665,6 +740,7 @@ export default function HvacPointMappingPanel({
               <input
                 type="checkbox"
                 checked={Boolean(form.writableSetpoint)}
+                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableSetpoint", event.target.checked)
                 }
@@ -676,6 +752,7 @@ export default function HvacPointMappingPanel({
               <input
                 type="checkbox"
                 checked={Boolean(form.writableOnoff)}
+                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableOnoff", event.target.checked)
                 }
@@ -687,6 +764,7 @@ export default function HvacPointMappingPanel({
               <input
                 type="checkbox"
                 checked={Boolean(form.writableFanSpeed)}
+                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableFanSpeed", event.target.checked)
                 }
@@ -698,6 +776,7 @@ export default function HvacPointMappingPanel({
               <input
                 type="checkbox"
                 checked={Boolean(form.writableFlowRate)}
+                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableFlowRate", event.target.checked)
                 }
@@ -709,6 +788,7 @@ export default function HvacPointMappingPanel({
               <input
                 type="checkbox"
                 checked={Boolean(form.writableRestart)}
+                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableRestart", event.target.checked)
                 }
