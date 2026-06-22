@@ -31,7 +31,7 @@ import UpdateUserProfile from "./components/UserManagement/UpdateUserProfile";
 import DeleteUserPage from "./components/UserManagement/DeleteUserPage";
 import ViewUsersPage from "./components/UserManagement/ViewUsersPage";
 import SimulatorHvacsRoute from "./components/Simulator/SimulatorHvacsRoute";
-import RoleBasedDashboardPage from "./components/Dashboard/RoleBasedDashboardPage";
+import RoleBasedDashboardPage from "./components/RoleBaseDashboard/RoleBasedDashboardPage";
 import EdgeControllerSetupPage from "./components/Edge/EdgeControllerSetupPage";
 import CommandAuditReportPage from "./components/Reports/CommandAuditReportPage";
 import ComplianceEvidenceReportPage from "./components/Reports/ComplianceEvidenceReportPage";
@@ -270,7 +270,7 @@ const AppRoutes: FC = () => {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER", "TECHNICIAN"]}>
             <RoleBasedDashboardPage />
           </ProtectedRoute>
         }

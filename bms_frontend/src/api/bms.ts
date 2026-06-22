@@ -1025,6 +1025,41 @@ function buildCommandAuditQuery(
 
 // ======================== Dashboard Types ========================
 
+export type DashboardWidgetId =
+  | "criticalSites"
+  | "offlineHvacs"
+  | "openRepairs"
+  | "activeAlarms"
+  | "aiRecommendation"
+  | "sitePriorityList"
+  | "recentActivity"
+  | "energyWaste"
+  | "complianceStatus";
+
+export type DashboardWidgetSize = "small" | "medium" | "wide";
+
+export type DashboardWidgetLayoutItem = {
+  id: DashboardWidgetId;
+  enabled: boolean;
+  size: DashboardWidgetSize;
+  order: number;
+};
+
+export type DashboardLayoutPayload = {
+  widgets: DashboardWidgetLayoutItem[];
+};
+
+export type DashboardPreferenceResponse = {
+  dashboardKey: string;
+  roleName: DashboardRole;
+  layoutJson: string;
+  defaultLayout: boolean;
+};
+
+export type UpdateDashboardPreferenceRequest = {
+  layoutJson: string;
+};
+
 export type DashboardNotificationType = "ALARM" | "MESSAGE" | string;
 
 export type DashboardNotificationSeverity =
@@ -1146,6 +1181,34 @@ export const BmsApi = {
             method: "PUT",
             handle403Redirect: false,
     }),
+
+
+    getDashboardPreference: async (
+    dashboardKey: string
+    ): Promise<DashboardPreferenceResponse> =>
+    await api<DashboardPreferenceResponse>(
+        `/api/dashboard/preferences/${dashboardKey}`,
+        {
+        method: "GET",
+        handle403Redirect: false,
+        }
+    ),
+
+    saveDashboardPreference: async (
+    dashboardKey: string,
+    req: UpdateDashboardPreferenceRequest
+    ): Promise<DashboardPreferenceResponse> =>
+    await api<DashboardPreferenceResponse>(
+        `/api/dashboard/preferences/${dashboardKey}`,
+        {
+        method: "PUT",
+        body: JSON.stringify(req),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        handle403Redirect: false,
+        }
+    ),
 
 
     // ============= Tenant / Site / HVAC Management APIs =============
