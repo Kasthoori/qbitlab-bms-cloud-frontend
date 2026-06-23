@@ -73,8 +73,6 @@ const DASHBOARD_KEY = "ROLE_BASE_DASHBOARD_V1";
 const DRAWER_WIDTH_PX = 448;
 const RIGHT_EDGE_OPEN_PX = 96;
 const RIGHT_EDGE_OPEN_DRAG_DISTANCE_PX = 120;
-const DRAWER_DROP_ZONE_PX = 120;
-const DRAWER_DROP_MIN_OVERLAP_PX = 24;
 
 type WidgetId =
   | "criticalSites"
@@ -203,19 +201,19 @@ const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     id: "recentActivity",
     title: "Recent Activity",
     description: "Latest operational messages from dashboard data.",
-    size: "wide",
+    size: "medium",
   },
   {
     id: "energyWaste",
     title: "Energy Waste",
     description: "Quick operational energy-risk indicator.",
-    size: "wide",
+    size: "medium",
   },
   {
     id: "complianceStatus",
     title: "Compliance Status",
     description: "Maintenance and audit readiness overview.",
-    size: "wide",
+    size: "medium",
   },
   {
     id: "siteHealthChart",
@@ -461,7 +459,7 @@ function healthBarClass(score: number) {
 }
 
 function widgetGridClass(size: WidgetSize) {
-  if (size === "wide") return "lg:col-span-2 xl:col-span-3";
+  if (size === "wide") return "lg:col-span-2 xl:col-span-2";
   if (size === "medium") return "lg:col-span-1 xl:col-span-1";
   return "lg:col-span-1 xl:col-span-1";
 }
@@ -529,25 +527,6 @@ function buildLayoutPayload(layout: WidgetLayoutItem[]): DashboardLayoutPayload 
       order: index + 1,
     })),
   };
-}
-
-function isWidgetId(value: unknown): value is WidgetId {
-  return (
-    typeof value === "string" &&
-    WIDGET_DEFINITIONS.some((definition) => definition.id === value)
-  );
-}
-
-function isReleasedAtDrawerDropZone(event: DragEndEvent): boolean {
-  const translatedRect = event.active.rect.current.translated;
-
-  if (!translatedRect) {
-    return false;
-  }
-
-  const drawerLeftBoundary = window.innerWidth - DRAWER_WIDTH_PX;
-
-  return translatedRect.right >= drawerLeftBoundary + DRAWER_DROP_MIN_OVERLAP_PX;
 }
 
 function DashboardLoading() {
@@ -1273,7 +1252,6 @@ function WidgetPickerDrawer({
   onClose,
   onToggle,
   onReorder,
-  onEnableFromDrawer,
 }: {
   open: boolean;
   layout: WidgetLayoutItem[];
@@ -1281,7 +1259,6 @@ function WidgetPickerDrawer({
   onClose: () => void;
   onToggle: (id: WidgetId) => void;
   onReorder: (activeId: WidgetId, overId: WidgetId) => void;
-  onEnableFromDrawer: (id: WidgetId) => void;
 }) {
   const [exitArmed, setExitArmed] = useState(false);
 
@@ -1312,27 +1289,18 @@ function WidgetPickerDrawer({
   }
 
   function handleDrawerDragEnd(event: DragEndEvent) {
-  const { active, over } = event;
+    const { active, over } = event;
 
-  if (!isWidgetId(active.id)) {
-    return;
+    if (exitArmed) {
+      setExitArmed(false);
+      onClose();
+      return;
+    }
+
+    if (!over || active.id === over.id) return;
+
+    onReorder(active.id as WidgetId, over.id as WidgetId);
   }
-
-  /*
-   * Production behavior:
-   * If user drags a widget out of the drawer, show it back on dashboard.
-   */
-  if (exitArmed) {
-    setExitArmed(false);
-    onEnableFromDrawer(active.id);
-    onClose();
-    return;
-  }
-
-  if (!over || active.id === over.id) return;
-
-  onReorder(active.id, over.id as WidgetId);
-}
 
   return (
     <div className="fixed inset-0 z-50">
@@ -1355,7 +1323,8 @@ function WidgetPickerDrawer({
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              Drag widgets to change order. Drag hidden widgets out of this drawer to show them on the dashboard.
+              Drag widgets to change order. Drag a widget out of this drawer to
+              close the drawer.
             </p>
           </div>
 
@@ -1434,31 +1403,6 @@ export default function RoleBasedDashboardPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  const dashboardDragModifier = useMemo<Modifier>(() => {
-    return ({ transform, draggingNodeRect }) => {
-      if (!draggingNodeRect) {
-        return transform;
-      }
-
-      const leftBoundary = DASHBOARD_DRAG_MARGIN_PX;
-      const rightBoundary = customizeOpen
-        ? window.innerWidth - DRAWER_WIDTH_PX + DRAWER_DROP_ZONE_PX
-        : window.innerWidth - DASHBOARD_DRAG_MARGIN_PX;
-
-      const minX = leftBoundary - draggingNodeRect.left;
-      const maxX = rightBoundary - draggingNodeRect.right;
-      const minY = DASHBOARD_DRAG_MARGIN_PX - draggingNodeRect.top;
-      const maxY =
-        window.innerHeight - DASHBOARD_DRAG_MARGIN_PX - draggingNodeRect.bottom;
-
-      return {
-        ...transform,
-        x: Math.min(Math.max(transform.x, minX), maxX),
-        y: Math.min(Math.max(transform.y, minY), maxY),
-      };
-    };
-  }, [customizeOpen]);
 
   const enabledLayout = useMemo(
     () =>
@@ -1550,15 +1494,35 @@ export default function RoleBasedDashboardPage() {
 
     if (!translatedRect) return;
 
+    /*
+    * Open the customize drawer only when the user intentionally drags
+    * a widget toward the right edge.
+    *
+    * Without the delta check, widgets already placed on the right side
+    * open the drawer immediately when the user only wants to reorder them.
+    */
     const draggedRightEnough =
       event.delta.x >= RIGHT_EDGE_OPEN_DRAG_DISTANCE_PX;
 
     const nearRightEdge =
       translatedRect.right >= window.innerWidth - RIGHT_EDGE_OPEN_PX;
 
+    const safelyAwayFromDrawer =
+      translatedRect.right < window.innerWidth - DRAWER_WIDTH_PX - 80;
+
     if (nearRightEdge && draggedRightEnough && !customizeOpen) {
       drawerOpenedByDragRef.current = true;
       setCustomizeOpen(true);
+      return;
+    }
+
+    if (
+      drawerOpenedByDragRef.current &&
+      customizeOpen &&
+      safelyAwayFromDrawer
+    ) {
+      setCustomizeOpen(false);
+      drawerOpenedByDragRef.current = false;
     }
   }
 
@@ -1566,15 +1530,6 @@ export default function RoleBasedDashboardPage() {
     drawerOpenedByDragRef.current = false;
 
     const { active, over } = event;
-
-    if (customizeOpen && isWidgetId(active.id) && isReleasedAtDrawerDropZone(event)) {
-      const nextLayout = layout.map((item) =>
-        item.id === active.id ? { ...item, enabled: false } : item
-      );
-
-      saveLayout(nextLayout);
-      return;
-    }
 
     if (!over || active.id === over.id) return;
 
@@ -1600,16 +1555,6 @@ export default function RoleBasedDashboardPage() {
   function handleHideWidget(id: WidgetId) {
     const nextLayout = layout.map((item) =>
       item.id === id ? { ...item, enabled: false } : item
-    );
-
-    saveLayout(nextLayout);
-  }
-
-  function handleEnableFromDrawer(id: WidgetId) {
-    const sortedLayout = layout.slice().sort((a, b) => a.order - b.order);
-
-    const nextLayout = sortedLayout.map((item) =>
-      item.id === id ? { ...item, enabled: true } : item
     );
 
     saveLayout(nextLayout);
@@ -1790,7 +1735,7 @@ export default function RoleBasedDashboardPage() {
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            modifiers={[dashboardDragModifier]}
+            modifiers={[restrictDashboardDragToViewport]}
             onDragMove={handleDashboardDragMove}
             onDragEnd={handleDragEnd}
           >
@@ -1881,8 +1826,7 @@ export default function RoleBasedDashboardPage() {
         }}
         onToggle={handleToggleWidget}
         onReorder={handleDrawerReorder}
-        onEnableFromDrawer={handleEnableFromDrawer}
-      />    
+      />
     </div>
   );
 }
