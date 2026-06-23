@@ -187,7 +187,7 @@ export default function DashboardNotificationIcons() {
   }
 
   return (
-    <div ref={wrapperRef} className="relative flex items-center gap-2">
+    <div ref={wrapperRef} className="relative z-9999 flex items-center gap-2">
       <button
         type="button"
         title="Failure alarms"
@@ -229,7 +229,7 @@ export default function DashboardNotificationIcons() {
       </button>
 
       {activeMenu && (
-        <div className="absolute right-0 top-12 z-50 w-[360px] overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur-2xl">
+        <div className="absolute right-0 top-12 z-9999 w-90 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/40 backdrop-blur-2xl">
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-white">
