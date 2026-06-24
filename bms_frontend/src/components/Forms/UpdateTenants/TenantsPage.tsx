@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, type FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Plus, Sparkles } from "lucide-react";
 
-import BmsCard from "./BmsCard";
+import { BmsButton, BmsEntityCard } from "@/components/UI";
+
 import AddSiteModal from "./AddSiteModal";
 import UpdateTenantModel from "./UpdateTenantModel";
 import ConfirmDeleteTenantModal from "./ConfirmDeleteTenantModel";
@@ -19,7 +20,9 @@ const TenantsPage: FC = () => {
   const [addSiteTenantTitle, setAddSiteTenantTitle] = useState<string>("");
 
   const [openUpdateTenant, setOpenUpdateTenant] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState<TenantDto | undefined>(undefined);
+  const [selectedTenant, setSelectedTenant] = useState<TenantDto | undefined>(
+    undefined
+  );
   const [, setRefreshing] = useState(false);
 
   const [openDeleteTenant, setOpenDeleteTenant] = useState(false);
@@ -29,8 +32,6 @@ const TenantsPage: FC = () => {
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  
-
   const refetch = async () => {
     try {
       if (tenants.length === 0) setLoading(true);
@@ -38,12 +39,15 @@ const TenantsPage: FC = () => {
 
       const data = await BmsApi.getMyTenants();
 
-      const list =
-        Array.isArray(data) ? data :
-        Array.isArray((data as any)?.data) ? (data as any).data :
-        Array.isArray((data as any)?.content) ? (data as any).content :
-        Array.isArray((data as any)?.tenants) ? (data as any).tenants :
-        [];
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray((data as any)?.data)
+        ? (data as any).data
+        : Array.isArray((data as any)?.content)
+        ? (data as any).content
+        : Array.isArray((data as any)?.tenants)
+        ? (data as any).tenants
+        : [];
 
       setTenants(list);
     } catch (e) {
@@ -136,23 +140,38 @@ const TenantsPage: FC = () => {
 
   if (loading) {
     return (
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-slate-300 backdrop-blur-xl">
-        Loading tenants...
+      <div className="bms-section">
+        <div className="flex items-center gap-3 text-slate-300">
+          <Sparkles className="h-5 w-5 text-cyan-300" />
+          <span>Loading tenants...</span>
+        </div>
       </div>
     );
   }
 
   if (cards.length === 0) {
     return (
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-slate-300 backdrop-blur-xl">
+      <div className="bms-section">
         <div className="flex items-center gap-3">
-          <Building2 className="h-6 w-6 text-blue-300" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/15 bg-slate-900/55 text-cyan-200">
+            <Building2 className="h-6 w-6" />
+          </div>
+
           <div>
-            <h2 className="text-xl font-semibold text-white">No tenants found</h2>
+            <h2 className="text-xl font-semibold text-slate-100">
+              No tenants found
+            </h2>
             <p className="mt-1 text-sm text-slate-400">
               Create your first tenant to begin building setup.
             </p>
           </div>
+        </div>
+
+        <div className="mt-5">
+          <BmsButton variant="primary" onClick={() => nav("/onboarding")}>
+            <Plus className="h-4 w-4" />
+            New Tenant Setup
+          </BmsButton>
         </div>
       </div>
     );
@@ -160,65 +179,88 @@ const TenantsPage: FC = () => {
 
   return (
     <>
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+      <div className="bms-dashboard-bg bms-dashboard-shell space-y-6">
+        <section className="bms-dashboard-hero">
+         <div className="bms-dashboard-hero-content">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
+              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
                 <Sparkles className="h-4 w-4" />
                 Tenant Workspace
               </div>
 
-              <h1 className="mt-3 text-3xl font-bold text-white">
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-100">
                 Manage Tenants
               </h1>
 
-              <p className="mt-2 max-w-2xl text-slate-400">
-                View tenant accounts, open sites, add new sites, and manage tenant records
-                with the same AI-ready glass experience used across QbitLab BMS.
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                View tenant accounts, open sites, add new sites, and manage
+                tenant records with the same AI-ready glass experience used
+                across QbitLabs BMS.
               </p>
             </div>
 
-            <button
-              type="button"
+            <BmsButton
+              variant="primary"
+              size="lg"
               onClick={() => nav("/onboarding")}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-blue-500 to-purple-500 px-5 py-3 text-sm font-semibold text-white transition hover:scale-[1.02]"
             >
               <Plus className="h-4 w-4" />
               New Tenant Setup
-            </button>
+            </BmsButton>
           </div>
-        </div>
+          </div>
+        </section>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
           {cards.map((t) => {
             const tenantTitle = t.tenantName ?? t.name ?? "Unnamed Tenant";
-            const created =
-              (t as any).createdAt
-                ? new Date((t as any).createdAt).toLocaleString()
-                : "Not available";
+            const created = (t as any).createdAt
+              ? new Date((t as any).createdAt).toLocaleString()
+              : "Not available";
 
             return (
-              <BmsCard
+              <BmsEntityCard
                 key={t.tenantId}
-                title="Tenant"
-                subtitle={tenantTitle}
-                meta={`Tenant ID: ${t.tenantId}\nCreated: ${created}`}
-                badge="Active"
+                eyebrow="Tenant"
+                title={tenantTitle}
+                icon={<Building2 className="h-5 w-5" />}
+                statusLabel="Active"
+                status="active"
+                meta={
+                  <div className="space-y-1">
+                    <p>
+                      <span className="text-slate-500">Tenant ID:</span>{" "}
+                      <span className="break-all text-slate-300">
+                        {t.tenantId}
+                      </span>
+                    </p>
+                    <p>
+                      <span className="text-slate-500">Created:</span>{" "}
+                      <span className="text-slate-300">{created}</span>
+                    </p>
+                  </div>
+                }
+                helperText="AI-ready tenant workspace"
                 actions={[
                   {
-                    label: "View Sites",
-                    variant: "secondary",
-                    onClick: () => nav(`/admin/tenants/query/${t.tenantId}/sites`),
+                    label: (
+                      <>
+                        View Sites <span>→</span>
+                      </>
+                    ),
+                    variant: "primary",
+                    onClick: () =>
+                      nav(`/admin/tenants/query/${t.tenantId}/sites`),
                   },
                   {
                     label: "Add Site",
-                    variant: "primary",
+                    variant: "secondary",
                     onClick: () => openAddSite(t),
                   },
                   {
                     label: "Edit",
-                    variant: "primary",
+                    variant: "ghost",
                     onClick: () => openEditTenant(t),
                   },
                   {

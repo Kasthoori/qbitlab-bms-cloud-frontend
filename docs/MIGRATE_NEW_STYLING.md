@@ -87,3 +87,39 @@
 #### Run 
 
 * yarn storybook * and * yarn test:storybook *
+
+After adding .css to the preview.tsx, popped up error .css module cannot found. To solve the issue, created storybook-env.d.ts file.
+
+```ts
+    /// <reference types="vite/client" />
+
+    declare module "*.css";
+```
+
+Then added tsconfig.json file to .storybook
+
+```json
+    {
+        "extends": "../tsconfig.app.json",
+        "compilerOptions": {
+            "types": ["vite/client", "node"]
+        },
+        "include": [
+            "./**/*.ts",
+            "./**/*.tsx",
+            "./storybook-env.d.ts",
+            "../src/vite-env.d.ts"
+        ]
+    }
+
+```
+
+After reolving issues created index.css file as global file. Created src/lib/cn.ts file
+
+```ts
+    export function cn(...classes: Array<string | false | null | undefined>): string {
+    return classes.filter(Boolean).join(" ");
+}
+```
+
+created ui folder inside components. 

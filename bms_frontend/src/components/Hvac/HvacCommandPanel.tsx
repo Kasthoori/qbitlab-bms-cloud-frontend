@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
   BmsApi,
   type CurrentUserDto,
@@ -8,6 +9,7 @@ import {
   type HvacCommandType,
   type HvacProtocol,
 } from "@/api/bms";
+import { BmsButton, BmsCard, BmsInput } from "@/components/UI";
 
 import BmsDatePicker from "@/components/common/BmsDatePicker";
 import BmsTimePicker from "@/components/common/BmsTimePicker";
@@ -54,13 +56,6 @@ function activeStatus(status?: string | null) {
   return status === "PENDING" || status === "PICKED_UP";
 }
 
-/**
- * Keeps the command panel inside the available page width.
- *
- * Left sidebar target width is 204px, matching the other stable pages.
- * This prevents the command console from widening the route and visually
- * shrinking the left navigation after an HVAC row is selected.
- */
 const PANEL_SAFE_WIDTH =
   "w-full min-w-0 max-w-[calc(100vw-204px)] overflow-x-hidden";
 
@@ -92,10 +87,6 @@ export default function HvacCommandPanel({
   );
   const [currentUser, setCurrentUser] = useState<CurrentUserDto | null>(null);
 
-  /**
-   * Load current user once.
-   * Used for role-based command visibility and audit visibility.
-   */
   useEffect(() => {
     BmsApi.getCurrentUser()
       .then(setCurrentUser)
@@ -254,9 +245,6 @@ export default function HvacCommandPanel({
     return tableHasActiveCommand || bannerHasActiveCommand;
   }, [recentCommands, lastCommand?.status]);
 
-  /**
-   * Keep local form controls aligned with selected HVAC live state.
-   */
   useEffect(() => {
     if (!selectedHvac) return;
 
@@ -269,9 +257,6 @@ export default function HvacCommandPanel({
     selectedHvac?.setpoint,
   ]);
 
-  /**
-   * Clear previous command banner when a different HVAC is selected.
-   */
   useEffect(() => {
     setStatusMessage(null);
     setLastCommand(null);
@@ -289,17 +274,10 @@ export default function HvacCommandPanel({
     }
   }, [tenantId, siteId]);
 
-  /**
-   * Load recent commands when panel opens.
-   */
   useEffect(() => {
     refreshRecentCommands();
   }, [refreshRecentCommands]);
 
-  /**
-   * Auto-refresh command lifecycle.
-   * Active commands refresh faster because status changes from PENDING -> PICKED_UP -> COMPLETED/FAILED.
-   */
   useEffect(() => {
     if (!tenantId || !siteId) return;
 
@@ -348,9 +326,6 @@ export default function HvacCommandPanel({
     );
   }
 
-  /**
-   * Update the status banner when the last submitted command changes in the refreshed table.
-   */
   useEffect(() => {
     if (!lastCommand?.commandId) return;
 
@@ -376,20 +351,6 @@ export default function HvacCommandPanel({
     lastCommand?.errorMessage,
   ]);
 
-  /**
-   * Builds backend-compatible and edge-compatible payloads.
-   *
-   * Production target contract:
-   * - SET_ON_OFF      -> { on: true/false }
-   * - SET_SETPOINT    -> { setpoint: 22 }
-   * - SIMULATE_FAULT  -> { fault: true, reason: "..." }
-   * - CLEAR_FAULT     -> { fault: false }
-   * - RESTART_HVAC    -> {}
-   *
-   * Current backend compatibility:
-   * - value is also sent because the current backend validator still accepts/expects it.
-   * - Once backend validation is permanently updated to semantic fields, remove value.
-   */
   function buildCommandPayload(
     commandType: HvacCommandType,
     value?: boolean | number | string | null
@@ -580,9 +541,7 @@ export default function HvacCommandPanel({
 
   if (!selectedHvac) {
     return (
-      <div
-        className={`${PANEL_SAFE_WIDTH} rounded-3xl border border-white/10 bg-white/5 p-5 text-slate-300 shadow-2xl backdrop-blur-xl`}
-      >
+      <BmsCard variant="section" className={`${PANEL_SAFE_WIDTH} p-5`}>
         <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
           BMS Control
         </p>
@@ -594,13 +553,14 @@ export default function HvacCommandPanel({
         <p className="mt-2 text-sm text-slate-400">
           Select a HVAC row to send available commands.
         </p>
-      </div>
+      </BmsCard>
     );
   }
 
   return (
-    <div
-      className={`${PANEL_SAFE_WIDTH} rounded-3xl border border-cyan-300/20 bg-slate-950/75 p-4 text-slate-100 shadow-2xl shadow-cyan-500/10 backdrop-blur-xl sm:p-5`}
+    <BmsCard
+      variant="section"
+      className={`${PANEL_SAFE_WIDTH} border-cyan-300/20 bg-slate-950/75 p-4 text-slate-100 sm:p-5`}
     >
       <div className="mb-5 min-w-0">
         <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
@@ -611,7 +571,7 @@ export default function HvacCommandPanel({
           HVAC Command Console
         </h2>
 
-        <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <BmsCard variant="glass" className="mt-3 p-4">
           <p className="text-sm text-slate-300">
             Selected HVAC:{" "}
             <span className="font-semibold text-cyan-200">
@@ -644,19 +604,23 @@ export default function HvacCommandPanel({
               writable actions configured by backend safety rules.
             </p>
           )}
-        </div>
+        </BmsCard>
       </div>
 
       {!canSendCommand && (
-        <div className="mb-4 rounded-2xl border border-amber-300/20 bg-amber-500/10 p-3 text-sm text-amber-100">
+        <BmsCard
+          variant="glass"
+          className="mb-4 border-amber-300/20 bg-amber-500/10 p-3 text-sm text-amber-100"
+        >
           Missing required data. Check selected HVAC has hvacId,
           externalDeviceId, protocol, and edgeControllerId.
-        </div>
+        </BmsCard>
       )}
 
       {statusMessage && (
-        <div
-          className={`mb-4 rounded-2xl border p-3 text-sm ${
+        <BmsCard
+          variant="glass"
+          className={`mb-4 p-3 text-sm ${
             lastCommand?.status === "REJECTED" ||
             lastCommand?.status === "FAILED" ||
             lastCommand?.status === "EXPIRED"
@@ -685,116 +649,117 @@ export default function HvacCommandPanel({
               Completed: {new Date(lastCommand.completedAt).toLocaleString()}
             </p>
           )}
-        </div>
+        </BmsCard>
       )}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <BmsCard variant="glass" className="min-w-0 p-4">
           <h3 className="text-sm font-semibold text-white">Power Control</h3>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
+            <BmsButton
               type="button"
+              variant="success"
               disabled={loading || !canSendCommand || !canSetOnOff}
               onClick={() => {
                 setOnState(true);
                 sendCommand("SET_ON_OFF", true);
               }}
-              className="rounded-2xl border border-emerald-300/20 bg-emerald-400/15 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Turn On
-            </button>
+            </BmsButton>
 
-            <button
+            <BmsButton
               type="button"
+              variant="danger"
               disabled={loading || !canSendCommand || !canSetOnOff}
               onClick={() => {
                 setOnState(false);
                 sendCommand("SET_ON_OFF", false);
               }}
-              className="rounded-2xl border border-red-300/20 bg-red-400/15 px-4 py-2 text-sm font-medium text-red-100 transition hover:bg-red-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Turn Off
-            </button>
+            </BmsButton>
           </div>
 
           <p className="mt-3 text-xs text-slate-500">
             Selected value: {String(onState)}
           </p>
-        </div>
+        </BmsCard>
 
-        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <BmsCard variant="glass" className="min-w-0 p-4">
           <h3 className="text-sm font-semibold text-white">Setpoint</h3>
 
           <div className="mt-4 flex min-w-0 gap-2">
-            <input
+            <BmsInput
               type="number"
               value={setpoint}
               min={MIN_SETPOINT}
               max={MAX_SETPOINT}
               step={0.5}
               onChange={(event) => setSetpoint(Number(event.target.value))}
-              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-300/50"
+              className="min-w-0 flex-1"
             />
 
-            <button
+            <BmsButton
               type="button"
+              variant="primary"
               disabled={loading || !canSendCommand || !canSetSetpoint}
               onClick={() => sendCommand("SET_SETPOINT", Number(setpoint))}
-              className="shrink-0 rounded-2xl border border-cyan-300/20 bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25 disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0"
             >
               Send
-            </button>
+            </BmsButton>
           </div>
 
           <p className="mt-2 text-xs text-slate-500">
             Backend safety allows setpoint range {MIN_SETPOINT}°C to{" "}
             {MAX_SETPOINT}°C.
           </p>
-        </div>
+        </BmsCard>
 
-        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <BmsCard variant="glass" className="min-w-0 p-4">
           <h3 className="text-sm font-semibold text-white">Restart</h3>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
+            <BmsButton
               type="button"
+              variant="secondary"
               disabled={loading || !canSendCommand || !canRestart}
               onClick={() => sendCommand("RESTART_HVAC", null)}
-              className="rounded-2xl border border-violet-300/20 bg-violet-400/15 px-4 py-2 text-sm font-medium text-violet-100 transition hover:bg-violet-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Restart HVAC
-            </button>
+            </BmsButton>
           </div>
 
           <p className="mt-2 text-xs text-slate-500">
             Restart commands expire quickly if the edge controller is offline.
           </p>
-        </div>
+        </BmsCard>
 
-        <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <BmsCard variant="glass" className="min-w-0 p-4">
           <h3 className="text-sm font-semibold text-white">Simulator / Dev</h3>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
+            <BmsButton
               type="button"
+              variant="danger"
               disabled={loading || !canSendCommand || !canSimulateFault}
               onClick={() =>
                 sendCommand("SIMULATE_FAULT", "Manual simulated fault")
               }
-              className="rounded-2xl border border-red-300/20 bg-red-400/15 px-4 py-2 text-sm font-medium text-red-100 transition hover:bg-red-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Simulate Fault
-            </button>
+            </BmsButton>
 
-            <button
+            <BmsButton
               type="button"
+              variant="success"
               disabled={loading || !canSendCommand || !canClearFault}
               onClick={() => sendCommand("CLEAR_FAULT", null)}
-              className="rounded-2xl border border-emerald-300/20 bg-emerald-400/15 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/25 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Clear Fault
-            </button>
+            </BmsButton>
           </div>
 
           {isProduction && (
@@ -808,15 +773,19 @@ export default function HvacCommandPanel({
               Simulator fault commands are admin-only.
             </p>
           )}
-        </div>
+        </BmsCard>
       </div>
 
-      <div className="mt-6 w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-4">
+      <BmsCard
+        variant="glass"
+        className="mt-6 w-full min-w-0 max-w-full overflow-hidden p-4"
+      >
         <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-white">
               {isTechnicianOnly ? "My Recent Commands" : "Recent Commands"}
             </h3>
+
             <p className="mt-1 text-xs text-slate-500">
               {isTechnicianOnly
                 ? "Only commands created by you are shown. Backend filtering is active."
@@ -824,33 +793,33 @@ export default function HvacCommandPanel({
             </p>
           </div>
 
-          <button
+          <BmsButton
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={refreshRecentCommands}
-            className="shrink-0 rounded-xl border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:bg-white/10"
+            className="shrink-0 rounded-xl px-3 py-1 text-xs"
           >
             Refresh
-          </button>
+          </BmsButton>
         </div>
 
         <div className="mb-3 flex min-w-0 flex-wrap items-center gap-2">
           {(["ALL", "ACTIVE", "COMPLETED", "REJECTED", "EXPIRED"] as const).map(
             (filter) => (
-              <button
+              <BmsButton
                 key={filter}
                 type="button"
+                variant={commandFilter === filter ? "primary" : "ghost"}
+                size="sm"
                 onClick={() => setCommandFilter(filter)}
-                className={`rounded-xl border px-3 py-1 text-xs transition ${
-                  commandFilter === filter
-                    ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-100"
-                    : "border-white/10 text-slate-400 hover:bg-white/10"
-                }`}
+                className="rounded-xl px-3 py-1 text-xs"
               >
                 {filter}
                 <span className="ml-1 opacity-70">
                   {commandCounts[filter]}
                 </span>
-              </button>
+              </BmsButton>
             )
           )}
 
@@ -865,18 +834,16 @@ export default function HvacCommandPanel({
               "CUSTOM",
             ] as const
           ).map((filter) => (
-            <button
+            <BmsButton
               key={filter}
               type="button"
+              variant={timeFilter === filter ? "secondary" : "ghost"}
+              size="sm"
               onClick={() => setTimeFilter(filter)}
-              className={`rounded-xl border px-3 py-1 text-xs transition ${
-                timeFilter === filter
-                  ? "border-violet-300/40 bg-violet-400/15 text-violet-100"
-                  : "border-white/10 text-slate-400 hover:bg-white/10"
-              }`}
+              className="rounded-xl px-3 py-1 text-xs"
             >
               {timeFilterLabel(filter)}
-            </button>
+            </BmsButton>
           ))}
         </div>
 
@@ -915,18 +882,20 @@ export default function HvacCommandPanel({
                 />
               </div>
 
-              <button
+              <BmsButton
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setCustomFromDate("");
                   setCustomFromTime("");
                   setCustomToDate("");
                   setCustomToTime("");
                 }}
-                className="self-end rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 transition hover:bg-white/10"
+                className="self-end rounded-xl px-3 py-2 text-xs"
               >
                 Clear Dates
-              </button>
+              </BmsButton>
             </div>
 
             <p className="mt-2 text-xs text-slate-500">
@@ -937,7 +906,7 @@ export default function HvacCommandPanel({
         )}
 
         <div className="max-h-80 w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-2xl border border-white/10">
-          <table className="w-full min-w-[860px] table-auto text-left text-sm">
+          <table className="w-full min-w-215 table-auto text-left text-sm">
             <thead className="sticky top-0 z-10 bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-3 py-2">Command</th>
@@ -978,7 +947,7 @@ export default function HvacCommandPanel({
                       {command.commandType}
                     </td>
 
-                    <td className="max-w-[140px] truncate px-3 py-2 text-xs text-slate-400">
+                    <td className="max-w-35 truncate px-3 py-2 text-xs text-slate-400">
                       {formatPayload(command.payload)}
                     </td>
 
@@ -992,7 +961,7 @@ export default function HvacCommandPanel({
                       </span>
                     </td>
 
-                    <td className="max-w-[250px] truncate px-3 py-2 text-xs text-slate-400">
+                    <td className="max-w-62.5 truncate px-3 py-2 text-xs text-slate-400">
                       {command.rejectedReason ||
                         command.errorMessage ||
                         command.safetyCheckResult ||
@@ -1016,7 +985,7 @@ export default function HvacCommandPanel({
                     </td>
 
                     {canAuditCommands && (
-                      <td className="max-w-[180px] truncate whitespace-nowrap px-2 py-2 text-xs text-slate-400">
+                      <td className="max-w-45 truncate whitespace-nowrap px-2 py-2 text-xs text-slate-400">
                         {command.requestedByEmail ||
                           command.requestedByRole ||
                           "-"}
@@ -1034,7 +1003,7 @@ export default function HvacCommandPanel({
             ? "Commands are validated by backend safety rules. This view only shows your own command activity."
             : "Commands are validated by backend safety rules, queued, picked up by the Python edge controller, then completed or failed. Active commands auto-refresh faster."}
         </p>
-      </div>
-    </div>
+      </BmsCard>
+    </BmsCard>
   );
 }

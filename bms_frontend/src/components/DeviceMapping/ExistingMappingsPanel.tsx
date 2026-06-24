@@ -1,4 +1,5 @@
 import type { HvacDeviceMappingDto } from "@/api/bms";
+import { BmsButton, BmsCard } from "@/components/UI";
 import { Link2, SlidersHorizontal, Trash2 } from "lucide-react";
 
 type Props = {
@@ -15,32 +16,41 @@ export default function ExistingMappingsPanel({
   busy = false,
 }: Props) {
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-      <div className="mb-5 flex items-center justify-between">
+    <BmsCard variant="section" className="p-5">
+      <div className="mb-5 flex items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div>
-          <h2 className="text-xl font-semibold text-white">Existing Mappings</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/80">
+            Mapping register
+          </p>
+
+          <h2 className="mt-1 text-xl font-semibold text-white">
+            Existing Mappings
+          </h2>
+
           <p className="mt-1 text-sm text-slate-400">
             Review logical-to-device mappings and configure point references.
           </p>
         </div>
 
-        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-semibold text-slate-200">
+        <span className="rounded-full border border-white/10 bg-white/4 px-3 py-1 text-sm font-semibold text-slate-200">
           {mappings.length}
         </span>
       </div>
 
       {mappings.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-center text-sm text-slate-400">
+        <div className="rounded-2xl border border-dashed border-white/10 bg-white/4 p-6 text-center text-sm text-slate-400">
           No mappings created yet.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-3xl border border-white/10">
           <table className="min-w-full border-separate border-spacing-0">
             <thead>
-              <tr className="bg-white/5 text-left text-sm text-slate-300">
+              <tr className="bg-white/4 text-left text-sm text-slate-300">
                 <th className="px-4 py-3 font-semibold">Logical HVAC</th>
                 <th className="px-4 py-3 font-semibold">Device Name</th>
-                <th className="px-4 py-3 font-semibold">External Device ID</th>
+                <th className="px-4 py-3 font-semibold">
+                  External Device ID
+                </th>
                 <th className="px-4 py-3 font-semibold">Mapped At</th>
                 <th className="px-4 py-3 font-semibold text-right">Action</th>
               </tr>
@@ -50,12 +60,14 @@ export default function ExistingMappingsPanel({
               {mappings.map((mapping, index) => (
                 <tr
                   key={mapping.mappingId}
-                  className={index % 2 === 0 ? "bg-slate-950/10" : "bg-white/5"}
+                  className={
+                    index % 2 === 0 ? "bg-slate-950/10" : "bg-white/3"
+                  }
                 >
                   <td className="px-4 py-3 text-sm text-slate-100">
                     <span className="inline-flex items-center gap-2">
                       <Link2 className="h-4 w-4 text-blue-300" />
-                      {mapping.hvacName}
+                      {mapping.hvacName || "Unnamed HVAC"}
                     </span>
                   </td>
 
@@ -75,23 +87,27 @@ export default function ExistingMappingsPanel({
 
                   <td className="px-4 py-3 text-right">
                     <div className="flex flex-wrap justify-end gap-2">
-                      <button
-                        className="inline-flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      <BmsButton
+                        type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => onConfigurePoints(mapping)}
                         disabled={busy}
                       >
                         <SlidersHorizontal className="h-4 w-4" />
                         Configure Points
-                      </button>
+                      </BmsButton>
 
-                      <button
-                        className="inline-flex items-center gap-2 rounded-2xl bg-rose-500/90 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      <BmsButton
+                        type="button"
+                        variant="danger"
+                        size="sm"
                         onClick={() => onUnmap(mapping.mappingId)}
                         disabled={busy}
                       >
                         <Trash2 className="h-4 w-4" />
                         Unmap
-                      </button>
+                      </BmsButton>
                     </div>
                   </td>
                 </tr>
@@ -100,6 +116,6 @@ export default function ExistingMappingsPanel({
           </table>
         </div>
       )}
-    </section>
+    </BmsCard>
   );
 }

@@ -1,24 +1,62 @@
-import { useForm } from "react-hook-form";
-import { type TenantResponse, type SiteResponse, type HvacFormValues, hvacSchema, Card, Field, Input, Select, Button } from "./Onboarding";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Cpu } from "lucide-react";
+import type { ReactNode } from "react";
+import { useForm } from "react-hook-form";
+
+import {
+  BmsButton,
+  BmsFormModal,
+  BmsInput,
+  BmsSelect,
+} from "@/components/UI";
+
+import {
+  type HvacFormValues,
+  type SiteResponse,
+  type TenantResponse,
+  hvacSchema,
+} from "./Onboarding";
+
+type HvacFormProps = {
+  busy: boolean;
+  tenant: TenantResponse;
+  site: SiteResponse;
+  onBack: () => void;
+  onAdd: (values: HvacFormValues) => Promise<void>;
+  onFinish: () => void;
+};
+
+type FieldProps = {
+  label: string;
+  error?: string;
+  children: ReactNode;
+};
+
+function Field({ label, error, children }: FieldProps) {
+  return (
+    <label className="space-y-2">
+      <span className="block text-sm font-medium text-slate-200">{label}</span>
+
+      {children}
+
+      {error && (
+        <span className="block text-xs font-medium text-rose-300">
+          {error}
+        </span>
+      )}
+    </label>
+  );
+}
 
 export default function HvacForm({
-    busy,
-    tenant,
-    site,
-    onBack,
-    onAdd,
-    onFinish,
-}: {
-    busy: boolean;
-    tenant: TenantResponse;
-    site: SiteResponse;
-    onBack: () => void;
-    onAdd: (values: HvacFormValues) => Promise<void>;
-    onFinish: () => void;
-}) {
-
-   const form = useForm<HvacFormValues>({
+  busy,
+  tenant,
+  site,
+  onBack,
+  onAdd,
+  onFinish,
+}: HvacFormProps) {
+  const form = useForm<HvacFormValues>({
     resolver: zodResolver(hvacSchema),
     defaultValues: {
       hvacName: "",
@@ -32,65 +70,98 @@ export default function HvacForm({
   const { register, handleSubmit, reset, formState } = form;
   const { errors, isSubmitting } = formState;
 
+  const disabled = busy || isSubmitting;
 
   return (
-    <Card
-        title="Register HVAC"
-        subtitle={`Tenant: ${tenant.name} Site: ${site.siteName}`}
+    <BmsFormModal
+      open
+      eyebrow="HVAC SETUP"
+      title="Register HVAC"
+      subtitle={`Tenant: ${tenant.name} • Site: ${site.siteName}`}
+      icon={<Cpu className="h-5 w-5" />}
+      onClose={onBack}
     >
+      <form
+        className="space-y-5"
+        onSubmit={handleSubmit(async (values) => {
+          await onAdd(values);
 
-        <form
-            className="space-y-4"
-            onSubmit={handleSubmit(async (v) => {
-            await onAdd(v);
-            reset({ ...v, hvacName: "", deviceId: "", zone: "" }); // keep selects, clear text fields
-            })}
-        >
-            <div className="grid gap-4 md:grid-cols-2">
-                <Field label="HVAC Name" error={errors.hvacName?.message}>
-                    <Input placeholder="e.g., HVAC-1 Lobby" {...register("hvacName")} />
-                </Field>
+          reset({
+            ...values,
+            hvacName: "",
+            deviceId: "",
+            zone: "",
+          });
+        })}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="HVAC Name" error={errors.hvacName?.message}>
+            <BmsInput
+              placeholder="e.g., HVAC-1 Lobby"
+              disabled={disabled}
+              {...register("hvacName")}
+            />
+          </Field>
 
-                <Field label="Device ID" error={errors.deviceId?.message}>
-                    <Input placeholder="e.g., HVAC-1" {...register("deviceId")} />
-                </Field>
+          <Field label="Device ID" error={errors.deviceId?.message}>
+            <BmsInput
+              placeholder="e.g., HVAC-1"
+              disabled={disabled}
+              {...register("deviceId")}
+            />
+          </Field>
 
-                <Field label="Protocol" error={errors.protocol?.message}>
-                    <Select {...register("protocol")}>
-                        <option value="SIMULATOR">SIMULATOR</option>
-                        <option value="BACNET">BACnet</option>
-                        <option value="MODBUS">Modbus</option>
-                    </Select>
-                </Field>
+          <Field label="Protocol" error={errors.protocol?.message}>
+            <BmsSelect disabled={disabled} {...register("protocol")}>
+              <option value="SIMULATOR">SIMULATOR</option>
+              <option value="BACNET">BACnet</option>
+              <option value="MODBUS">Modbus</option>
+            </BmsSelect>
+          </Field>
 
-                <Field label="Zone / Area (optional)" error={errors.zone?.message as string | undefined}>
-                    <Input placeholder="e.g., Floor 2" {...register("zone")} />
-                </Field>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" onClick={onBack} disabled={busy || isSubmitting}>
-              Back
-            </Button>
-          </div>
-
-          <div className="flex gap-2">
-            <Button type="submit" disabled={busy || isSubmitting}>
-              {busy ? "Adding..." : "Add HVAC"}
-            </Button>
-            <Button type="button" variant="primary" onClick={onFinish}>
-              Finish
-            </Button>
-          </div>
+          <Field
+            label="Zone / Area (optional)"
+            error={errors.zone?.message as string | undefined}
+          >
+            <BmsInput
+              placeholder="e.g., Floor 2"
+              disabled={disabled}
+              {...register("zone")}
+            />
+          </Field>
         </div>
 
-        <p className="text-xs text-zinc-500">
-          HVAC UUID is generated by backend. deviceId should match your edge-controller/simulator device identifiers.
+        <p className="rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3 text-xs leading-5 text-slate-400">
+          HVAC UUID is generated by backend. Device ID should match your
+          edge-controller or simulator device identifiers.
         </p>
-        </form>
 
-    </Card>
+        <div className="flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <BmsButton
+            type="button"
+            variant="secondary"
+            onClick={onBack}
+            disabled={disabled}
+          >
+            Back
+          </BmsButton>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <BmsButton type="submit" variant="primary" disabled={disabled}>
+              {busy || isSubmitting ? "Adding..." : "Add HVAC"}
+            </BmsButton>
+
+            <BmsButton
+              type="button"
+              variant="success"
+              onClick={onFinish}
+              disabled={disabled}
+            >
+              Finish
+            </BmsButton>
+          </div>
+        </div>
+      </form>
+    </BmsFormModal>
   );
-
 }

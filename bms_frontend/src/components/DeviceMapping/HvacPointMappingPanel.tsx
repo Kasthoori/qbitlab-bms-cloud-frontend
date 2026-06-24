@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -17,6 +17,13 @@ import {
   type HvacPointMappingRequest,
   type HvacPointMappingResponse,
 } from "@/api/bms";
+
+import {
+  BmsButton,
+  BmsCard,
+  BmsInput,
+  BmsSelect,
+} from "@/components/UI";
 
 type Props = {
   tenantId: string;
@@ -218,7 +225,9 @@ export default function HvacPointMappingPanel({
   );
 
   const [form, setForm] = useState<HvacPointMappingRequest>(defaultForm);
-  const [existing, setExisting] = useState<HvacPointMappingResponse | null>(null);
+  const [existing, setExisting] = useState<HvacPointMappingResponse | null>(
+    null
+  );
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -363,7 +372,9 @@ export default function HvacPointMappingPanel({
       );
 
       setExisting(saved);
-      setForm(responseToForm(saved, buildDefaultForm(mapping, edgeControllerId, "SIMULATOR")));
+      setForm(
+        responseToForm(saved, buildDefaultForm(mapping, edgeControllerId, "SIMULATOR"))
+      );
       setSuccessMessage("Simulator point defaults created successfully.");
       onSaved?.();
     } catch (error: any) {
@@ -476,8 +487,8 @@ export default function HvacPointMappingPanel({
   };
 
   return (
-    <section className="rounded-3xl border border-cyan-400/20 bg-slate-950/80 p-5 shadow-[0_18px_70px_rgba(8,47,73,0.45)] backdrop-blur-xl">
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <BmsCard variant="section" className="p-5">
+      <div className="mb-5 flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
             <Cpu className="h-4 w-4" />
@@ -497,13 +508,17 @@ export default function HvacPointMappingPanel({
               <span className="text-slate-300">External Device:</span>{" "}
               {mapping.externalDeviceId}
             </div>
+
             <div>
               <span className="text-slate-300">Unit:</span>{" "}
               {mapping.unitName || "-"}
             </div>
+
             <div>
-              <span className="text-slate-300">HVAC ID:</span> {mapping.hvacId}
+              <span className="text-slate-300">HVAC ID:</span>{" "}
+              {mapping.hvacId}
             </div>
+
             <div>
               <span className="text-slate-300">Edge:</span>{" "}
               {edgeControllerId || "Not assigned"}
@@ -511,14 +526,10 @@ export default function HvacPointMappingPanel({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-        >
+        <BmsButton type="button" variant="ghost" size="sm" onClick={onClose}>
           <X className="h-4 w-4" />
           Close
-        </button>
+        </BmsButton>
       </div>
 
       {errorMessage && (
@@ -536,18 +547,20 @@ export default function HvacPointMappingPanel({
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-sm text-slate-400">
+        <div className="rounded-2xl border border-white/10 bg-white/4 p-6 text-center text-sm text-slate-400">
           Loading point mapping...
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-4">
+          <BmsCard variant="glass" className="border-cyan-400/20 bg-cyan-500/10 p-4">
             <div className="text-sm font-semibold text-cyan-200">
               {protocolInfo.title}
             </div>
+
             <p className="mt-1 text-sm text-slate-300">
               {protocolInfo.description}
             </p>
+
             <div className="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-2">
               {protocolInfo.examples.map((example) => (
                 <div
@@ -558,63 +571,69 @@ export default function HvacPointMappingPanel({
                 </div>
               ))}
             </div>
-          </div>
+          </BmsCard>
 
           <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold text-slate-300">
                 Protocol
-              </label>
-              <select
+              </span>
+
+              <BmsSelect
                 value={currentProtocol}
                 onChange={(event) => applyProtocolTemplate(event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60"
               >
                 <option value="SIMULATOR">SIMULATOR</option>
                 <option value="BACNET">BACNET</option>
                 <option value="MODBUS">MODBUS</option>
-              </select>
-            </div>
+              </BmsSelect>
+            </label>
 
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold text-slate-300">
                 Min Setpoint
-              </label>
-              <input
+              </span>
+
+              <BmsInput
                 type="number"
                 value={form.minSetpoint ?? ""}
                 onChange={(event) =>
                   updateField(
                     "minSetpoint",
-                    event.target.value === "" ? null : Number(event.target.value)
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value)
                   )
                 }
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold text-slate-300">
                 Max Setpoint
-              </label>
-              <input
+              </span>
+
+              <BmsInput
                 type="number"
                 value={form.maxSetpoint ?? ""}
                 onChange={(event) =>
                   updateField(
                     "maxSetpoint",
-                    event.target.value === "" ? null : Number(event.target.value)
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value)
                   )
                 }
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60"
               />
-            </div>
+            </label>
 
-            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.enabled)}
-                onChange={(event) => updateField("enabled", event.target.checked)}
+                onChange={(event) =>
+                  updateField("enabled", event.target.checked)
+                }
               />
               Enabled
             </label>
@@ -623,7 +642,7 @@ export default function HvacPointMappingPanel({
           <div className="overflow-x-auto rounded-3xl border border-white/10">
             <table className="min-w-full border-separate border-spacing-0">
               <thead>
-                <tr className="bg-white/5 text-left text-sm text-slate-300">
+                <tr className="bg-white/4 text-left text-sm text-slate-300">
                   <th className="px-4 py-3 font-semibold">QbitLabs Field</th>
                   <th className="px-4 py-3 font-semibold">Source Point Ref</th>
                   <th className="px-4 py-3 font-semibold">Note</th>
@@ -634,20 +653,21 @@ export default function HvacPointMappingPanel({
                 {pointRows.map((row, index) => (
                   <tr
                     key={row.field}
-                    className={index % 2 === 0 ? "bg-slate-950/10" : "bg-white/5"}
+                    className={
+                      index % 2 === 0 ? "bg-slate-950/10" : "bg-white/3"
+                    }
                   >
                     <td className="px-4 py-3 text-sm font-medium text-slate-100">
                       {row.label}
                     </td>
 
                     <td className="px-4 py-3">
-                      <input
+                      <BmsInput
                         value={String(form[row.field] ?? "")}
                         onChange={(event) =>
                           updateField(row.field, event.target.value as any)
                         }
                         placeholder={placeholderFor(row)}
-                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400/60"
                       />
                     </td>
 
@@ -661,7 +681,7 @@ export default function HvacPointMappingPanel({
           </div>
 
           <div className="grid gap-3 md:grid-cols-5">
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableSetpoint)}
@@ -672,7 +692,7 @@ export default function HvacPointMappingPanel({
               Setpoint writable
             </label>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableOnoff)}
@@ -683,7 +703,7 @@ export default function HvacPointMappingPanel({
               On/off writable
             </label>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableFanSpeed)}
@@ -694,7 +714,7 @@ export default function HvacPointMappingPanel({
               Fan writable
             </label>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableFlowRate)}
@@ -705,7 +725,7 @@ export default function HvacPointMappingPanel({
               Flow writable
             </label>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableRestart)}
@@ -717,7 +737,7 @@ export default function HvacPointMappingPanel({
             </label>
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 border-t border-white/10 pt-5 md:flex-row md:items-center md:justify-between">
             <div className="text-xs text-slate-500">
               {existing ? (
                 <span>
@@ -733,51 +753,51 @@ export default function HvacPointMappingPanel({
 
             <div className="flex flex-wrap gap-3">
               {isSimulator && (
-                <button
+                <BmsButton
                   type="button"
+                  variant="secondary"
                   onClick={() => void createSimulatorDefaults()}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Sparkles className="h-4 w-4" />
                   Simulator Defaults
-                </button>
+                </BmsButton>
               )}
 
-              <button
+              <BmsButton
                 type="button"
+                variant="ghost"
                 onClick={() => void loadPointMapping()}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <RefreshCw className="h-4 w-4" />
                 Reload
-              </button>
+              </BmsButton>
 
               {existing && (
-                <button
+                <BmsButton
                   type="button"
+                  variant="danger"
                   onClick={() => void deletePointMapping()}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Delete Points
-                </button>
+                </BmsButton>
               )}
 
-              <button
+              <BmsButton
                 type="button"
+                variant="primary"
                 onClick={() => void saveManual()}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 px-5 py-2 text-sm font-semibold text-white transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
                 {saving ? "Saving..." : "Save Mapping"}
-              </button>
+              </BmsButton>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </BmsCard>
   );
 }

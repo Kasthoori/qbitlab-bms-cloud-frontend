@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type FC, type SubmitEventHandler } from "react";
 
+import { BmsButton, BmsInput } from "@/components/UI";
+
 type AddSiteModalProps = {
   open: boolean;
   tenantId: string;
@@ -18,11 +20,6 @@ type AddSiteModalProps = {
   onClose: () => void;
   onCreated?: () => void;
 };
-
-const inputClass =
-  "w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60";
-
-const labelClass = "mb-2 text-sm font-medium text-slate-200";
 
 const AddSiteModal: FC<AddSiteModalProps> = ({
   open,
@@ -66,22 +63,36 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
   const setField = <K extends keyof CreateSiteRequest>(
     key: K,
     value: CreateSiteRequest[K]
-  ) => setForm((p) => ({ ...p, [key]: value }));
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
 
   const validate = (): string | null => {
     if (!tenantId) return "Missing tenantId. Please open the form again.";
-    if (!form.siteName.trim()) return "Site name is required";
-    if (!form.addressLine1.trim()) return "Address line 1 is required";
-    if (!form.city.trim()) return "City is required";
-    if (!form.postcode.trim()) return "Postcode is required";
-    if (!form.timezone.trim()) return "Timezone is required";
+    if (!form.siteName.trim()) return "Site name is required.";
+    if (!form.addressLine1.trim()) return "Address line 1 is required.";
+    if (!form.city.trim()) return "City is required.";
+    if (!form.postcode.trim()) return "Postcode is required.";
+    if (!form.timezone.trim()) return "Timezone is required.";
     return null;
   };
 
-  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (e) => {
-    e.preventDefault();
+  const canSubmit =
+    Boolean(tenantId) &&
+    Boolean(form.siteName.trim()) &&
+    Boolean(form.addressLine1.trim()) &&
+    Boolean(form.city.trim()) &&
+    Boolean(form.postcode.trim()) &&
+    Boolean(form.timezone.trim());
+
+  const handleSubmit: SubmitEventHandler<HTMLFormElement> = async (event) => {
+    event.preventDefault();
 
     const validationError = validate();
+
     if (validationError) {
       setErr(validationError);
       return;
@@ -102,11 +113,12 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
         onClose();
       }, 1000);
     } catch (error: any) {
-      const msg =
+      const message =
         error?.response?.data?.message ||
         error?.message ||
         "Failed to create site. Please try again.";
-      setErr(String(msg));
+
+      setErr(String(message));
     } finally {
       setSaving(false);
     }
@@ -122,7 +134,7 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm"
             onClick={handleClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -131,40 +143,43 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
 
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <motion.div
-              className="relative w-[94vw] max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-slate-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+              className="relative w-[94vw] max-w-2xl overflow-hidden rounded-3xl border border-cyan-300/15 bg-[linear-gradient(145deg,rgba(20,31,54,0.96),rgba(15,23,42,0.94)_48%,rgba(49,46,129,0.42))] shadow-[0_28px_90px_rgba(0,0,0,0.52),inset_0_1px_0_rgba(255,255,255,0.05)] ring-1 ring-white/5 backdrop-blur-2xl"
               initial={{ opacity: 0, scale: 0.96, y: 18 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 12 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
               drag
               dragControls={dragControls}
               dragListener={false}
               dragMomentum={false}
             >
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.14),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.12),transparent_24%)]" />
+              <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-linear-to-r from-transparent via-cyan-300/45 to-transparent" />
+              <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-cyan-400/12 blur-3xl" />
+              <div className="pointer-events-none absolute -left-12 bottom-0 h-36 w-36 rounded-full bg-indigo-400/12 blur-3xl" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.12),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(129,140,248,0.12),transparent_28%)]" />
 
               <div
-                className="relative cursor-move select-none border-b border-white/10 px-6 py-5"
-                onPointerDown={(e) => dragControls.start(e)}
+                className="relative cursor-move select-none border-b border-cyan-300/15 px-6 py-5"
+                onPointerDown={(event) => dragControls.start(event)}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-blue-300">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/15 bg-slate-900/55 text-cyan-200 shadow-lg shadow-cyan-950/20">
                       <Building2 className="h-5 w-5" />
                     </div>
 
                     <div>
-                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300">
                         <Sparkles className="h-4 w-4" />
                         Add Site
                       </div>
 
-                      <h2 className="mt-2 text-2xl font-bold text-white">
+                      <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-100">
                         New Site Setup
                       </h2>
 
-                      <p className="mt-1 text-sm text-slate-400">
+                      <p className="mt-3 text-sm text-slate-400">
                         Tenant:
                         <span className="ml-1 font-medium text-slate-200">
                           {tenantTitle ?? tenantId}
@@ -176,9 +191,11 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="rounded-2xl border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-300/15 bg-slate-950/45 text-slate-300 transition hover:border-rose-300/35 hover:bg-rose-500/15 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={saving}
-                    onPointerDown={(e) => e.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    aria-label="Close add site modal"
+                    title="Close"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -190,7 +207,7 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
                   <motion.div
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300"
+                    className="mb-4 flex items-start gap-3 rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-100"
                   >
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>{err}</span>
@@ -201,7 +218,7 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
                   <motion.div
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-4 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300"
+                    className="mb-4 flex items-start gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-100"
                   >
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>Site created successfully.</span>
@@ -209,84 +226,83 @@ const AddSiteModal: FC<AddSiteModalProps> = ({
                 )}
 
                 <div className="grid grid-cols-1 gap-4">
-                  <label className="block">
-                    <div className={labelClass}>Site Name</div>
-                    <input
-                      className={inputClass}
-                      value={form.siteName}
-                      onChange={(e) => setField("siteName", e.target.value)}
-                      disabled={saving}
-                      placeholder="e.g., Auckland Office"
-                    />
-                  </label>
+                  <BmsInput
+                    label="Site Name"
+                    value={form.siteName}
+                    onChange={(event) =>
+                      setField("siteName", event.target.value)
+                    }
+                    disabled={saving}
+                    placeholder="e.g., Auckland Office"
+                  />
 
-                  <label className="block">
-                    <div className={labelClass}>Address Line 1</div>
-                    <input
-                      className={inputClass}
-                      value={form.addressLine1}
-                      onChange={(e) => setField("addressLine1", e.target.value)}
-                      disabled={saving}
-                      placeholder="e.g., 42 Queen St"
-                    />
-                  </label>
+                  <BmsInput
+                    label="Address Line 1"
+                    value={form.addressLine1}
+                    onChange={(event) =>
+                      setField("addressLine1", event.target.value)
+                    }
+                    disabled={saving}
+                    placeholder="e.g., 42 Queen St"
+                  />
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <label className="block">
-                      <div className={labelClass}>City</div>
-                      <input
-                        className={inputClass}
-                        value={form.city}
-                        onChange={(e) => setField("city", e.target.value)}
-                        disabled={saving}
-                        placeholder="e.g., Auckland"
-                      />
-                    </label>
+                    <BmsInput
+                      label="City"
+                      value={form.city}
+                      onChange={(event) =>
+                        setField("city", event.target.value)
+                      }
+                      disabled={saving}
+                      placeholder="e.g., Auckland"
+                    />
 
-                    <label className="block">
-                      <div className={labelClass}>Postcode</div>
-                      <input
-                        className={inputClass}
-                        value={form.postcode}
-                        onChange={(e) => setField("postcode", e.target.value)}
-                        disabled={saving}
-                        placeholder="e.g., 1010"
-                      />
-                    </label>
+                    <BmsInput
+                      label="Postcode"
+                      value={form.postcode}
+                      onChange={(event) =>
+                        setField("postcode", event.target.value)
+                      }
+                      disabled={saving}
+                      placeholder="e.g., 1010"
+                    />
                   </div>
 
-                  <label className="block">
-                    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-200">
-                      <MapPin className="h-4 w-4 text-cyan-300" />
-                      Timezone
-                    </div>
-                    <input
-                      className={inputClass}
-                      value={form.timezone}
-                      onChange={(e) => setField("timezone", e.target.value)}
-                      disabled={saving}
-                      placeholder="e.g., Pacific/Auckland"
-                    />
-                  </label>
+                  <BmsInput
+                    label={
+                      <span className="inline-flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-cyan-300" />
+                        Timezone
+                      </span>
+                    }
+                    value={form.timezone}
+                    onChange={(event) =>
+                      setField("timezone", event.target.value)
+                    }
+                    disabled={saving}
+                    placeholder="e.g., Pacific/Auckland"
+                  />
                 </div>
 
-                <div className="mt-6 flex items-center justify-end gap-3">
-                  <button
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+                  <BmsButton
                     type="button"
+                    variant="ghost"
+                    size="lg"
                     onClick={handleClose}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
                     disabled={saving}
                   >
                     Cancel
-                  </button>
+                  </BmsButton>
 
-                  <button
+                  <BmsButton
                     type="submit"
-                    className="rounded-2xl bg-linear-to-r from-blue-500 to-purple-500 px-5 py-3 text-sm font-semibold text-white transition hover:scale-[1.02] disabled:opacity-60"
-                    disabled={saving || !tenantId}
+                    variant="primary"
+                    size="lg"
+                    disabled={saving || !canSubmit}
                   >
                     {saving ? "Saving..." : "Create Site"}
-                  </button>
+                  </BmsButton>
                 </div>
               </form>
             </motion.div>

@@ -1,13 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, Cpu, MapPin, Sparkles, Wind } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  Cpu,
+  MapPin,
+  Sparkles,
+  Wind,
+} from "lucide-react";
+
 import { api } from "../../../api/http";
+import { BmsButton, BmsCard } from "@/components/UI";
 
 import TenantForm from "./Components/TenantForm";
 import SiteForm from "./Components/SiteForm";
 import HvacForm from "./Components/HvacForm";
-import { Button, Card, StepPill } from "./Components/onboarding.ui";
+
 import type {
   HvacResponse,
   SiteResponse,
@@ -28,17 +37,45 @@ export default function OnboardingPage() {
   const [site, setSite] = useState<SiteResponse | null>(null);
   const [hvacs, setHvacs] = useState<HvacResponse[]>([]);
 
-  const doneTenant = !!tenant;
-  const doneSite = !!site;
+  const doneTenant = Boolean(tenant);
+  const doneSite = Boolean(site);
   const doneHvac = hvacs.length > 0;
 
   const header = useMemo(
     () => ({
       title: "Smart Building Setup",
-      subtitle: "Configure your tenant, site, and HVAC devices with AI-assisted onboarding.",
+      subtitle:
+        "Configure your tenant, site, and HVAC devices with AI-assisted onboarding.",
     }),
     []
   );
+
+  const steps: Array<{
+    key: Step;
+    label: string;
+    done: boolean;
+  }> = [
+    {
+      key: "TENANT",
+      label: "Tenant",
+      done: doneTenant,
+    },
+    {
+      key: "SITE",
+      label: "Site",
+      done: doneSite,
+    },
+    {
+      key: "HVAC",
+      label: "HVAC",
+      done: doneHvac,
+    },
+    {
+      key: "DONE",
+      label: "Finish",
+      done: step === "DONE",
+    },
+  ];
 
   const resetSetup = () => {
     setTenant(null);
@@ -75,11 +112,14 @@ export default function OnboardingPage() {
     setBusy(true);
 
     try {
-      const created = await api<SiteResponse>(`/api/tenants/${tenant.tenantId}/sites`, {
-        method: "POST",
-        body: JSON.stringify(values),
-        auth: true,
-      });
+      const created = await api<SiteResponse>(
+        `/api/tenants/${tenant.tenantId}/sites`,
+        {
+          method: "POST",
+          body: JSON.stringify(values),
+          auth: true,
+        }
+      );
 
       setSite(created);
       setStep("HVAC");
@@ -97,11 +137,14 @@ export default function OnboardingPage() {
     setBusy(true);
 
     try {
-      const created = await api<HvacResponse>(`/api/hvacs/${tenant.tenantId}/sites/${site.siteId}/hvacs`, {
-        method: "POST",
-        body: JSON.stringify(values),
-        auth: true,
-      });
+      const created = await api<HvacResponse>(
+        `/api/hvacs/${tenant.tenantId}/sites/${site.siteId}/hvacs`,
+        {
+          method: "POST",
+          body: JSON.stringify(values),
+          auth: true,
+        }
+      );
 
       setHvacs((prev) => [created, ...prev]);
     } catch (e: any) {
@@ -112,26 +155,67 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-full rounded-3xl bg-linear-to-br from-slate-950 via-[#08122f] to-slate-950 p-6 text-white">
-      <div className="mb-8">
-        <h1 className="flex items-center gap-3 text-3xl font-bold">
-          <Sparkles className="h-7 w-7 text-blue-400" />
-          {header.title}
-        </h1>
-        <p className="mt-2 text-slate-400">{header.subtitle}</p>
-      </div>
+    <div className="bms-dashboard-bg min-h-full rounded-3xl p-6 text-white">
+      <BmsCard variant="section" className="mb-8 p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">
+              <Sparkles className="h-4 w-4" />
+              AI-Assisted Onboarding
+            </p>
+
+            <h1 className="mt-3 text-3xl font-bold text-white">
+              {header.title}
+            </h1>
+
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+              {header.subtitle}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-sm text-slate-300">
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Progress
+            </p>
+            <p className="mt-1 font-semibold text-cyan-100">
+              {step === "DONE" ? "Completed" : `Current step: ${step}`}
+            </p>
+          </div>
+        </div>
+      </BmsCard>
 
       <div className="mb-8 flex flex-wrap gap-3">
-        <StepPill label="Tenant" active={step === "TENANT"} done={doneTenant} />
-        <StepPill label="Site" active={step === "SITE"} done={doneSite} />
-        <StepPill label="HVAC" active={step === "HVAC"} done={doneHvac} />
-        <StepPill label="Finish" active={step === "DONE"} done={step === "DONE"} />
+        {steps.map((item, index) => {
+          const active = step === item.key;
+
+          return (
+            <div
+              key={item.key}
+              className={[
+                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
+                active
+                  ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-100 shadow-[0_0_28px_rgba(34,211,238,0.12)]"
+                  : item.done
+                    ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-200"
+                    : "border-white/10 bg-white/4 text-slate-400",
+              ].join(" ")}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full border border-current/30 text-xs">
+                {item.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : index + 1}
+              </span>
+              {item.label}
+            </div>
+          );
+        })}
       </div>
 
       {error ? (
-        <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+        <BmsCard
+          variant="section"
+          className="mb-6 border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300"
+        >
           {error}
-        </div>
+        </BmsCard>
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-3">
@@ -140,47 +224,81 @@ export default function OnboardingPage() {
           animate={{ opacity: 1, x: 0 }}
           className="space-y-6 xl:col-span-1"
         >
-          <Card title="AI Assistant" subtitle="Smart setup guidance for NZ building onboarding">
+          <BmsCard variant="section" className="p-5">
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/80">
+                AI Assistant
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-white">
+                Smart setup guidance
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Smart setup guidance for NZ building onboarding.
+              </p>
+            </div>
+
             <div className="space-y-4 text-sm text-slate-300">
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/4 p-4">
                 <Sparkles className="mt-0.5 h-5 w-5 text-purple-400" />
+
                 <div>
-                  <p className="font-medium text-white">Recommended structure</p>
+                  <p className="font-medium text-white">
+                    Recommended structure
+                  </p>
                   <p className="mt-1 text-slate-400">
-                    Create tenant first, then site, then register HVAC devices for mapping.
+                    Create tenant first, then site, then register HVAC devices
+                    for mapping.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/4 p-4">
                 <Wind className="mt-0.5 h-5 w-5 text-cyan-400" />
+
                 <div>
                   <p className="font-medium text-white">HVAC estimate</p>
                   <p className="mt-1 text-slate-400">
-                    Typical commercial floor coverage often needs multiple units by zone and floor.
+                    Typical commercial floor coverage often needs multiple
+                    units by zone and floor.
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-linear-to-r from-blue-500/20 to-purple-500/20 p-4 text-slate-200">
-                💡 Tip: keep your HVAC deviceId aligned with edge-controller identifiers such as
-                <span className="ml-1 font-medium text-white">hvac-1</span>,
-                <span className="ml-1 font-medium text-white">hvac-2</span>.
+              <div className="rounded-2xl border border-cyan-400/10 bg-cyan-400/5 p-4 text-slate-200">
+                💡 Tip: keep your HVAC deviceId aligned with edge-controller
+                identifiers such as{" "}
+                <span className="font-medium text-white">hvac-1</span>,{" "}
+                <span className="font-medium text-white">hvac-2</span>.
               </div>
             </div>
-          </Card>
+          </BmsCard>
 
-          <Card title="Live Summary" subtitle="Backend-generated UUIDs appear here after creation">
+          <BmsCard variant="section" className="p-5">
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/80">
+                Live Summary
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-white">
+                Created Records
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Backend-generated UUIDs appear here after creation.
+              </p>
+            </div>
+
             <div className="space-y-5 text-sm">
               <div>
                 <div className="mb-2 flex items-center gap-2 font-medium text-white">
                   <Building2 className="h-4 w-4 text-blue-400" />
                   Tenant
                 </div>
+
                 {tenant ? (
                   <div className="space-y-1 text-slate-300">
                     <div>Name: {tenant.name}</div>
-                    <div className="break-all text-slate-400">tenantId: {tenant.tenantId}</div>
+                    <div className="break-all text-slate-400">
+                      tenantId: {tenant.tenantId}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-slate-500">Not created yet</div>
@@ -192,10 +310,13 @@ export default function OnboardingPage() {
                   <MapPin className="h-4 w-4 text-cyan-400" />
                   Site
                 </div>
+
                 {site ? (
                   <div className="space-y-1 text-slate-300">
                     <div>Name: {site.siteName}</div>
-                    <div className="break-all text-slate-400">siteId: {site.siteId}</div>
+                    <div className="break-all text-slate-400">
+                      siteId: {site.siteId}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-slate-500">Not created yet</div>
@@ -207,13 +328,23 @@ export default function OnboardingPage() {
                   <Cpu className="h-4 w-4 text-purple-400" />
                   HVAC Units
                 </div>
+
                 {hvacs.length > 0 ? (
                   <ul className="space-y-3">
-                    {hvacs.map((h) => (
-                      <li key={h.hvacId} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="font-medium text-white">{h.hvacName}</div>
-                        <div className="text-slate-300">deviceId: {h.deviceId}</div>
-                        <div className="break-all text-slate-500">hvacId: {h.hvacId}</div>
+                    {hvacs.map((hvac) => (
+                      <li
+                        key={hvac.hvacId}
+                        className="rounded-2xl border border-white/10 bg-white/4 p-4"
+                      >
+                        <div className="font-medium text-white">
+                          {hvac.hvacName}
+                        </div>
+                        <div className="text-slate-300">
+                          deviceId: {hvac.deviceId}
+                        </div>
+                        <div className="break-all text-slate-500">
+                          hvacId: {hvac.hvacId}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -223,12 +354,17 @@ export default function OnboardingPage() {
               </div>
 
               <div className="pt-2">
-                <Button variant="secondary" type="button" onClick={resetSetup} disabled={busy}>
+                <BmsButton
+                  variant="secondary"
+                  type="button"
+                  onClick={resetSetup}
+                  disabled={busy}
+                >
                   Reset setup
-                </Button>
+                </BmsButton>
               </div>
             </div>
-          </Card>
+          </BmsCard>
         </motion.div>
 
         <motion.div
@@ -261,24 +397,42 @@ export default function OnboardingPage() {
           )}
 
           {step === "DONE" && (
-            <Card title="Setup complete" subtitle="Tenant, site, and HVAC registration completed">
+            <BmsCard variant="section" className="p-5">
+              <div className="mb-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/80">
+                  Setup complete
+                </p>
+                <h2 className="mt-1 text-xl font-semibold text-white">
+                  Tenant, site, and HVAC registration completed
+                </h2>
+              </div>
+
               <div className="space-y-4 text-sm text-slate-300">
                 <p>
-                  Your tenant, site, and HVAC setup has been created successfully. You can now continue to
-                  dashboard flows, device mapping, or add more HVAC units.
+                  Your tenant, site, and HVAC setup has been created
+                  successfully. You can now continue to dashboard flows, device
+                  mapping, or add more HVAC units.
                 </p>
 
                 <div className="flex flex-wrap gap-3">
-                  <Button type="button" onClick={() => window.alert("Navigate to dashboard here")}>
+                  <BmsButton
+                    type="button"
+                    variant="primary"
+                    onClick={() => window.alert("Navigate to dashboard here")}
+                  >
                     Go to Dashboard
-                  </Button>
+                  </BmsButton>
 
-                  <Button type="button" variant="secondary" onClick={() => setStep("HVAC")}>
+                  <BmsButton
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setStep("HVAC")}
+                  >
                     Add more HVACs
-                  </Button>
+                  </BmsButton>
                 </div>
               </div>
-            </Card>
+            </BmsCard>
           )}
         </motion.div>
       </div>

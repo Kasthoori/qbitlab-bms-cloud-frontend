@@ -66,6 +66,7 @@ import {
   type DashboardRole,
   type DashboardSiteCardDto,
 } from "@/api/bms";
+import { BmsButton, BmsCard } from "@/components/UI";
 
 //import DashboardNotificationIcons from "../Dashboard/DashboardNotificationIcons";
 
@@ -73,7 +74,7 @@ const DASHBOARD_KEY = "ROLE_BASE_DASHBOARD_V1";
 const DRAWER_WIDTH_PX = 448;
 const RIGHT_EDGE_OPEN_PX = 96;
 const RIGHT_EDGE_OPEN_DRAG_DISTANCE_PX = 120;
-const DRAWER_DROP_ZONE_PX = 120;
+const DRAWER_DROP_ZONE_PX = 72;
 const DRAWER_DROP_MIN_OVERLAP_PX = 24;
 
 type WidgetId =
@@ -466,15 +467,6 @@ function widgetGridClass(size: WidgetSize) {
   return "lg:col-span-1 xl:col-span-1";
 }
 
-function glassCardClass(extra = "") {
-  return [
-    "rounded-3xl border border-white/15 bg-white/[0.085]",
-    "shadow-[0_24px_70px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)]",
-    "backdrop-blur-2xl",
-    extra,
-  ].join(" ");
-}
-
 function getBestAiInsight(
   insights: DashboardAiInsightDto[]
 ): DashboardAiInsightDto | null {
@@ -546,20 +538,25 @@ function isReleasedAtDrawerDropZone(event: DragEndEvent): boolean {
   }
 
   const drawerLeftBoundary = window.innerWidth - DRAWER_WIDTH_PX;
+  const drawerDropBoundary = drawerLeftBoundary + DRAWER_DROP_MIN_OVERLAP_PX;
 
-  return translatedRect.right >= drawerLeftBoundary + DRAWER_DROP_MIN_OVERLAP_PX;
+  /*
+   * Dashboard widgets only need to overlap the drawer edge.
+   * They should not be dragged deep into the drawer/right side.
+   */
+  return translatedRect.right >= drawerDropBoundary;
 }
 
 function DashboardLoading() {
   return (
     <div className="min-h-screen bg-slate-950 px-5 py-8 text-slate-100">
       <div className="flex min-h-[65vh] items-center justify-center">
-        <div className={glassCardClass("p-8 text-center")}>
+        <BmsCard variant="section" className="p-8 text-center">
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-cyan-200" />
           <p className="mt-4 text-sm text-slate-300">
             Loading production dashboard...
           </p>
-        </div>
+        </BmsCard>
       </div>
     </div>
   );
@@ -568,10 +565,13 @@ function DashboardLoading() {
 function DashboardError({ message }: { message: string }) {
   return (
     <div className="min-h-screen bg-slate-950 px-5 py-8 text-slate-100">
-      <div className="mx-auto max-w-3xl rounded-3xl border border-rose-300/30 bg-rose-500/10 p-6 text-rose-100 shadow-2xl shadow-rose-500/10 backdrop-blur-2xl">
+      <BmsCard
+        variant="section"
+        className="mx-auto max-w-3xl border-rose-300/30 bg-rose-500/10 p-6 text-rose-100 shadow-2xl shadow-rose-500/10"
+      >
         <h2 className="text-lg font-semibold">Dashboard unavailable</h2>
         <p className="mt-2 text-sm text-rose-100/80">{message}</p>
-      </div>
+      </BmsCard>
     </div>
   );
 }
@@ -595,7 +595,7 @@ function DashboardHeader({
       .length;
 
   return (
-    <header className={glassCardClass("relative z-9000 p-5 md:p-6")}>
+    <BmsCard variant="section" className="relative z-9000 p-5 md:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.28em] text-cyan-100/75">
@@ -629,30 +629,22 @@ function DashboardHeader({
         <div className="flex flex-wrap items-center gap-3">
           {/* <DashboardNotificationIcons /> */}
 
-          <button
-            type="button"
-            onClick={onCustomize}
-            className="inline-flex items-center gap-2 rounded-2xl border border-cyan-200/25 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-50 shadow-lg shadow-cyan-500/10 transition hover:bg-cyan-500/18"
-          >
+          <BmsButton type="button" variant="primary" onClick={onCustomize}>
             <Settings2 className="h-4 w-4" />
             Customize
-          </button>
+          </BmsButton>
 
-          <button
-            type="button"
-            onClick={onReset}
-            className="inline-flex items-center gap-2 rounded-2xl border border-white/12 bg-white/6 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
-          >
+          <BmsButton type="button" variant="secondary" onClick={onReset}>
             <RefreshCcw className="h-4 w-4" />
             Reset
-          </button>
+          </BmsButton>
 
           <div className="min-w-[88px] text-xs text-slate-400">
             {saving ? "Saving..." : "Saved"}
           </div>
         </div>
       </div>
-    </header>
+    </BmsCard>
   );
 }
 
@@ -760,7 +752,7 @@ function SortableWidgetShell({
         isDragging ? "z-30 scale-[1.01] opacity-90" : ""
       }`}
     >
-      <div className={glassCardClass("h-full overflow-hidden")}>
+      <BmsCard variant="section" className="h-full overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
             <button
@@ -783,18 +775,20 @@ function SortableWidgetShell({
             </div>
           </div>
 
-          <button
+          <BmsButton
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => onHide(item.id)}
-            className="rounded-xl border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
+            className="rounded-xl p-2"
             title="Hide widget"
           >
             <X className="h-4 w-4" />
-          </button>
+          </BmsButton>
         </div>
 
         <div className="p-4">{children}</div>
-      </div>
+      </BmsCard>
     </section>
   );
 }
@@ -967,8 +961,9 @@ function SitePriorityListWidget({
               </div>
             </div>
 
-            <button
+            <BmsButton
               type="button"
+              variant="primary"
               onClick={() =>
                 navigate(
                   `/user/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`,
@@ -980,11 +975,11 @@ function SitePriorityListWidget({
                   }
                 )
               }
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-cyan-200/25 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-500/20"
+              className="shrink-0 justify-center"
             >
               Open site
               <ChevronRight className="h-4 w-4" />
-            </button>
+            </BmsButton>
           </div>
 
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
@@ -1248,17 +1243,15 @@ function SortableDrawerWidgetRow({
               </div>
             </div>
 
-            <button
+            <BmsButton
               type="button"
+              variant={enabled ? "success" : "ghost"}
+              size="sm"
               onClick={() => onToggle(definition.id)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                enabled
-                  ? "border-emerald-300/35 bg-emerald-500/15 text-emerald-100"
-                  : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-              }`}
+              className="shrink-0 rounded-full px-3 py-1.5 text-xs"
             >
               {enabled ? "Shown" : "Hidden"}
-            </button>
+            </BmsButton>
           </div>
         </div>
       </div>
@@ -1334,80 +1327,90 @@ function WidgetPickerDrawer({
   onReorder(active.id, over.id as WidgetId);
 }
 
-  return (
-    <div className="fixed inset-0 z-50">
-      <button
-        type="button"
-        aria-label="Close customize dashboard"
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+ return (
+  <div className="fixed inset-0 z-[9999]">
+    <BmsButton
+      type="button"
+      variant="ghost"
+      aria-label="Close customize dashboard"
+      className="absolute inset-0 h-full w-full rounded-none border-0 bg-slate-950/70 p-0 backdrop-blur-sm hover:bg-slate-950/70"
+      onClick={onClose}
+    >
+      <span className="sr-only">Close customize dashboard</span>
+    </BmsButton>
 
-      <aside className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-white/10 bg-slate-950/95 p-5 text-slate-100 shadow-2xl shadow-black/40">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-cyan-200/75">
-              Customize
-            </p>
+    <aside className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-white/10 bg-slate-950/95 px-5 pb-5 text-slate-100 shadow-2xl shadow-black/40">
+      {/* Real spacer to push drawer heading below the app topbar */}
+      <div style={{ height: 40 }} />
 
-            <h2 className="mt-2 text-2xl font-bold text-white">
-              Dashboard widgets
-            </h2>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.25em] text-cyan-200/75">
+            Customize
+          </p>
 
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              Drag widgets to change order. Drag hidden widgets out of this drawer to show them on the dashboard.
-            </p>
-          </div>
+          <h2 className="mt-2 text-2xl font-bold text-white">
+            Dashboard widgets
+          </h2>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-2xl border border-white/10 bg-white/5 p-2 text-slate-300 transition hover:bg-white/10"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Drag widgets to change order. Drag hidden widgets out of this drawer
+            to show them on the dashboard.
+          </p>
         </div>
 
-        {exitArmed && (
-          <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Release outside the drawer to close customize panel.
-          </div>
-        )}
+        <BmsButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          className="shrink-0 rounded-2xl p-2"
+          aria-label="Close drawer"
+        >
+          <X className="h-5 w-5" />
+        </BmsButton>
+      </div>
 
-        <div className="mt-6">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            modifiers={[restrictDashboardDragToViewport]}
-            onDragMove={handleDrawerDragMove}
-            onDragEnd={handleDrawerDragEnd}
-          >
-            <SortableContext
-              items={sortedIds}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="space-y-3">
-                {sortedLayout.map((item) => {
-                  const definition = definitionById.get(item.id);
-
-                  if (!definition) return null;
-
-                  return (
-                    <SortableDrawerWidgetRow
-                      key={item.id}
-                      definition={definition}
-                      item={item}
-                      onToggle={onToggle}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
-          </DndContext>
+      {exitArmed && (
+        <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Release outside the drawer to close customize panel.
         </div>
-      </aside>
-    </div>
-  );
+      )}
+
+      <div className="mt-6">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictDashboardDragToViewport]}
+          onDragMove={handleDrawerDragMove}
+          onDragEnd={handleDrawerDragEnd}
+        >
+          <SortableContext
+            items={sortedIds}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3">
+              {sortedLayout.map((item) => {
+                const definition = definitionById.get(item.id);
+
+                if (!definition) return null;
+
+                return (
+                  <SortableDrawerWidgetRow
+                    key={item.id}
+                    definition={definition}
+                    item={item}
+                    onToggle={onToggle}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
+    </aside>
+  </div>
+);
 }
 
 export default function RoleBasedDashboardPage() {
@@ -1442,15 +1445,24 @@ export default function RoleBasedDashboardPage() {
       }
 
       const leftBoundary = DASHBOARD_DRAG_MARGIN_PX;
+      const drawerLeftBoundary = window.innerWidth - DRAWER_WIDTH_PX;
+
+      /*
+       * When the drawer is open, stop the active dashboard widget near
+       * the drawer edge. It only needs to enter a small drop zone.
+       */
       const rightBoundary = customizeOpen
-        ? window.innerWidth - DRAWER_WIDTH_PX + DRAWER_DROP_ZONE_PX
+        ? drawerLeftBoundary + DRAWER_DROP_ZONE_PX
         : window.innerWidth - DASHBOARD_DRAG_MARGIN_PX;
 
       const minX = leftBoundary - draggingNodeRect.left;
-      const maxX = rightBoundary - draggingNodeRect.right;
+      const rawMaxX = rightBoundary - draggingNodeRect.right;
+      const maxX = Math.max(minX, rawMaxX);
+
       const minY = DASHBOARD_DRAG_MARGIN_PX - draggingNodeRect.top;
-      const maxY =
+      const rawMaxY =
         window.innerHeight - DASHBOARD_DRAG_MARGIN_PX - draggingNodeRect.bottom;
+      const maxY = Math.max(minY, rawMaxY);
 
       return {
         ...transform,
@@ -1556,7 +1568,16 @@ export default function RoleBasedDashboardPage() {
     const nearRightEdge =
       translatedRect.right >= window.innerWidth - RIGHT_EDGE_OPEN_PX;
 
-    if (nearRightEdge && draggedRightEnough && !customizeOpen) {
+    /*
+     * Open the drawer only once during the active drag.
+     * After it opens, dashboardDragModifier clamps the widget near the edge.
+     */
+    if (
+      nearRightEdge &&
+      draggedRightEnough &&
+      !customizeOpen &&
+      !drawerOpenedByDragRef.current
+    ) {
       drawerOpenedByDragRef.current = true;
       setCustomizeOpen(true);
     }
@@ -1567,12 +1588,17 @@ export default function RoleBasedDashboardPage() {
 
     const { active, over } = event;
 
-    if (customizeOpen && isWidgetId(active.id) && isReleasedAtDrawerDropZone(event)) {
+    if (
+      customizeOpen &&
+      isWidgetId(active.id) &&
+      isReleasedAtDrawerDropZone(event)
+    ) {
       const nextLayout = layout.map((item) =>
         item.id === active.id ? { ...item, enabled: false } : item
       );
 
-      saveLayout(nextLayout);
+      void saveLayout(nextLayout);
+      setCustomizeOpen(false);
       return;
     }
 
@@ -1823,7 +1849,7 @@ export default function RoleBasedDashboardPage() {
           </div>
         )}
 
-        <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-black/25 backdrop-blur-2xl">
+        <BmsCard variant="section" className="mt-6 p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
@@ -1845,8 +1871,9 @@ export default function RoleBasedDashboardPage() {
               </p>
             </div>
 
-            <button
+            <BmsButton
               type="button"
+              variant="secondary"
               onClick={() => {
                 const firstSite = getPrioritySites(data)[0];
 
@@ -1862,13 +1889,12 @@ export default function RoleBasedDashboardPage() {
                   }
                 );
               }}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/6 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               Open top priority site
               <ChevronRight className="h-4 w-4" />
-            </button>
+            </BmsButton>
           </div>
-        </section>
+        </BmsCard>
       </main>
 
       <WidgetPickerDrawer
