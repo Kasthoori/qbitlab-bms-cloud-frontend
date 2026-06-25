@@ -1,3 +1,4 @@
+/* AI + Glass refactor: visual classes updated to use global BMS design tokens. Business logic unchanged. */
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,6 +13,7 @@ import type {
 } from "@/api/bms";
 
 import { generateMaintenanceAiDraft } from "../../utils/maintenanceAi";
+import { BmsButton } from "@/components/UI/BmsButton";
 
 type UserRole =
   | "ADMIN"
@@ -1073,97 +1075,96 @@ export default function HvacMaintenanceNotesPanel({
   }
 
   return (
-    <div className="w-full max-w-full space-y-5 overflow-x-hidden">
-      <section className="rounded-3xl border border-cyan-300/15 bg-linear-to-br from-cyan-400/10 via-slate-950/80 to-blue-500/10 p-4 shadow-2xl shadow-cyan-950/30 backdrop-blur-2xl sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
-              Production Technician Workflow
-            </p>
-
-            <h2 className="mt-1 text-2xl font-semibold text-slate-100">
-              {isTechnicianOnly
-                ? "Technician Maintenance Workflow"
-                : "Maintenance Review Center"}
-            </h2>
-
-            <p className="mt-1 wrap-break-word text-sm text-slate-400">
-              {unitName || externalDeviceId} · {aiMaintenanceSummary.message}
-            </p>
-
-            <WorkflowStepper status={aiMaintenanceSummary.title} />
-
-            <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-slate-100">
-                {aiMaintenanceSummary.title}
+    <div className="w-full max-w-full space-y-5 overflow-x-hidden text-slate-100">
+      <section className="bms-section overflow-hidden">
+          <div className="grid gap-5 xl:grid-cols-[minmax(280px,420px)_1fr] xl:items-start">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.28em] text-cyan-300">
+                Production Technician Workflow
               </p>
-              <p className="mt-1 text-sm text-slate-400">
-                Suggested action:{" "}
-                <span className="text-cyan-100">
-                  {aiMaintenanceSummary.action}
-                </span>
+
+              <h2 className="mt-2 text-2xl font-semibold leading-tight text-slate-100">
+                {isTechnicianOnly
+                  ? "Technician Maintenance Workflow"
+                  : "Maintenance Review Center"}
+              </h2>
+
+              <p className="mt-2 max-w-sm text-sm leading-6 text-slate-400">
+                {unitName || externalDeviceId} · {aiMaintenanceSummary.message}
               </p>
+
+              <div className="mt-4 max-w-md rounded-2xl border border-slate-300/10 bg-slate-900/45 p-4">
+                <p className="text-sm font-semibold text-slate-100">
+                  {aiMaintenanceSummary.title}
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  Suggested action:{" "}
+                  <span className="text-cyan-100">
+                    {aiMaintenanceSummary.action}
+                  </span>
+                </p>
+              </div>
+
+              {hasActiveFault && (
+                <div className="mt-3 inline-flex rounded-full border border-red-300/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-100">
+                  Active fault detected
+                </div>
+              )}
             </div>
 
-            {hasActiveFault && (
-              <div className="mt-3 inline-flex rounded-full border border-red-300/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-100">
-                Active fault detected
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 xl:self-start">
+              <MetricCard label="Scheduled" value={noteStats.scheduled} />
+              <MetricCard label="Failures" value={noteStats.failure} tone="red" />
+              <MetricCard label="Pending" value={noteStats.pending} tone="amber" />
+              <MetricCard
+                label="Clarify"
+                value={noteStats.needsClarification}
+                tone="violet"
+              />
+              <MetricCard label="Approved" value={noteStats.approved} tone="green" />
+              <MetricCard label="Rejected" value={noteStats.rejected} tone="red" />
+              <MetricCard label="Closed" value={noteStats.closed} tone="slate" />
+            </div>
           </div>
 
-          <div className="grid shrink-0 grid-cols-2 gap-3 text-center sm:grid-cols-4 lg:grid-cols-7">
-            <MetricCard label="Scheduled" value={noteStats.scheduled} />
-            <MetricCard label="Failures" value={noteStats.failure} tone="red" />
-            <MetricCard label="Pending" value={noteStats.pending} tone="amber" />
-            <MetricCard
-              label="Clarify"
-              value={noteStats.needsClarification}
-              tone="violet"
-            />
-            <MetricCard
-              label="Approved"
-              value={noteStats.approved}
-              tone="green"
-            />
-            <MetricCard label="Rejected" value={noteStats.rejected} tone="red" />
-            <MetricCard label="Closed" value={noteStats.closed} tone="slate" />
-          </div>
-        </div>
-      </section>
+          <WorkflowStepper status={aiMaintenanceSummary.title} />
+        </section>
 
       {successMessage && (
-        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-medium text-emerald-100">
           {successMessage}
         </div>
       )}
 
       {error && (
-        <div className="rounded-2xl border border-red-300/20 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+        <div className="rounded-2xl border border-red-300/20 bg-red-400/10 px-4 py-3 text-sm font-medium text-red-100">
           {error}
         </div>
       )}
 
       {canCreateNote && (
-        <section className="rounded-3xl border border-white/20 bg-slate-950/60 p-4 shadow-2xl backdrop-blur-xl sm:p-5">
+        <section className="bms-section">
           <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-100">
+              <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
+                Technician Entry
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-slate-100">
                 Add Maintenance Note
               </h3>
-              <p className="text-sm text-slate-400">
-                Record scheduled maintenance, failure repair, photos, and
-                evidence.
+              <p className="bms-subtitle">
+                Record scheduled maintenance, failure repair, photos, and evidence.
               </p>
             </div>
 
-            <button
+            <BmsButton
               type="button"
               onClick={handleGenerateAiDraft}
-              className="rounded-2xl border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 shadow-lg transition hover:bg-cyan-400/20"
+              variant="secondary"
             >
               ✨ Generate AI Draft
-            </button>
+            </BmsButton>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -1176,7 +1177,7 @@ export default function HvacMaintenanceNotesPanel({
                     event.target.value as HvacMaintenanceNoteType
                   )
                 }
-                className="input-glass"
+                className="bms-select"
               >
                 <option value="SCHEDULED_MAINTENANCE">
                   Scheduled Maintenance
@@ -1192,7 +1193,7 @@ export default function HvacMaintenanceNotesPanel({
                   updateField("technicianName", event.target.value)
                 }
                 placeholder={currentUserName || "Technician name"}
-                className="input-glass"
+                className="bms-input"
               />
             </FieldLabel>
           </div>
@@ -1204,7 +1205,7 @@ export default function HvacMaintenanceNotesPanel({
                 onChange={(event) => updateField("workDone", event.target.value)}
                 rows={4}
                 placeholder="Example: Cleaned unit, checked airflow, changed filter, tested cooling cycle..."
-                className="input-glass"
+                className="bms-textarea"
               />
             </FieldLabel>
           </div>
@@ -1219,7 +1220,7 @@ export default function HvacMaintenanceNotesPanel({
                   }
                   rows={4}
                   placeholder="Example: Blocked filter, sensor fault, low airflow..."
-                  className="input-glass"
+                  className="bms-textarea"
                 />
               </FieldLabel>
 
@@ -1231,7 +1232,7 @@ export default function HvacMaintenanceNotesPanel({
                   }
                   rows={4}
                   placeholder="Example: Replaced filter, restarted unit, verified normal operation..."
-                  className="input-glass"
+                  className="bms-textarea"
                 />
               </FieldLabel>
             </div>
@@ -1245,7 +1246,7 @@ export default function HvacMaintenanceNotesPanel({
                   updateField("sparePartsAdded", event.target.value)
                 }
                 placeholder="Example: Filter, belt, sensor..."
-                className="input-glass"
+                className="bms-input"
               />
             </FieldLabel>
 
@@ -1256,7 +1257,7 @@ export default function HvacMaintenanceNotesPanel({
                 onChange={(event) =>
                   updateField("machineRestartedAt", event.target.value)
                 }
-                className="input-glass"
+                className="bms-input"
               />
             </FieldLabel>
           </div>
@@ -1269,7 +1270,7 @@ export default function HvacMaintenanceNotesPanel({
                 onChange={(event) =>
                   updateField("filterChanged", event.target.checked)
                 }
-                className="h-4 w-4 rounded border-white/20 bg-slate-900"
+                className="h-4 w-4 rounded border-slate-500 bg-slate-900 accent-cyan-400"
               />
               Filter changed
             </label>
@@ -1281,7 +1282,7 @@ export default function HvacMaintenanceNotesPanel({
                 onChange={(event) =>
                   updateField("serviceDone", event.target.checked)
                 }
-                className="h-4 w-4 rounded border-white/20 bg-slate-900"
+                className="h-4 w-4 rounded border-slate-500 bg-slate-900 accent-cyan-400"
               />
               Service done
             </label>
@@ -1298,43 +1299,43 @@ export default function HvacMaintenanceNotesPanel({
           />
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <button
+            <BmsButton
               type="button"
               onClick={handleSubmit}
               disabled={saving}
-              className="rounded-2xl border border-cyan-300/30 bg-cyan-400/10 px-5 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+              variant="primary"
             >
               {saving ? "Submitting..." : "Submit Maintenance Note"}
-            </button>
+            </BmsButton>
 
             {form.noteType === "FAILURE_REPAIR" && hasActiveFault && (
-              <button
+              <BmsButton
                 type="button"
                 onClick={handleSaveRepairNoteAndResolve}
                 disabled={saving || resolvingFailure}
-                className="rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+                variant="secondary"
               >
                 {resolvingFailure
                   ? "Resolving..."
                   : "Submit Repair Note + Resolve Failure"}
-              </button>
+              </BmsButton>
             )}
 
             {hasActiveFault && (
-              <button
+              <BmsButton
                 type="button"
                 onClick={handleMarkFailureGone}
                 disabled={resolvingFailure}
-                className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+                variant="secondary"
               >
                 {resolvingFailure ? "Resolving..." : "Mark Failure Resolved"}
-              </button>
+              </BmsButton>
             )}
           </div>
         </section>
       )}
 
-      <section className="rounded-3xl border border-white/10 bg-slate-950/60 p-4 shadow-xl backdrop-blur-xl sm:p-5">
+      <section className="bms-section">
         <div className="mb-4 grid gap-3 md:grid-cols-4">
           <select
             value={filterType}
@@ -1342,7 +1343,7 @@ export default function HvacMaintenanceNotesPanel({
               setFilterType(event.target.value as HvacMaintenanceNoteType | "ALL");
               setPage(1);
             }}
-            className="input-glass"
+            className="bms-select"
           >
             <option value="ALL">All note types</option>
             <option value="SCHEDULED_MAINTENANCE">Scheduled Maintenance</option>
@@ -1355,7 +1356,7 @@ export default function HvacMaintenanceNotesPanel({
               setStatusFilter(event.target.value as NoteStatusFilter);
               setPage(1);
             }}
-            className="input-glass"
+            className="bms-select"
           >
             <option value="ALL">All workflow statuses</option>
             <option value="SUBMITTED">Submitted</option>
@@ -1373,16 +1374,16 @@ export default function HvacMaintenanceNotesPanel({
               setPage(1);
             }}
             placeholder="Search notes..."
-            className="input-glass md:col-span-2"
+            className="bms-input md:col-span-2"
           />
         </div>
 
         {loading ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-slate-300">
+          <div className="bms-empty-state text-slate-300">
             Loading maintenance notes...
           </div>
         ) : pagedNotes.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-slate-400">
+          <div className="bms-empty-state">
             {notes.length === 0
               ? "No maintenance notes recorded for this HVAC."
               : "No maintenance notes matched your filters."}
@@ -1402,7 +1403,7 @@ export default function HvacMaintenanceNotesPanel({
               return (
                 <article
                   key={note.noteId}
-                  className="rounded-3xl border border-white/10 bg-slate-950/50 p-4 shadow-xl sm:p-5"
+                  className="bms-glass-card bms-glass-card-hover"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="min-w-0">
@@ -1445,23 +1446,24 @@ export default function HvacMaintenanceNotesPanel({
                     </div>
 
                     <div className="flex shrink-0 flex-wrap gap-2">
-                      <button
+                      <BmsButton
                         type="button"
                         onClick={() => openThread(note.noteId)}
-                        className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20"
+                        variant="secondary"
                       >
                         View Thread
-                      </button>
+                      </BmsButton>
 
                       {canReview && !isClosed && !isApproved && (
-                        <button
+                        <BmsButton
                           type="button"
                           onClick={() => handleApprove(note.noteId)}
                           disabled={threadActionLoading}
-                          className="rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          variant="secondary"
+                          //variant="bms-btn-secondary border-emerald-300/30 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20"
                         >
                           Approve
-                        </button>
+                        </BmsButton>
                       )}
 
                       {isClosed && (
@@ -1489,30 +1491,30 @@ export default function HvacMaintenanceNotesPanel({
                 setPageSize(Number(event.target.value));
                 setPage(1);
               }}
-              className="rounded-xl border border-white/10 bg-slate-900/80 px-3 py-2 text-sm text-slate-100"
+              className="bms-select max-w-24 px-3 py-2"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={20}>20</option>
             </select>
 
-            <button
+            <BmsButton
               type="button"
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
               disabled={page <= 1}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+              variant="ghost"
             >
               Prev
-            </button>
+            </BmsButton>
 
-            <button
+            <BmsButton
               type="button"
               onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={page >= totalPages}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+              variant="ghost"
             >
               Next
-            </button>
+            </BmsButton>
           </div>
         </div>
       </section>
@@ -1536,10 +1538,10 @@ export default function HvacMaintenanceNotesPanel({
                 duration: 0.5,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="absolute inset-y-0 right-0 z-10000 flex w-full max-w-3xl transform-gpu flex-col overflow-hidden border-l border-white/10 bg-slate-950 shadow-2xl"
+              className="absolute inset-y-0 right-0 z-10000 flex w-full max-w-3xl transform-gpu flex-col overflow-hidden border-l border-cyan-300/15 bg-[rgba(11,16,32,0.96)] shadow-2xl backdrop-blur-2xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="sticky top-0 z-10002 flex items-start justify-between gap-4 border-b border-white/10 bg-slate-950/95 p-4 backdrop-blur-xl">
+              <div className="sticky top-0 z-10002 flex items-start justify-between gap-4 border-b border-cyan-300/15 bg-[rgba(11,16,32,0.92)] p-4 backdrop-blur-xl">
                 <div className="min-w-0">
                   <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">
                     Maintenance Workflow Thread
@@ -1559,20 +1561,21 @@ export default function HvacMaintenanceNotesPanel({
                   </p>
                 </div>
 
-                <button
+                <BmsButton
                   type="button"
                   onClick={closeThreadDrawer}
+                  variant="ghost"
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-red-300/40 bg-red-500/25 text-2xl font-bold leading-none text-red-100 shadow-xl transition hover:bg-red-500/40"
                   aria-label="Close maintenance workflow drawer"
                   title="Close"
                 >
                   ×
-                </button>
+                </BmsButton>
               </div>
 
               <div className="flex-1 space-y-5 overflow-y-auto p-4">
                 {threadLoading ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-slate-300">
+                  <div className="bms-empty-state text-slate-300">
                     Loading thread...
                   </div>
                 ) : selectedThread ? (
@@ -1583,7 +1586,7 @@ export default function HvacMaintenanceNotesPanel({
                       }
                     />
 
-                    <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div className="bms-glass-card">
                       <h4 className="text-sm font-semibold text-slate-100">
                         Original Maintenance Note
                       </h4>
@@ -1684,7 +1687,7 @@ export default function HvacMaintenanceNotesPanel({
                         .map((message) => (
                           <div
                             key={message.messageId}
-                            className="rounded-3xl border border-white/10 bg-slate-900/60 p-4"
+                            className="bms-glass-card"
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
@@ -1730,7 +1733,7 @@ export default function HvacMaintenanceNotesPanel({
                     </div>
 
                     {!selectedWorkflowIsClosed && (
-                      <div className="rounded-3xl border border-cyan-300/15 bg-cyan-400/5 p-4">
+                      <div className="bms-glass-card border-cyan-300/15 bg-cyan-400/5">
                         <label className="mb-2 block text-sm font-medium text-cyan-100">
                           Reply to Thread
                         </label>
@@ -1744,7 +1747,7 @@ export default function HvacMaintenanceNotesPanel({
                               ? "Reply to manager clarification or add extra work details..."
                               : "Add manager/admin comment..."
                           }
-                          className="input-glass"
+                          className="bms-textarea"
                         />
 
                         <PhotoUploadBox
@@ -1779,7 +1782,7 @@ export default function HvacMaintenanceNotesPanel({
                     )}
 
                     {canReview && canManagerAct(selectedWorkflowStatus) && (
-                      <div className="rounded-3xl border border-amber-300/15 bg-amber-400/5 p-4">
+                      <div className="bms-glass-card border-amber-300/15 bg-amber-400/5">
                         <h4 className="text-sm font-semibold text-amber-100">
                           Manager Review Actions
                         </h4>
@@ -1795,7 +1798,7 @@ export default function HvacMaintenanceNotesPanel({
                             }
                             rows={3}
                             placeholder="Optional manager review comment..."
-                            className="input-glass"
+                            className="bms-textarea"
                           />
                         </div>
 
@@ -1810,7 +1813,7 @@ export default function HvacMaintenanceNotesPanel({
                             }
                             rows={3}
                             placeholder="Example: Please upload photo of replaced filter and confirm restart time."
-                            className="input-glass"
+                            className="bms-textarea"
                           />
                         </div>
 
@@ -1825,7 +1828,7 @@ export default function HvacMaintenanceNotesPanel({
                             }
                             rows={3}
                             placeholder="Required only when rejecting the workflow."
-                            className="input-glass"
+                            className="bms-textarea"
                           />
                         </div>
 
@@ -1885,14 +1888,14 @@ export default function HvacMaintenanceNotesPanel({
                     )}
 
                     {selectedWorkflowIsClosed && (
-                      <div className="rounded-3xl border border-slate-300/15 bg-slate-400/5 p-4 text-sm text-slate-300">
+                      <div className="bms-empty-state text-slate-300">
                         This maintenance workflow is closed. New replies are
                         disabled.
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-slate-300">
+                  <div className="bms-empty-state text-slate-300">
                     No thread selected.
                   </div>
                 )}
@@ -1917,7 +1920,7 @@ export default function HvacMaintenanceNotesPanel({
                 event.stopPropagation();
                 setPreviewImageUrl(null);
               }}
-              className="absolute right-4 top-4 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white"
+              className="bms-btn-ghost absolute right-4 top-4"
             >
               Close
             </button>
@@ -1958,9 +1961,11 @@ function MetricCard({
       : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100";
 
   return (
-    <div className={`rounded-2xl border px-3 py-3 ${toneClass}`}>
-      <p className="text-xl font-bold">{value}</p>
-      <p className="mt-1 text-[11px] uppercase tracking-[0.15em] opacity-80">
+    <div
+      className={`flex min-h-18.5 flex-col items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-lg backdrop-blur-xl ${toneClass}`}
+    >
+      <p className="text-xl font-bold leading-none">{value}</p>
+      <p className="mt-2 text-[11px] uppercase tracking-[0.16em] opacity-80">
         {label}
       </p>
     </div>
@@ -1976,7 +1981,7 @@ function FieldLabel({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm text-slate-300">{label}</span>
+      <span className="bms-label">{label}</span>
       {children}
     </label>
   );
@@ -2003,7 +2008,7 @@ function PhotoUploadBox({
 }) {
   return (
     <div
-      className={`mt-4 rounded-3xl border border-cyan-300/10 bg-slate-900/50 ${
+      className={`mt-4 bms-glass-card border-cyan-300/10 ${
         compact ? "p-3" : "p-4"
       }`}
     >
@@ -2013,7 +2018,7 @@ function PhotoUploadBox({
           <p className="text-xs text-slate-500">{subtitle}</p>
         </div>
 
-        <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 bg-cyan-400/15 px-4 py-2 text-sm font-semibold text-cyan-100 shadow-lg shadow-cyan-950/20 transition hover:bg-cyan-400/25">
+        <label className="bms-btn-secondary cursor-pointer">
           <span>📷</span>
           <span>Choose Photos</span>
           <input
@@ -2068,18 +2073,21 @@ function PhotoUploadBox({
 }
 
 function WorkflowStepper({ status }: { status: string }) {
+  const steps = ["Submitted", "Clarify", "Resubmitted", "Reviewed", "Closed"];
+
   return (
-    <div className="mt-4 grid gap-2 text-xs text-slate-400 sm:grid-cols-5">
-      {["Submitted", "Clarify", "Resubmitted", "Reviewed", "Closed"].map(
-        (step) => (
+    <div className="mt-5 overflow-x-auto pb-1">
+      <div className="flex min-w-max items-center gap-2">
+        {steps.map((step) => (
           <div
             key={step}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center"
+            className="min-w-[112px] rounded-2xl border border-slate-300/10 bg-slate-900/55 px-3 py-2 text-center text-xs font-medium text-slate-400"
           >
             {step}
           </div>
-        )
-      )}
+        ))}
+      </div>
+
       <span className="sr-only">{status}</span>
     </div>
   );
@@ -2101,7 +2109,7 @@ function WorkflowTimeline({
   ];
 
   return (
-    <div className="rounded-3xl border border-cyan-300/10 bg-cyan-400/5 p-4">
+    <div className="bms-glass-card border-cyan-300/10 bg-cyan-400/5">
       <p className="text-sm font-semibold text-cyan-100">
         Workflow Progress
       </p>
@@ -2134,7 +2142,7 @@ function WorkflowTimeline({
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+    <div className="bms-glass-card p-3">
       <p className="text-xs uppercase tracking-[0.15em] text-slate-500">
         {label}
       </p>

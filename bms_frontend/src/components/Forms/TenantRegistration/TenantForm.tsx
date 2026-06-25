@@ -1,71 +1,149 @@
-import { useForm } from 'react-hook-form';
-import { tenantSchema, type TenantFormValues, Card, Field, Input, Button } from './Onboarding'
-import { zodResolver } from '@hookform/resolvers/zod';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Building2 } from "lucide-react";
+import type { ReactNode } from "react";
+import { useForm } from "react-hook-form";
 
-export default function TenantForm({
-    busy,
-    onSubmit,
-}: {
-    busy: boolean;
-    onSubmit: (values: TenantFormValues) => Promise<void>;
-}) {
+import { BmsButton, BmsCard, BmsInput } from "@/components/UI";
 
-    const form = useForm<TenantFormValues>({
-        resolver: zodResolver(tenantSchema),
-        defaultValues: {
-            name: "",
-            country: "New Zealand",
-            addressLine1: "",
-            city: "",
-            postcode: "",
-        }
-    });
+import {
+  tenantSchema,
+  type TenantFormValues,
+} from "./Onboarding";
 
-    const {register, handleSubmit, formState} = form;
-    const { errors, isSubmitting } = formState;
-    
-    return (
-        <Card title='Create Tenant' subtitle='Tenant is the top-level account'>
-            <form
-                className='space-y-4'
-                onSubmit={handleSubmit(async (v) => {
-                    await onSubmit(v);
-                })}
+type TenantFormProps = {
+  busy: boolean;
+  onSubmit: (values: TenantFormValues) => Promise<void>;
+};
+
+type FormFieldProps = {
+  label: string;
+  error?: string;
+  children: ReactNode;
+};
+
+function FormField({ label, error, children }: FormFieldProps) {
+  return (
+    <label className="block space-y-2">
+      <span className="text-sm font-medium text-slate-200">{label}</span>
+
+      {children}
+
+      {error && (
+        <span className="block text-xs font-medium text-rose-300">
+          {error}
+        </span>
+      )}
+    </label>
+  );
+}
+
+export default function TenantForm({ busy, onSubmit }: TenantFormProps) {
+  const form = useForm<TenantFormValues>({
+    resolver: zodResolver(tenantSchema),
+    defaultValues: {
+      name: "",
+      country: "New Zealand",
+      addressLine1: "",
+      city: "",
+      postcode: "",
+    },
+  });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = form;
+
+  const disabled = busy || isSubmitting;
+
+  return (
+    <BmsCard variant="section" className="overflow-hidden">
+      <div className="border-b border-white/10 bg-white/3 px-5 py-5">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+            <Building2 className="h-5 w-5" />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/80">
+              Tenant setup
+            </p>
+
+            <h2 className="mt-1 text-lg font-semibold text-slate-50">
+              Create Tenant
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Tenant is the top-level account.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5">
+        <form
+          className="space-y-5"
+          onSubmit={handleSubmit(async (values) => {
+            await onSubmit(values);
+          })}
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField label="Tenant Name" error={errors.name?.message}>
+              <BmsInput
+                placeholder="e.g., QbitLab Facilities"
+                disabled={disabled}
+                {...register("name")}
+              />
+            </FormField>
+
+            <FormField label="Country" error={errors.country?.message}>
+              <BmsInput
+                placeholder="e.g., New Zealand"
+                disabled={disabled}
+                {...register("country")}
+              />
+            </FormField>
+
+            <FormField
+              label="Address Line 1"
+              error={errors.addressLine1?.message}
             >
+              <BmsInput
+                placeholder="e.g., 123 Lincoln Road"
+                disabled={disabled}
+                {...register("addressLine1")}
+              />
+            </FormField>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="Tenant Name" error={errors.name?.message}>
-                        <Input placeholder="e.g., QbitLab Facilities" {...register("name")} />
-                    </Field>
+            <FormField label="City" error={errors.city?.message}>
+              <BmsInput
+                placeholder="e.g., Auckland"
+                disabled={disabled}
+                {...register("city")}
+              />
+            </FormField>
 
-                    <Field label="Country" error={errors.country?.message}>
-                        <Input placeholder="e.g., New Zealand" {...register("country")} />
-                    </Field>
+            <FormField label="Postcode" error={errors.postcode?.message}>
+              <BmsInput
+                placeholder="e.g., 0612"
+                disabled={disabled}
+                {...register("postcode")}
+              />
+            </FormField>
+          </div>
 
-                    <Field label="Address Line 1" error={errors.addressLine1?.message}>
-                        <Input placeholder="e.g., 123 Lincoin Road" {...register("addressLine1")} />
-                    </Field>
+          <p className="rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3 text-xs leading-5 text-slate-400">
+            UUID is generated by the backend. UI does not send tenant_id.
+          </p>
 
-                    <Field label="City" error={errors.city?.message}>
-                        <Input placeholder="e.g., Auckland" {...register("city")} />
-                    </Field>
-
-                    <Field label="Postcode" error={errors.postcode?.message}>
-                        <Input placeholder="e.g., 0612" {...register("postcode")} />
-                    </Field>
-
-                    <div className="flex items-center justify-end gap-2 pt-2">
-                        <Button type="submit" disabled={busy || isSubmitting}>
-                            {busy ? "Creating...." : "Create Tenant"}
-                        </Button>
-                    </div>
-
-                    <p className="text-xs text-zinc-500">
-                        UUID is generated by the backend. UI does not send tenant_id.
-                    </p>
-                </div>
-
-            </form>
-        </Card>
-    );
+          <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-5">
+            <BmsButton type="submit" variant="primary" disabled={disabled}>
+              {busy || isSubmitting ? "Creating..." : "Create Tenant"}
+            </BmsButton>
+          </div>
+        </form>
+      </div>
+    </BmsCard>
+  );
 }

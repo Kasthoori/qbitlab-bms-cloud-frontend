@@ -10,19 +10,13 @@ import {
   CheckSquare,
   Thermometer,
 } from "lucide-react";
+
 import { BmsApi, type FloorPlanDto, type HvacDto } from "@/api/bms";
-import type { FloorPlanPlacement } from "../../../types/floorplan.types";
-import { isFailedHvac } from "@/utils/hvac.utils";
+import { BmsButton, BmsCard, BmsSelect } from "@/components/UI";
 import { useProtectedImageUrl } from "@/hooks/useProtectedImageUrl";
+import { isFailedHvac } from "@/utils/hvac.utils";
 
-const glassCard =
-  "rounded-3xl border border-white/10 bg-white/5 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl";
-
-const glassButton =
-  "inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 shadow-[0_8px_30px_rgba(0,0,0,0.18)] transition hover:bg-white/10 hover:text-white";
-
-const glassInput =
-  "rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none transition backdrop-blur focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30";
+import type { FloorPlanPlacement } from "../../../types/floorplan.types";
 
 export default function UserViewFloorPlan() {
   const navigate = useNavigate();
@@ -32,7 +26,9 @@ export default function UserViewFloorPlan() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [floorPlans, setFloorPlans] = useState<FloorPlanDto[]>([]);
-  const [selectedFloorPlanId, setSelectedFloorPlanId] = useState<string | null>(null);
+  const [selectedFloorPlanId, setSelectedFloorPlanId] = useState<string | null>(
+    null
+  );
   const [floorPlanImageUrl, setFloorPlanImageUrl] = useState("");
 
   const [hvacs, setHvacs] = useState<HvacDto[]>([]);
@@ -45,16 +41,14 @@ export default function UserViewFloorPlan() {
   const selectedFloorPlan = useMemo(() => {
     return (
       floorPlans.find(
-        (p) => (p.floorPlanId ?? p.id ?? "") === selectedFloorPlanId
+        (plan) => (plan.floorPlanId ?? plan.id ?? "") === selectedFloorPlanId
       ) ?? null
     );
   }, [floorPlans, selectedFloorPlanId]);
 
   const hvacMap = useMemo(() => {
-      return new Map<string, HvacDto>(
-        hvacs.map((h) => [h.hvacId ?? "", h])
-      );
-    }, [hvacs]);
+    return new Map<string, HvacDto>(hvacs.map((hvac) => [hvac.hvacId ?? "", hvac]));
+  }, [hvacs]);
 
   async function loadData(preferredFloorPlanId?: string | null) {
     if (!tenantId || !siteId) {
@@ -86,7 +80,10 @@ export default function UserViewFloorPlan() {
       }
 
       const preferred = preferredFloorPlanId
-        ? safePlans.find((p) => (p.floorPlanId ?? p.id ?? "") === preferredFloorPlanId)
+        ? safePlans.find(
+            (plan) =>
+              (plan.floorPlanId ?? plan.id ?? "") === preferredFloorPlanId
+          )
         : undefined;
 
       const targetPlan = preferred ?? safePlans[0];
@@ -121,7 +118,7 @@ export default function UserViewFloorPlan() {
   }
 
   useEffect(() => {
-    loadData();
+    void loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, siteId]);
 
@@ -129,7 +126,9 @@ export default function UserViewFloorPlan() {
     if (!tenantId || !siteId) return;
 
     setSelectedFloorPlanId(floorPlanId);
-    setFloorPlanImageUrl(BmsApi.getFloorPlanFileUrl(tenantId, siteId, floorPlanId));
+    setFloorPlanImageUrl(
+      BmsApi.getFloorPlanFileUrl(tenantId, siteId, floorPlanId)
+    );
     setHoveredItemId(null);
 
     try {
@@ -138,6 +137,7 @@ export default function UserViewFloorPlan() {
         siteId,
         floorPlanId
       );
+
       setPlacements(Array.isArray(placementData) ? placementData : []);
     } catch (error) {
       console.error(error);
@@ -153,8 +153,11 @@ export default function UserViewFloorPlan() {
 
   function formatLastSeen(value?: string) {
     if (!value) return "-";
+
     const date = new Date(value);
+
     if (Number.isNaN(date.getTime())) return value;
+
     return date.toLocaleString();
   }
 
@@ -175,25 +178,31 @@ export default function UserViewFloorPlan() {
 
   if (loading) {
     return (
-      <div className={`${glassCard} p-6 text-slate-300`}>
+      <BmsCard variant="section" className="p-6 text-slate-300">
         Loading floor plans...
-      </div>
+      </BmsCard>
     );
   }
 
   if (errorMessage) {
     return (
-      <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-6 text-rose-300 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+      <BmsCard
+        variant="section"
+        className="border-rose-500/20 bg-rose-500/10 p-6 text-rose-300"
+      >
         {errorMessage}
-      </div>
+      </BmsCard>
     );
   }
 
   if (!tenantId || !siteId) {
     return (
-      <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-6 text-rose-300 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+      <BmsCard
+        variant="section"
+        className="border-rose-500/20 bg-rose-500/10 p-6 text-rose-300"
+      >
         Tenant ID or Site ID is missing in the route.
-      </div>
+      </BmsCard>
     );
   }
 
@@ -201,22 +210,18 @@ export default function UserViewFloorPlan() {
     return (
       <div className="space-y-6">
         <div>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className={glassButton}
-          >
+          <BmsButton type="button" variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
             Back
-          </button>
+          </BmsButton>
         </div>
 
-        <div className={`${glassCard} p-6`}>
+        <BmsCard variant="section" className="p-6">
           <h1 className="text-3xl font-bold text-white">View Floor Plan</h1>
           <p className="mt-2 text-slate-400">
             No floor plan found for this site.
           </p>
-        </div>
+        </BmsCard>
       </div>
     );
   }
@@ -224,17 +229,16 @@ export default function UserViewFloorPlan() {
   return (
     <div className="space-y-6">
       <div>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className={glassButton}
-        >
+        <BmsButton type="button" variant="ghost" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </BmsButton>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(2,6,23,0.96),rgba(15,23,42,0.94),rgba(30,41,59,0.94))] p-6 text-white shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+      <BmsCard
+        variant="section"
+        className="overflow-hidden bg-[linear-gradient(135deg,rgba(2,6,23,0.96),rgba(15,23,42,0.94),rgba(30,41,59,0.94))] p-6 text-white"
+      >
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
@@ -243,6 +247,7 @@ export default function UserViewFloorPlan() {
             </div>
 
             <h1 className="mt-3 text-3xl font-bold">Site Floor Plan</h1>
+
             <p className="mt-2 text-sm text-slate-300">
               Hover over an HVAC marker to inspect equipment details.
             </p>
@@ -260,28 +265,33 @@ export default function UserViewFloorPlan() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm font-medium text-slate-300">Floor Plan</label>
+          <label className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-300">
+            Floor Plan
 
-            <select
+            <BmsSelect
               value={selectedFloorPlanId}
-              onChange={(e) => handleFloorPlanChange(e.target.value)}
-              className={glassInput}
+              onChange={(event) => void handleFloorPlanChange(event.target.value)}
+              className="min-w-56"
             >
               {floorPlans.map((plan) => {
                 const planId = plan.floorPlanId ?? plan.id ?? "";
+
                 return (
-                  <option key={planId} value={planId} className="bg-slate-900 text-white">
+                  <option
+                    key={planId}
+                    value={planId}
+                    className="bg-slate-900 text-white"
+                  >
                     {plan.name}
                   </option>
                 );
               })}
-            </select>
-          </div>
+            </BmsSelect>
+          </label>
         </div>
-      </div>
+      </BmsCard>
 
-      <div className={`${glassCard} p-4`}>
+      <BmsCard variant="section" className="p-4">
         <div
           className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/40"
           style={{ minHeight: 600 }}
@@ -311,7 +321,10 @@ export default function UserViewFloorPlan() {
               const hvac = hvacMap.get(placement.itemId);
               const failed = isFailedHvac(hvac);
               const hvacName =
-                hvac?.hvacName ?? hvac?.name ?? placement.itemName ?? "Unnamed HVAC";
+                hvac?.hvacName ??
+                hvac?.name ??
+                placement.itemName ??
+                "Unnamed HVAC";
 
               return (
                 <div
@@ -324,8 +337,8 @@ export default function UserViewFloorPlan() {
                   }}
                   onMouseEnter={() => setHoveredItemId(placement.itemId)}
                   onMouseLeave={() =>
-                    setHoveredItemId((prev) =>
-                      prev === placement.itemId ? null : prev
+                    setHoveredItemId((previous) =>
+                      previous === placement.itemId ? null : previous
                     )
                   }
                 >
@@ -357,6 +370,7 @@ export default function UserViewFloorPlan() {
                               hvac?.status
                             )}`}
                           />
+
                           <p className="truncate text-xs font-semibold">
                             {hvacName}
                           </p>
@@ -367,13 +381,18 @@ export default function UserViewFloorPlan() {
                             failed ? "text-rose-200" : "text-slate-400"
                           }`}
                         >
-                          {failed ? "Fault detected" : hvac?.deviceId || "No device ID"}
+                          {failed
+                            ? "Fault detected"
+                            : hvac?.deviceId || "No device ID"}
                         </p>
                       </div>
                     </div>
 
                     {hoveredItemId === placement.itemId && hvac && (
-                      <div className="absolute left-1/2 top-[calc(100%+10px)] z-20 w-72 -translate-x-1/2 rounded-3xl border border-white/10 bg-slate-950/95 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+                      <BmsCard
+                        variant="section"
+                        className="absolute left-1/2 top-[calc(100%+10px)] z-20 w-72 -translate-x-1/2 bg-slate-950/95 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+                      >
                         <div className="mb-3 flex items-center gap-3">
                           <div
                             className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
@@ -392,6 +411,7 @@ export default function UserViewFloorPlan() {
                             <p className="truncate text-sm font-semibold">
                               {hvac.hvacName ?? hvac.name ?? "Unnamed HVAC"}
                             </p>
+
                             <p className="truncate text-xs text-slate-400">
                               {hvac.deviceId || "No device ID"}
                             </p>
@@ -449,14 +469,14 @@ export default function UserViewFloorPlan() {
                             </p>
                           </div>
                         </div>
-                      </div>
+                      </BmsCard>
                     )}
                   </div>
                 </div>
               );
             })}
         </div>
-      </div>
+      </BmsCard>
     </div>
   );
 }

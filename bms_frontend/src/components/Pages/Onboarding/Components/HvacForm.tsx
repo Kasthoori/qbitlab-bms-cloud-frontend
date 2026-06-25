@@ -1,12 +1,29 @@
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Cpu } from "lucide-react";
+import { useForm } from "react-hook-form";
+
 import {
-  type TenantResponse,
-  type SiteResponse,
+  BmsButton,
+  BmsFormModal,
+  BmsInput,
+  BmsSelect,
+} from "@/components/UI";
+
+import {
   type HvacFormValues,
+  type SiteResponse,
+  type TenantResponse,
   hvacSchema,
 } from "./onboarding.types";
-import { Card, Field, Input, Select, Button } from "./onboarding.ui";
+
+type HvacFormProps = {
+  busy: boolean;
+  tenant: TenantResponse;
+  site: SiteResponse;
+  onBack: () => void;
+  onAdd: (values: HvacFormValues) => Promise<void>;
+  onFinish: () => void;
+};
 
 export default function HvacForm({
   busy,
@@ -15,14 +32,7 @@ export default function HvacForm({
   onBack,
   onAdd,
   onFinish,
-}: {
-  busy: boolean;
-  tenant: TenantResponse;
-  site: SiteResponse;
-  onBack: () => void;
-  onAdd: (values: HvacFormValues) => Promise<void>;
-  onFinish: () => void;
-}) {
+}: HvacFormProps) {
   const form = useForm<HvacFormValues>({
     resolver: zodResolver(hvacSchema),
     defaultValues: {
@@ -41,15 +51,22 @@ export default function HvacForm({
     formState: { errors, isSubmitting },
   } = form;
 
+  const disabled = busy || isSubmitting;
+
   return (
-    <Card
+    <BmsFormModal
+      open
+      eyebrow="HVAC SETUP"
       title="Register HVAC"
       subtitle={`Tenant: ${tenant.name} • Site: ${site.siteName}`}
+      icon={<Cpu className="h-5 w-5" />}
+      onClose={onBack}
     >
       <form
         className="space-y-5"
         onSubmit={handleSubmit(async (values) => {
           await onAdd(values);
+
           reset({
             ...values,
             hvacName: "",
@@ -59,58 +76,126 @@ export default function HvacForm({
         })}
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="HVAC Name" error={errors.hvacName?.message}>
-            <Input placeholder="e.g., HVAC-1 Lobby" {...register("hvacName")} />
-          </Field>
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-200">
+              HVAC Name
+            </span>
 
-          <Field label="Device ID" error={errors.deviceId?.message}>
-            <Input placeholder="e.g., hvac-1" {...register("deviceId")} />
-          </Field>
+            <BmsInput
+              placeholder="e.g., HVAC-1 Lobby"
+              disabled={disabled}
+              {...register("hvacName")}
+            />
 
-          <Field label="Protocol" error={errors.protocol?.message}>
-            <Select {...register("protocol")}>
+            {errors.hvacName?.message && (
+              <span className="block text-xs font-medium text-rose-300">
+                {errors.hvacName.message}
+              </span>
+            )}
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-200">
+              Device ID
+            </span>
+
+            <BmsInput
+              placeholder="e.g., hvac-1"
+              disabled={disabled}
+              {...register("deviceId")}
+            />
+
+            {errors.deviceId?.message && (
+              <span className="block text-xs font-medium text-rose-300">
+                {errors.deviceId.message}
+              </span>
+            )}
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-200">
+              Protocol
+            </span>
+
+            <BmsSelect disabled={disabled} {...register("protocol")}>
               <option value="SIMULATOR">SIMULATOR</option>
               <option value="BACNET">BACnet</option>
               <option value="MODBUS">Modbus</option>
-            </Select>
-          </Field>
+            </BmsSelect>
 
-          <Field label="Unit Type" error={errors.unitType?.message}>
-            <Select {...register("unitType")}>
+            {errors.protocol?.message && (
+              <span className="block text-xs font-medium text-rose-300">
+                {errors.protocol.message}
+              </span>
+            )}
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-slate-200">
+              Unit Type
+            </span>
+
+            <BmsSelect disabled={disabled} {...register("unitType")}>
               <option value="OTHER">Other</option>
               <option value="AHU">AHU</option>
               <option value="SPLIT">Split</option>
               <option value="VRF">VRF</option>
               <option value="FAN_COIL">Fan Coil</option>
-            </Select>
-          </Field>
+            </BmsSelect>
 
-          <div className="md:col-span-2">
-            <Field label="Zone / Area (optional)" error={errors.zone?.message}>
-              <Input placeholder="e.g., Floor 2" {...register("zone")} />
-            </Field>
-          </div>
+            {errors.unitType?.message && (
+              <span className="block text-xs font-medium text-rose-300">
+                {errors.unitType.message}
+              </span>
+            )}
+          </label>
+
+          <label className="block space-y-2 md:col-span-2">
+            <span className="text-sm font-medium text-slate-200">
+              Zone / Area{" "}
+              <span className="font-normal text-slate-500">(optional)</span>
+            </span>
+
+            <BmsInput
+              placeholder="e.g., Floor 2"
+              disabled={disabled}
+              {...register("zone")}
+            />
+
+            {errors.zone?.message && (
+              <span className="block text-xs font-medium text-rose-300">
+                {errors.zone.message}
+              </span>
+            )}
+          </label>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-          <Button type="button" variant="secondary" onClick={onBack} disabled={busy || isSubmitting}>
-            Back
-          </Button>
-
-          <div className="flex gap-2">
-            <Button type="submit" disabled={busy || isSubmitting}>
-              {busy || isSubmitting ? "Adding..." : "Add HVAC"}
-            </Button>
-            <Button type="button" variant="primary" onClick={onFinish}>
-              Finish
-            </Button>
-          </div>
-        </div>
-
-        <p className="text-xs text-slate-400">
-          HVAC UUID is generated by backend. deviceId should match your edge-controller or simulator device identifiers.
+        <p className="rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3 text-xs leading-5 text-slate-400">
+          HVAC UUID is generated by backend. deviceId should match your
+          edge-controller or simulator device identifiers.
         </p>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+          <BmsButton
+            type="button"
+            variant="secondary"
+            onClick={onBack}
+            disabled={disabled}
+          >
+            Back
+          </BmsButton>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <BmsButton type="submit" variant="primary" disabled={disabled}>
+              {busy || isSubmitting ? "Adding..." : "Add HVAC"}
+            </BmsButton>
+
+            <BmsButton type="button" variant="success" onClick={onFinish}>
+              Finish
+            </BmsButton>
+          </div>
+        </div>
       </form>
-    </Card>
+    </BmsFormModal>
   );
 }

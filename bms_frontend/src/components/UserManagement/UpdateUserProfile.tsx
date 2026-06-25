@@ -642,7 +642,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                           `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() ||
                           user.username}
                       </p>
-                      <p className="truncate text-sm text-slate-300">
+                      <p
+                        className="min-w-0 truncate text-sm text-slate-300"
+                        title={user.email}
+                      >
                         {user.email}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">

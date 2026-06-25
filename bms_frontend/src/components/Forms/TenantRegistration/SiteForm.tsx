@@ -1,81 +1,171 @@
-import { useForm } from "react-hook-form";
-import { type TenantResponse, type SiteFormValues, siteSchema, Card, Field, Input, Button } from "./Onboarding";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MapPin } from "lucide-react";
+import type { ReactNode } from "react";
+import { useForm } from "react-hook-form";
+
+import { BmsButton, BmsCard, BmsInput } from "@/components/UI";
+
+import {
+  type SiteFormValues,
+  type TenantResponse,
+  siteSchema,
+} from "./Onboarding";
+
+type SiteFormProps = {
+  busy: boolean;
+  tenant: TenantResponse;
+  onBack: () => void;
+  onSubmit: (values: SiteFormValues) => Promise<void>;
+};
+
+type FormFieldProps = {
+  label: string;
+  error?: string;
+  children: ReactNode;
+};
+
+function FormField({ label, error, children }: FormFieldProps) {
+  return (
+    <label className="block space-y-2">
+      <span className="text-sm font-medium text-slate-200">{label}</span>
+
+      {children}
+
+      {error && (
+        <span className="block text-xs font-medium text-rose-300">
+          {error}
+        </span>
+      )}
+    </label>
+  );
+}
 
 export default function SiteForm({
-    busy,
-    tenant,
-    onBack,
-    onSubmit,
-}: {
-    busy: boolean;
-    tenant: TenantResponse;
-    onBack: () => void;
-    onSubmit: (values: SiteFormValues) => Promise<void>;
-}) {
+  busy,
+  tenant,
+  onBack,
+  onSubmit,
+}: SiteFormProps) {
+  const form = useForm<SiteFormValues>({
+    resolver: zodResolver(siteSchema),
+    defaultValues: {
+      siteName: "",
+      addressLine1: "",
+      city: "",
+      postcode: "",
+      timezone: "Pacific/Auckland",
+    },
+  });
 
-    const form = useForm<SiteFormValues>({
-        resolver: zodResolver(siteSchema),
-        defaultValues: {
-            siteName: "",
-            addressLine1: "",
-            city: "",
-            postcode: "",
-            timezone: "Pacific/Auckland",
-        },
-    });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = form;
 
-    const {register, handleSubmit, formState } = form;
-    const { errors, isSubmitting } = formState;
+  const disabled = busy || isSubmitting;
 
-    return (
-        <Card
-            title="Create Site"
-            subtitle={`Tenant: ${tenant.name} {tenantId: ${tenant.tenantId}}`}
+  return (
+    <BmsCard variant="section" className="overflow-hidden">
+      <div className="border-b border-white/10 bg-white/3 px-5 py-5">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-cyan-200 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+            <MapPin className="h-5 w-5" />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200/80">
+              Site setup
+            </p>
+
+            <h2 className="mt-1 text-lg font-semibold text-slate-50">
+              Create Site
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Tenant: {tenant.name}{" "}
+              <span className="text-slate-500">
+                {" "}
+                · tenantId: {tenant.tenantId}
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5">
+        <form
+          className="space-y-5"
+          onSubmit={handleSubmit(async (values) => {
+            await onSubmit(values);
+          })}
         >
-            <form
-                className="space-y-4"
-                onSubmit={handleSubmit(async (v) => {
-                    await onSubmit(v);
-                })}
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField label="Site Name" error={errors.siteName?.message}>
+              <BmsInput
+                placeholder="e.g., Auckland Office"
+                disabled={disabled}
+                {...register("siteName")}
+              />
+            </FormField>
+
+            <FormField label="Timezone" error={errors.timezone?.message}>
+              <BmsInput
+                placeholder="e.g., Pacific/Auckland"
+                disabled={disabled}
+                {...register("timezone")}
+              />
+            </FormField>
+
+            <FormField
+              label="Address Line 1"
+              error={errors.addressLine1?.message}
             >
-                <div className="grid gap-4 md:grid-cols-2">
-                    <Field  label="Site Name" error={errors.siteName?.message}>
-                        <Input placeholder="e.g., Auckland Office" {...register("siteName")} />
-                    </Field>
+              <BmsInput
+                placeholder="e.g., 42 Queen St"
+                disabled={disabled}
+                {...register("addressLine1")}
+              />
+            </FormField>
 
-                    <Field  label="Timezone" error={errors.timezone?.message}>
-                        <Input placeholder="e.g., Pacific/Auckland" {...register("timezone")} />
-                    </Field>
+            <FormField label="City" error={errors.city?.message}>
+              <BmsInput
+                placeholder="e.g., Auckland"
+                disabled={disabled}
+                {...register("city")}
+              />
+            </FormField>
 
-                    <Field label="Address Line 1" error={errors.addressLine1?.message}>
-                        <Input placeholder="e.g., 42 Queen St" {...register("addressLine1")} />
-                    </Field>
+            <FormField label="Postcode" error={errors.postcode?.message}>
+              <BmsInput
+                placeholder="e.g., 1010"
+                disabled={disabled}
+                {...register("postcode")}
+              />
+            </FormField>
+          </div>
 
-                    <Field label="City" error={errors.city?.message}>
-                        <Input placeholder="e.g., Auckland" {...register("city")} />
-                    </Field>
+          <p className="rounded-2xl border border-cyan-400/10 bg-cyan-400/5 px-4 py-3 text-xs leading-5 text-slate-400">
+            UUID is generated by backend. UI sends only tenantId in the URL
+            path.
+          </p>
 
-                    <Field label="Postcode" error={errors.postcode?.message}>
-                        <Input placeholder="e.g., 1010" {...register("postcode")} />
-                    </Field>
-                </div>
+          <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-5">
+            <BmsButton
+              type="button"
+              variant="secondary"
+              onClick={onBack}
+              disabled={disabled}
+            >
+              Back
+            </BmsButton>
 
-                <div className="flex items-center justify-between gap-2 pt-2">
-                    <Button type="button" variant="secondary" onClick={onBack} disabled={busy || isSubmitting}>
-                        Back
-                    </Button>
-                    <Button type="submit" disabled={busy || isSubmitting}>
-                        {busy ? "Creating..." : "Create Site"}
-                    </Button>
-                </div>
-
-                <p className="text-xs text-zinc-500">
-                    UUID is generated by backend. UI sends only tenantId in the URL path.
-                </p>
-
-            </form>
-        </Card>
-    );
-
+            <BmsButton type="submit" variant="primary" disabled={disabled}>
+              {busy || isSubmitting ? "Creating..." : "Create Site"}
+            </BmsButton>
+          </div>
+        </form>
+      </div>
+    </BmsCard>
+  );
 }

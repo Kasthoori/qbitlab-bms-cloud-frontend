@@ -9,6 +9,8 @@ import {
   type CommandAuditRowResponse,
 } from "@/api/bms";
 
+import { BmsButton, BmsCard, BmsInput, BmsSelect } from "@/components/UI";
+
 type StatusFilter =
   | "ALL"
   | "PENDING"
@@ -94,7 +96,9 @@ export default function CommandAuditReportPage() {
 
   async function loadReport(customPage = page) {
     if (!canLoad) {
-      setError("Tenant ID and Site ID are required to load command audit report.");
+      setError(
+        "Tenant ID and Site ID are required to load command audit report."
+      );
       return;
     }
 
@@ -127,38 +131,38 @@ export default function CommandAuditReportPage() {
 
   useEffect(() => {
     if (params.tenantId && params.siteId) {
-      loadReport(page);
+      void loadReport(page);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.tenantId, params.siteId, page, size]);
 
   function handleSearch() {
     setPage(0);
-    loadReport(0);
+    void loadReport(0);
   }
 
   async function handleDownloadPdf() {
     if (!canLoad) {
-        setError("Tenant ID and Site ID are required to download PDF.");
-        return;
+      setError("Tenant ID and Site ID are required to download PDF.");
+      return;
     }
 
     try {
-        setError("");
+      setError("");
 
-        await BmsApi.downloadCommandAuditPdf(
+      await BmsApi.downloadCommandAuditPdf(
         tenantId.trim(),
         siteId.trim(),
         queryParams
-        );
+      );
     } catch (err) {
-        setError(
+      setError(
         err instanceof Error
-            ? err.message
-            : "Failed to download command audit PDF."
-        );
+          ? err.message
+          : "Failed to download command audit PDF."
+      );
     }
-}
+  }
 
   async function handleExportCsv() {
     if (!canLoad) {
@@ -190,7 +194,7 @@ export default function CommandAuditReportPage() {
     report.summary.failedCommands + report.summary.expiredCommands;
 
   return (
-    <div className="min-h-screen w-full min-w-0 overflow-x-hidden bg-slate-950 px-3 py-4 text-slate-100 sm:px-5">
+    <div className="bms-dashboard-bg min-h-screen w-full min-w-0 overflow-x-hidden px-3 py-4 text-slate-100 sm:px-5">
       <style>
         {`
           @media print {
@@ -288,15 +292,6 @@ export default function CommandAuditReportPage() {
               break-inside: avoid !important;
             }
 
-            /*
-             * Hide less-important columns only in print.
-             * This prevents PDF from cutting the right side of the report.
-             *
-             * Hidden columns:
-             * 4 = Payload
-             * 8 = Picked Up
-             * 9 = Completed
-             */
             .report-table th:nth-child(4),
             .report-table td:nth-child(4),
             .report-table th:nth-child(8),
@@ -318,8 +313,8 @@ export default function CommandAuditReportPage() {
         `}
       </style>
 
-      <div className="mx-auto w-full max-w-[1400px] space-y-5 print-area">
-        <div className="rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl backdrop-blur-xl print-card">
+      <div className="mx-auto w-full max-w-350 space-y-5 print-area">
+        <BmsCard variant="section" className="p-5 print-card">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="print-title">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">
@@ -339,38 +334,38 @@ export default function CommandAuditReportPage() {
             </div>
 
             <div className="no-print flex flex-wrap gap-2">
-              <button
+              <BmsButton
                 type="button"
-                onClick={() => loadReport(page)}
+                variant="ghost"
+                onClick={() => void loadReport(page)}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 disabled:opacity-50"
               >
                 <RefreshCw className="h-4 w-4" />
                 Refresh
-              </button>
+              </BmsButton>
 
-              <button
+              <BmsButton
                 type="button"
-                onClick={handleDownloadPdf}
-                className="inline-flex items-center gap-2 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-100 transition hover:bg-emerald-400/20"
+                variant="success"
+                onClick={() => void handleDownloadPdf()}
               >
                 <Printer className="h-4 w-4" />
                 Download PDF
-              </button>
+              </BmsButton>
 
-              <button
+              <BmsButton
                 type="button"
-                onClick={handleExportCsv}
-                className="inline-flex items-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-100 transition hover:bg-cyan-400/20"
+                variant="secondary"
+                onClick={() => void handleExportCsv()}
               >
                 <Download className="h-4 w-4" />
                 Export CSV
-              </button>
+              </BmsButton>
             </div>
           </div>
-        </div>
+        </BmsCard>
 
-        <div className="no-print rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-2xl backdrop-blur-xl">
+        <BmsCard variant="section" className="no-print p-5">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <TextInput
               label="Tenant ID"
@@ -462,24 +457,28 @@ export default function CommandAuditReportPage() {
             />
 
             <div className="flex items-end">
-              <button
+              <BmsButton
                 type="button"
+                variant="primary"
                 onClick={handleSearch}
                 disabled={loading}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-50"
+                className="w-full justify-center py-3"
               >
                 <Search className="h-4 w-4" />
                 Search Report
-              </button>
+              </BmsButton>
             </div>
           </div>
 
           {error && (
-            <div className="mt-4 rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            <BmsCard
+              variant="glass"
+              className="mt-4 border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100"
+            >
               {error}
-            </div>
+            </BmsCard>
           )}
-        </div>
+        </BmsCard>
 
         <div className="grid gap-3 md:grid-cols-5">
           <SummaryCard label="Total" value={report.summary.totalCommands} />
@@ -492,12 +491,13 @@ export default function CommandAuditReportPage() {
           <SummaryCard label="Failed / Expired" value={failedOrExpired} />
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur-xl print-card">
+        <BmsCard variant="section" className="p-4 print-card">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between print-title">
             <div>
               <h2 className="text-lg font-semibold text-white">
                 Command Audit Records
               </h2>
+
               <p className="text-xs text-slate-400 print-muted">
                 Page {report.page + 1} of {Math.max(report.totalPages, 1)} ·{" "}
                 {report.totalElements} records
@@ -509,8 +509,8 @@ export default function CommandAuditReportPage() {
             )}
           </div>
 
-          <div className="report-table-wrapper max-h-[620px] w-full overflow-auto rounded-2xl border border-white/10">
-            <table className="report-table w-full min-w-[1280px] table-auto text-left text-sm">
+          <div className="report-table-wrapper max-h-155 w-full overflow-auto rounded-2xl border border-white/10">
+            <table className="report-table w-full min-w-7xl table-auto text-left text-sm">
               <thead className="sticky top-0 z-10 bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-3 py-2">Command</th>
@@ -533,7 +533,9 @@ export default function CommandAuditReportPage() {
                       colSpan={10}
                       className="px-3 py-8 text-center text-slate-500"
                     >
-                      {loading ? "Loading..." : "No command audit records found."}
+                      {loading
+                        ? "Loading..."
+                        : "No command audit records found."}
                     </td>
                   </tr>
                 ) : (
@@ -546,29 +548,29 @@ export default function CommandAuditReportPage() {
           </div>
 
           <div className="no-print mt-4 flex items-center justify-between text-sm text-slate-300">
-            <button
+            <BmsButton
               type="button"
+              variant="ghost"
               disabled={page <= 0 || loading}
               onClick={() => setPage((prev) => Math.max(0, prev - 1))}
-              className="rounded-xl border border-white/10 px-4 py-2 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Previous
-            </button>
+            </BmsButton>
 
             <span>
               Page {report.page + 1} / {Math.max(report.totalPages, 1)}
             </span>
 
-            <button
+            <BmsButton
               type="button"
+              variant="ghost"
               disabled={page + 1 >= report.totalPages || loading}
               onClick={() => setPage((prev) => prev + 1)}
-              className="rounded-xl border border-white/10 px-4 py-2 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
-            </button>
+            </BmsButton>
           </div>
-        </div>
+        </BmsCard>
       </div>
     </div>
   );
@@ -591,20 +593,16 @@ function AuditRow({ row }: { row: CommandAuditRowResponse }) {
         </span>
       </td>
 
-      <td className="whitespace-nowrap px-3 py-2 text-xs">
-        <div>{row.externalDeviceId ?? "-"}</div>
-        <div className="text-slate-500">{row.protocol ?? "-"}</div>
+      <td className="max-w-42.5 truncate px-3 py-2 text-xs">
+        {row.externalDeviceId ?? "-"}
       </td>
 
-      <td className="max-w-[180px] truncate px-3 py-2 text-xs text-slate-400">
-        {row.payload ?? "-"}
+      <td className="max-w-60 truncate px-3 py-2 text-xs text-slate-400">
+        {formatPayload(row.payload)}
       </td>
 
-      <td className="max-w-[220px] truncate px-3 py-2 text-xs">
-        <div className="text-slate-200">
-          {row.requestedByDisplayName || row.requestedByEmail || "-"}
-        </div>
-        <div className="text-slate-500">{row.requestedByEmail ?? "-"}</div>
+      <td className="max-w-55 truncate px-3 py-2 text-xs">
+        {row.requestedByEmail ?? "-"}
       </td>
 
       <td className="whitespace-nowrap px-3 py-2 text-xs">
@@ -623,7 +621,7 @@ function AuditRow({ row }: { row: CommandAuditRowResponse }) {
         {formatDate(row.completedAt)}
       </td>
 
-      <td className="max-w-[280px] truncate px-3 py-2 text-xs text-slate-400">
+      <td className="max-w-70 truncate px-3 py-2 text-xs text-slate-400">
         {row.rejectedReason ||
           row.errorMessage ||
           row.safetyCheckResult ||
@@ -636,12 +634,12 @@ function AuditRow({ row }: { row: CommandAuditRowResponse }) {
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-xl backdrop-blur-xl print-card">
+    <BmsCard variant="section" className="p-4 print-card">
       <p className="text-xs uppercase tracking-[0.2em] text-slate-400 print-muted">
         {label}
       </p>
       <p className="mt-2 text-2xl font-bold text-white print-title">{value}</p>
-    </div>
+    </BmsCard>
   );
 }
 
@@ -663,12 +661,12 @@ function TextInput({
       <span className="mb-1 block text-xs font-medium text-slate-400">
         {label}
       </span>
-      <input
+      <BmsInput
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none ring-cyan-400/30 placeholder:text-slate-600 focus:ring-2 [color-scheme:dark]"
+        className="scheme-dark"
       />
     </label>
   );
@@ -690,17 +688,16 @@ function SelectInput({
       <span className="mb-1 block text-xs font-medium text-slate-400">
         {label}
       </span>
-      <select
+      <BmsSelect
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none ring-cyan-400/30 focus:ring-2"
       >
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
           </option>
         ))}
-      </select>
+      </BmsSelect>
     </label>
   );
 }
@@ -720,6 +717,24 @@ function statusClass(status?: string | null) {
     default:
       return "border-slate-300/20 bg-slate-400/10 text-slate-300";
   }
+}
+
+function formatPayload(
+  payload?: string | Record<string, unknown> | null
+  ): string {
+    if (!payload) {
+      return "-";
+    }
+
+    if (typeof payload === "string") {
+      return payload.trim().length > 0 ? payload : "-";
+    }
+
+    if (Object.keys(payload).length === 0) {
+      return "-";
+    }
+
+    return JSON.stringify(payload);
 }
 
 function formatDate(value?: string | null) {
