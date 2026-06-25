@@ -66,7 +66,7 @@ import {
   type DashboardRole,
   type DashboardSiteCardDto,
 } from "@/api/bms";
-import { BmsButton, BmsCard } from "@/components/UI";
+import { BmsButton, BmsCard, BmsDashboardWidgetCard } from "@/components/UI";
 
 //import DashboardNotificationIcons from "../Dashboard/DashboardNotificationIcons";
 
@@ -752,43 +752,18 @@ function SortableWidgetShell({
         isDragging ? "z-30 scale-[1.01] opacity-90" : ""
       }`}
     >
-      <BmsCard variant="section" className="h-full overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <button
-              type="button"
-              aria-label={`Drag ${title}`}
-              className="cursor-grab rounded-xl border border-white/10 bg-white/5 p-2 text-slate-300 active:cursor-grabbing"
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="h-4 w-4" />
-            </button>
-
-            <div className="min-w-0">
-              <h2 className="truncate text-sm font-semibold text-white">
-                {title}
-              </h2>
-              <p className="text-xs text-slate-400">
-                Drag to reorder dashboard
-              </p>
-            </div>
-          </div>
-
-          <BmsButton
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onHide(item.id)}
-            className="rounded-xl p-2"
-            title="Hide widget"
-          >
-            <X className="h-4 w-4" />
-          </BmsButton>
-        </div>
-
-        <div className="p-4">{children}</div>
-      </BmsCard>
+      <BmsDashboardWidgetCard
+        title={title}
+        size={item.size}
+        dragLabel={`Drag ${title}`}
+        hideLabel={`Hide ${title}`}
+        dragAttributes={attributes}
+        dragListeners={listeners}
+        onHide={() => onHide(item.id)}
+        className={isDragging ? "border-cyan-300/40 shadow-cyan-500/20" : ""}
+      >
+         {children}
+      </BmsDashboardWidgetCard>
     </section>
   );
 }
@@ -1328,7 +1303,7 @@ function WidgetPickerDrawer({
 }
 
  return (
-  <div className="fixed inset-0 z-[9999]">
+  <div className="fixed inset-0 z-9999">
     <BmsButton
       type="button"
       variant="ghost"

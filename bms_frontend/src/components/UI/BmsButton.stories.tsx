@@ -69,6 +69,7 @@ export const Success: Story = {
   args: {
     variant: "success",
     children: "Approve",
+    size: "md"
   },
 };
 

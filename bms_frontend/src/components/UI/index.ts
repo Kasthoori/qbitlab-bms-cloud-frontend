@@ -14,3 +14,4 @@ export {
   BmsFormModalFooter,
   BmsModalMessage,
 } from "./BmsFormModal";
+export { BmsDashboardWidgetCard } from "./BmsDashboardWidgetCard";
