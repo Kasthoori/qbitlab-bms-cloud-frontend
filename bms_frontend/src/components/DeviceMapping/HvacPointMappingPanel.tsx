@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -18,20 +18,19 @@ import {
   type HvacPointMappingResponse,
 } from "@/api/bms";
 
-type SupportedProtocol =
-  | HvacPointMappingProtocol
-  | "SIMULATOR"
-  | "BACNET"
-  | "MODBUS"
-  | "MODBUS_TCP"
-  | "MODBUS_RTU";
+import {
+  BmsButton,
+  BmsCard,
+  BmsInput,
+  BmsSelect,
+} from "@/components/UI";
 
 type Props = {
   tenantId: string;
   siteId: string;
   mapping: HvacDeviceMappingDto;
   edgeControllerId?: string | null;
-  protocol?: SupportedProtocol;
+  protocol?: HvacPointMappingProtocol;
   onClose: () => void;
   onSaved?: () => void;
 };
@@ -56,7 +55,7 @@ const DEFAULT_BACNET_POINTS = {
   ambientTempPoint: "analogInput:6",
 };
 
-const DEFAULT_MODBUS_TCP_POINTS = {
+const DEFAULT_MODBUS_POINTS = {
   temperaturePoint: "inputRegister:30001",
   setpointPoint: "holdingRegister:40001",
   onoffPoint: "coil:1",
@@ -66,42 +65,25 @@ const DEFAULT_MODBUS_TCP_POINTS = {
   ambientTempPoint: "inputRegister:30003",
 };
 
-const DEFAULT_MODBUS_RTU_PT100_POINTS = {
-  temperaturePoint: "inputRegister:1:int16:scale=0.1",
-  setpointPoint: "",
-  onoffPoint: "",
-  fanSpeedPoint: "",
-  flowRatePoint: "",
-  faultPoint: "",
-  ambientTempPoint: "",
-};
-
-function cleanProtocol(value?: string | null): SupportedProtocol {
+function cleanProtocol(value?: string | null): HvacPointMappingProtocol {
   const protocol = (value || "SIMULATOR").trim().toUpperCase();
 
   if (protocol === "BACNET") return "BACNET";
   if (protocol === "MODBUS") return "MODBUS";
-  if (protocol === "MODBUS_TCP") return "MODBUS_TCP";
-  if (protocol === "MODBUS_RTU") return "MODBUS_RTU";
 
   return "SIMULATOR";
 }
 
-function protocolForRequest(protocol: SupportedProtocol): HvacPointMappingProtocol {
-  return cleanProtocol(protocol) as HvacPointMappingProtocol;
-}
-
-function getDefaultPointsForProtocol(protocol: SupportedProtocol) {
+function getDefaultPointsForProtocol(protocol: HvacPointMappingProtocol) {
   const p = cleanProtocol(protocol);
 
   if (p === "BACNET") return DEFAULT_BACNET_POINTS;
-  if (p === "MODBUS" || p === "MODBUS_TCP") return DEFAULT_MODBUS_TCP_POINTS;
-  if (p === "MODBUS_RTU") return DEFAULT_MODBUS_RTU_PT100_POINTS;
+  if (p === "MODBUS") return DEFAULT_MODBUS_POINTS;
 
   return DEFAULT_SIMULATOR_POINTS;
 }
 
-function getDefaultWritableForProtocol(protocol: SupportedProtocol) {
+function getDefaultWritableForProtocol(protocol: HvacPointMappingProtocol) {
   const p = cleanProtocol(protocol);
 
   if (p === "SIMULATOR") {
@@ -110,16 +92,6 @@ function getDefaultWritableForProtocol(protocol: SupportedProtocol) {
       writableOnoff: true,
       writableFanSpeed: true,
       writableFlowRate: true,
-      writableRestart: false,
-    };
-  }
-
-  if (p === "MODBUS_RTU") {
-    return {
-      writableSetpoint: false,
-      writableOnoff: false,
-      writableFanSpeed: false,
-      writableFlowRate: false,
       writableRestart: false,
     };
   }
@@ -133,7 +105,7 @@ function getDefaultWritableForProtocol(protocol: SupportedProtocol) {
   };
 }
 
-function getProtocolInfo(protocol: SupportedProtocol) {
+function getProtocolInfo(protocol: HvacPointMappingProtocol) {
   const p = cleanProtocol(protocol);
 
   if (p === "BACNET") {
@@ -150,30 +122,16 @@ function getProtocolInfo(protocol: SupportedProtocol) {
     };
   }
 
-  if (p === "MODBUS" || p === "MODBUS_TCP") {
+  if (p === "MODBUS") {
     return {
-      title: "Modbus TCP register/coil references",
+      title: "Modbus register/coil references",
       description:
-        "Use Modbus TCP references from scanner/register map. Example: holdingRegister:40001 or coil:1.",
+        "Use Modbus references from scanner/register map. Example: holdingRegister:40001 or coil:1.",
       examples: [
         "Temperature: inputRegister:30001",
         "Setpoint: holdingRegister:40001",
         "On/Off: coil:1",
         "Fault: discreteInput:1",
-      ],
-    };
-  }
-
-  if (p === "MODBUS_RTU") {
-    return {
-      title: "Modbus RTU / PT100 point references",
-      description:
-        "Use Modbus RTU point refs from the real serial sensor. PT100 is read-only, so only temperature should be mapped.",
-      examples: [
-        "Temperature: inputRegister:1:int16:scale=0.1",
-        "Slave/unit id is configured in edge-device-config.yml",
-        "Leave setpoint, on/off, fan, flow, fault empty for PT100",
-        "All writable flags should be unchecked",
       ],
     };
   }
@@ -194,7 +152,7 @@ function getProtocolInfo(protocol: SupportedProtocol) {
 function buildDefaultForm(
   mapping: HvacDeviceMappingDto,
   edgeControllerId?: string | null,
-  protocol: SupportedProtocol = "SIMULATOR"
+  protocol: HvacPointMappingProtocol = "SIMULATOR"
 ): HvacPointMappingRequest {
   const clean = cleanProtocol(protocol);
   const points = getDefaultPointsForProtocol(clean);
@@ -202,7 +160,7 @@ function buildDefaultForm(
 
   return {
     edgeControllerId: edgeControllerId ?? null,
-    protocol: protocolForRequest(clean),
+    protocol: clean,
     externalDeviceId: mapping.externalDeviceId,
     unitName: mapping.unitName || mapping.externalDeviceId,
 
@@ -226,11 +184,9 @@ function responseToForm(
   response: HvacPointMappingResponse,
   fallback: HvacPointMappingRequest
 ): HvacPointMappingRequest {
-  const protocol = cleanProtocol(response.protocol ?? fallback.protocol);
-
   return {
     edgeControllerId: response.edgeControllerId ?? fallback.edgeControllerId,
-    protocol: protocolForRequest(protocol),
+    protocol: cleanProtocol(response.protocol ?? fallback.protocol),
     externalDeviceId: response.externalDeviceId ?? fallback.externalDeviceId,
     unitName: response.unitName ?? fallback.unitName,
 
@@ -269,7 +225,9 @@ export default function HvacPointMappingPanel({
   );
 
   const [form, setForm] = useState<HvacPointMappingRequest>(defaultForm);
-  const [existing, setExisting] = useState<HvacPointMappingResponse | null>(null);
+  const [existing, setExisting] = useState<HvacPointMappingResponse | null>(
+    null
+  );
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -279,7 +237,6 @@ export default function HvacPointMappingPanel({
 
   const currentProtocol = cleanProtocol(form.protocol);
   const isSimulator = currentProtocol === "SIMULATOR";
-  const isModbusRtu = currentProtocol === "MODBUS_RTU";
   const protocolInfo = getProtocolInfo(currentProtocol);
 
   const updateField = <K extends keyof HvacPointMappingRequest>(
@@ -299,7 +256,7 @@ export default function HvacPointMappingPanel({
 
     setForm((prev) => ({
       ...prev,
-      protocol: protocolForRequest(nextProtocol),
+      protocol: nextProtocol,
 
       temperaturePoint: points.temperaturePoint,
       setpointPoint: points.setpointPoint,
@@ -415,7 +372,9 @@ export default function HvacPointMappingPanel({
       );
 
       setExisting(saved);
-      setForm(responseToForm(saved, buildDefaultForm(mapping, edgeControllerId, "SIMULATOR")));
+      setForm(
+        responseToForm(saved, buildDefaultForm(mapping, edgeControllerId, "SIMULATOR"))
+      );
       setSuccessMessage("Simulator point defaults created successfully.");
       onSaved?.();
     } catch (error: any) {
@@ -461,7 +420,6 @@ export default function HvacPointMappingPanel({
     simulator: string;
     bacnet: string;
     modbus: string;
-    modbusRtu: string;
     hint: string;
   }> = [
     {
@@ -470,7 +428,6 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.temperature",
       bacnet: "analogInput:1",
       modbus: "inputRegister:30001",
-      modbusRtu: "inputRegister:1:int16:scale=0.1",
       hint: "Read-only measured temperature",
     },
     {
@@ -479,8 +436,7 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.setpoint",
       bacnet: "analogValue:2",
       modbus: "holdingRegister:40001",
-      modbusRtu: "",
-      hint: "Writable command point. Leave empty for PT100.",
+      hint: "Writable command point",
     },
     {
       label: "On / Off",
@@ -488,8 +444,7 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.on_state",
       bacnet: "binaryValue:1",
       modbus: "coil:1",
-      modbusRtu: "",
-      hint: "Writable enable/disable point. Leave empty for PT100.",
+      hint: "Writable enable/disable point",
     },
     {
       label: "Fan Speed",
@@ -497,8 +452,7 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.fan_speed",
       bacnet: "multiStateValue:3",
       modbus: "holdingRegister:40002",
-      modbusRtu: "",
-      hint: "Writable only if verified. Leave empty for PT100.",
+      hint: "Writable only if verified",
     },
     {
       label: "Flow Rate",
@@ -506,8 +460,7 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.flow_rate",
       bacnet: "analogInput:5",
       modbus: "inputRegister:30002",
-      modbusRtu: "",
-      hint: "Usually read-only for real devices. Leave empty for PT100.",
+      hint: "Usually read-only for real devices",
     },
     {
       label: "Fault",
@@ -515,8 +468,7 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.fault",
       bacnet: "binaryInput:4",
       modbus: "discreteInput:1",
-      modbusRtu: "",
-      hint: "Read-only fault status. Leave empty for PT100 unless verified.",
+      hint: "Read-only fault status",
     },
     {
       label: "Ambient Temp",
@@ -524,21 +476,19 @@ export default function HvacPointMappingPanel({
       simulator: "simulator.ambient_temperature",
       bacnet: "analogInput:6",
       modbus: "inputRegister:30003",
-      modbusRtu: "",
-      hint: "Optional ambient/reference temperature. Leave empty for PT100.",
+      hint: "Optional ambient/reference temperature",
     },
   ];
 
   const placeholderFor = (row: (typeof pointRows)[number]) => {
     if (currentProtocol === "BACNET") return row.bacnet;
-    if (currentProtocol === "MODBUS" || currentProtocol === "MODBUS_TCP") return row.modbus;
-    if (currentProtocol === "MODBUS_RTU") return row.modbusRtu;
+    if (currentProtocol === "MODBUS") return row.modbus;
     return row.simulator;
   };
 
   return (
-    <section className="rounded-3xl border border-cyan-400/20 bg-slate-950/80 p-5 shadow-[0_18px_70px_rgba(8,47,73,0.45)] backdrop-blur-xl">
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <BmsCard variant="section" className="p-5">
+      <div className="mb-5 flex flex-col gap-4 border-b border-white/10 pb-5 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
             <Cpu className="h-4 w-4" />
@@ -550,7 +500,7 @@ export default function HvacPointMappingPanel({
           </h2>
 
           <p className="mt-2 text-sm text-slate-400">
-            Map QbitLabs fields to simulator, BACnet, Modbus TCP, or Modbus RTU points.
+            Map QbitLabs fields to simulator, BACnet, or Modbus points.
           </p>
 
           <div className="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-2">
@@ -558,13 +508,17 @@ export default function HvacPointMappingPanel({
               <span className="text-slate-300">External Device:</span>{" "}
               {mapping.externalDeviceId}
             </div>
+
             <div>
               <span className="text-slate-300">Unit:</span>{" "}
               {mapping.unitName || "-"}
             </div>
+
             <div>
-              <span className="text-slate-300">HVAC ID:</span> {mapping.hvacId}
+              <span className="text-slate-300">HVAC ID:</span>{" "}
+              {mapping.hvacId}
             </div>
+
             <div>
               <span className="text-slate-300">Edge:</span>{" "}
               {edgeControllerId || "Not assigned"}
@@ -572,14 +526,10 @@ export default function HvacPointMappingPanel({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
-        >
+        <BmsButton type="button" variant="ghost" size="sm" onClick={onClose}>
           <X className="h-4 w-4" />
           Close
-        </button>
+        </BmsButton>
       </div>
 
       {errorMessage && (
@@ -597,18 +547,20 @@ export default function HvacPointMappingPanel({
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-sm text-slate-400">
+        <div className="rounded-2xl border border-white/10 bg-white/4 p-6 text-center text-sm text-slate-400">
           Loading point mapping...
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="rounded-3xl border border-cyan-400/20 bg-cyan-500/10 p-4">
+          <BmsCard variant="glass" className="border-cyan-400/20 bg-cyan-500/10 p-4">
             <div className="text-sm font-semibold text-cyan-200">
               {protocolInfo.title}
             </div>
+
             <p className="mt-1 text-sm text-slate-300">
               {protocolInfo.description}
             </p>
+
             <div className="mt-3 grid gap-2 text-xs text-slate-400 md:grid-cols-2">
               {protocolInfo.examples.map((example) => (
                 <div
@@ -619,77 +571,69 @@ export default function HvacPointMappingPanel({
                 </div>
               ))}
             </div>
-          </div>
-
-          {isModbusRtu && (
-            <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-              PT100 Modbus RTU is read-only. Keep only the temperature point filled:
-              <span className="ml-1 font-semibold">
-                inputRegister:1:int16:scale=0.1
-              </span>
-              . Leave command points empty and keep writable flags unchecked.
-            </div>
-          )}
+          </BmsCard>
 
           <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold text-slate-300">
                 Protocol
-              </label>
-              <select
+              </span>
+
+              <BmsSelect
                 value={currentProtocol}
                 onChange={(event) => applyProtocolTemplate(event.target.value)}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60"
               >
                 <option value="SIMULATOR">SIMULATOR</option>
                 <option value="BACNET">BACNET</option>
                 <option value="MODBUS">MODBUS</option>
-                <option value="MODBUS_TCP">MODBUS_TCP</option>
-                <option value="MODBUS_RTU">MODBUS_RTU</option>
-              </select>
-            </div>
+              </BmsSelect>
+            </label>
 
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold text-slate-300">
                 Min Setpoint
-              </label>
-              <input
+              </span>
+
+              <BmsInput
                 type="number"
                 value={form.minSetpoint ?? ""}
                 onChange={(event) =>
                   updateField(
                     "minSetpoint",
-                    event.target.value === "" ? null : Number(event.target.value)
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value)
                   )
                 }
-                disabled={isModbusRtu}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-50"
               />
-            </div>
+            </label>
 
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">
+            <label className="block space-y-2">
+              <span className="text-xs font-semibold text-slate-300">
                 Max Setpoint
-              </label>
-              <input
+              </span>
+
+              <BmsInput
                 type="number"
                 value={form.maxSetpoint ?? ""}
                 onChange={(event) =>
                   updateField(
                     "maxSetpoint",
-                    event.target.value === "" ? null : Number(event.target.value)
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value)
                   )
                 }
-                disabled={isModbusRtu}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition focus:border-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-50"
               />
-            </div>
+            </label>
 
-            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.enabled)}
-                onChange={(event) => updateField("enabled", event.target.checked)}
+                onChange={(event) =>
+                  updateField("enabled", event.target.checked)
+                }
               />
               Enabled
             </label>
@@ -698,7 +642,7 @@ export default function HvacPointMappingPanel({
           <div className="overflow-x-auto rounded-3xl border border-white/10">
             <table className="min-w-full border-separate border-spacing-0">
               <thead>
-                <tr className="bg-white/5 text-left text-sm text-slate-300">
+                <tr className="bg-white/4 text-left text-sm text-slate-300">
                   <th className="px-4 py-3 font-semibold">QbitLabs Field</th>
                   <th className="px-4 py-3 font-semibold">Source Point Ref</th>
                   <th className="px-4 py-3 font-semibold">Note</th>
@@ -709,20 +653,21 @@ export default function HvacPointMappingPanel({
                 {pointRows.map((row, index) => (
                   <tr
                     key={row.field}
-                    className={index % 2 === 0 ? "bg-slate-950/10" : "bg-white/5"}
+                    className={
+                      index % 2 === 0 ? "bg-slate-950/10" : "bg-white/3"
+                    }
                   >
                     <td className="px-4 py-3 text-sm font-medium text-slate-100">
                       {row.label}
                     </td>
 
                     <td className="px-4 py-3">
-                      <input
+                      <BmsInput
                         value={String(form[row.field] ?? "")}
                         onChange={(event) =>
                           updateField(row.field, event.target.value as any)
                         }
                         placeholder={placeholderFor(row)}
-                        className="w-full rounded-2xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-400/60"
                       />
                     </td>
 
@@ -736,11 +681,10 @@ export default function HvacPointMappingPanel({
           </div>
 
           <div className="grid gap-3 md:grid-cols-5">
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableSetpoint)}
-                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableSetpoint", event.target.checked)
                 }
@@ -748,11 +692,10 @@ export default function HvacPointMappingPanel({
               Setpoint writable
             </label>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableOnoff)}
-                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableOnoff", event.target.checked)
                 }
@@ -760,11 +703,10 @@ export default function HvacPointMappingPanel({
               On/off writable
             </label>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableFanSpeed)}
-                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableFanSpeed", event.target.checked)
                 }
@@ -772,11 +714,10 @@ export default function HvacPointMappingPanel({
               Fan writable
             </label>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableFlowRate)}
-                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableFlowRate", event.target.checked)
                 }
@@ -784,11 +725,10 @@ export default function HvacPointMappingPanel({
               Flow writable
             </label>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200">
+            <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/4 px-3 py-2 text-sm text-slate-200">
               <input
                 type="checkbox"
                 checked={Boolean(form.writableRestart)}
-                disabled={isModbusRtu}
                 onChange={(event) =>
                   updateField("writableRestart", event.target.checked)
                 }
@@ -797,7 +737,7 @@ export default function HvacPointMappingPanel({
             </label>
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3 border-t border-white/10 pt-5 md:flex-row md:items-center md:justify-between">
             <div className="text-xs text-slate-500">
               {existing ? (
                 <span>
@@ -813,51 +753,51 @@ export default function HvacPointMappingPanel({
 
             <div className="flex flex-wrap gap-3">
               {isSimulator && (
-                <button
+                <BmsButton
                   type="button"
+                  variant="secondary"
                   onClick={() => void createSimulatorDefaults()}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Sparkles className="h-4 w-4" />
                   Simulator Defaults
-                </button>
+                </BmsButton>
               )}
 
-              <button
+              <BmsButton
                 type="button"
+                variant="ghost"
                 onClick={() => void loadPointMapping()}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <RefreshCw className="h-4 w-4" />
                 Reload
-              </button>
+              </BmsButton>
 
               {existing && (
-                <button
+                <BmsButton
                   type="button"
+                  variant="danger"
                   onClick={() => void deletePointMapping()}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Delete Points
-                </button>
+                </BmsButton>
               )}
 
-              <button
+              <BmsButton
                 type="button"
+                variant="primary"
                 onClick={() => void saveManual()}
                 disabled={saving}
-                className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 px-5 py-2 text-sm font-semibold text-white transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
                 {saving ? "Saving..." : "Save Mapping"}
-              </button>
+              </BmsButton>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </BmsCard>
   );
 }
