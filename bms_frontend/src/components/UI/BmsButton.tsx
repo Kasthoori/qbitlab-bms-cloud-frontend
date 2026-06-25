@@ -23,9 +23,10 @@ const sizeClasses: Record<BmsButtonSize, string> = {
 
 const variantClasses: Record<BmsButtonVariant, string> = {
   primary:
-    "border border-cyan-200/30 bg-[linear-gradient(135deg,rgba(14,165,233,0.95),rgba(6,182,212,0.86))] " +
-    "text-cyan-50 shadow-[0_12px_30px_rgba(8,145,178,0.20)] hover:-translate-y-0.5 " +
-    "hover:shadow-[0_16px_36px_rgba(8,145,178,0.28)]",
+  "border border-cyan-300/30 bg-cyan-500/18 text-cyan-50 " +
+  "shadow-[0_10px_24px_rgba(8,145,178,0.12)] backdrop-blur-xl " +
+  "hover:-translate-y-0.5 hover:border-cyan-200/45 hover:bg-cyan-400/24 " +
+  "hover:shadow-[0_14px_30px_rgba(8,145,178,0.18)]",
 
   secondary:
     "border border-sky-400/30 bg-slate-950/60 text-sky-100 hover:bg-sky-400/10 hover:border-sky-300/45",

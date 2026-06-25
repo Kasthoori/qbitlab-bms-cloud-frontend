@@ -15,6 +15,9 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { BmsButton } from "../UI";
+import BackButton from "../common/BackButton";
+import { useNavigate } from 'react-router-dom';
 
 type Props = {
   tenantId: string;
@@ -64,6 +67,8 @@ export default function SimulatorHvacsPage({
   const [successMessage, setSuccessMessage] = useState("");
 
   const isEditing = selectedRow !== null;
+
+  const nav = useNavigate();
 
   const loadRows = useCallback(async () => {
   if (!tenantId || !siteId) return;
@@ -254,6 +259,7 @@ useEffect(() => {
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
       <div className="pointer-events-none absolute inset-0">
+        <BackButton onClick={() => nav("/admin/update-tenant")} />
         <div className="absolute -left-30 -top-30 h-80 w-80 rounded-full bg-cyan-500/20 blur-3xl" />
         <div className="absolute -right-30 top-40 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="absolute -bottom-40 left-1/3 h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
@@ -358,23 +364,25 @@ useEffect(() => {
                 <option value="NORMAL">Normal</option>
               </select>
 
-              <button
+              <BmsButton
                 type="button"
                 onClick={loadRows}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+                variant="secondary"
+                //className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10"
               >
                 <RefreshCcw size={16} />
                 Refresh
-              </button>
+              </BmsButton>
 
-              <button
+              <BmsButton
                 type="button"
                 onClick={handleNew}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-200"
+                variant="primary"
+                //className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-200"
               >
                 <Plus size={16} />
                 Add HVAC
-              </button>
+              </BmsButton>
             </div>
           </div>
         </section>
