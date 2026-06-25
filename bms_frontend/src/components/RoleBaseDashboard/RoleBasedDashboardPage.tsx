@@ -67,6 +67,7 @@ import {
   type DashboardSiteCardDto,
 } from "@/api/bms";
 import { BmsButton, BmsCard, BmsDashboardWidgetCard } from "@/components/UI";
+import { DashboardWeatherCard } from "../Dashboard/DashboardWeatherCard";
 
 //import DashboardNotificationIcons from "../Dashboard/DashboardNotificationIcons";
 
@@ -1767,11 +1768,11 @@ export default function RoleBasedDashboardPage() {
     >
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute left-[-8%] top-[-8%] h-96 w-96 rounded-full bg-cyan-500/15 blur-3xl" />
-        <div className="absolute right-[-10%] top-[18%] h-[28rem] w-[28rem] rounded-full bg-violet-500/16 blur-3xl" />
-        <div className="absolute bottom-[-12%] left-[28%] h-[30rem] w-[30rem] rounded-full bg-emerald-500/8 blur-3xl" />
+        <div className="absolute right-[-10%] top-[18%] h-112 w-md rounded-full bg-violet-500/16 blur-3xl" />
+        <div className="absolute bottom-[-12%] left-[28%] h-120 w-120 rounded-full bg-emerald-500/8 blur-3xl" />
       </div>
 
-      <main className="relative z-10 mx-auto max-w-[1800px] px-5 py-6 pb-12 md:px-8 lg:px-10">
+      <main className="relative z-10 mx-auto max-w-450 px-5 py-6 pb-12 md:px-8 lg:px-10">
         <DashboardHeader
           data={data}
           theme={theme}
@@ -1783,10 +1784,15 @@ export default function RoleBasedDashboardPage() {
           onReset={handleResetLayout}
         />
 
-        <div className="mt-5">
+        <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_320px]">
           <SummaryStrip data={data} />
-        </div>
 
+          <DashboardWeatherCard
+            latitude={-36.8485}
+            longitude={174.7633}
+            locationLabel="Auckland outdoor"
+          />
+        </div>
         <div className="mt-6 grid gap-5 lg:grid-cols-2 xl:grid-cols-4">
           <DndContext
             sensors={sensors}
