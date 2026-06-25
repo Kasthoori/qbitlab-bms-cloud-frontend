@@ -4,7 +4,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowLeft,
-  //CheckCircle2,
   Copy,
   Cpu,
   KeyRound,
@@ -14,13 +13,14 @@ import {
   ShieldCheck,
   TerminalSquare,
   Trash2,
-  //Wifi,
 } from "lucide-react";
+
 import {
   BmsApi,
   type EdgeControllerViewResponse,
   type EdgeRegisterResponse,
 } from "@/api/bms";
+import { BmsButton, BmsCard, BmsInput } from "@/components/UI";
 
 type RegisterForm = {
   name: string;
@@ -87,7 +87,7 @@ export default function EdgeControllerSetupPage() {
   }, [form.name, saving]);
 
   useEffect(() => {
-    loadEdge();
+    void loadEdge();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, siteId]);
 
@@ -219,37 +219,44 @@ export default function EdgeControllerSetupPage() {
 
   if (!tenantId || !siteId) {
     return (
-      <div className="min-h-screen bg-slate-950 p-6 text-slate-100">
-        Missing tenantId or siteId.
+      <div className="bms-dashboard-bg min-h-screen p-6 text-slate-100">
+        <BmsCard
+          variant="section"
+          className="border-rose-500/20 bg-rose-500/10 p-6 text-rose-300"
+        >
+          Missing tenantId or siteId.
+        </BmsCard>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 px-5 py-6 text-slate-100 md:px-8">
+    <div className="bms-dashboard-bg min-h-screen px-5 py-6 text-slate-100 md:px-8">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute left-[-10%] top-[-10%] h-80 w-80 rounded-full bg-cyan-500/20 blur-3xl" />
         <div className="absolute right-[-10%] top-[20%] h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="absolute bottom-[-15%] left-[25%] h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
       </div>
 
-      <main className="relative z-10 mx-auto max-w-6xl">
-        <button
+      <main className="bms-dashboard-shell relative z-10 mx-auto max-w-6xl">
+        <BmsButton
           type="button"
+          variant="ghost"
           onClick={() => navigate(-1)}
-          className="mb-5 inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/10"
+          className="mb-5"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </BmsButton>
 
-        <section className="rounded-3xl border border-white/10 bg-white/[0.07] p-6 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+        <BmsCard variant="section" className="p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
                   <Cpu className="h-6 w-6" />
                 </div>
+
                 <div>
                   <p className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">
                     QbitLabs BMS
@@ -269,35 +276,43 @@ export default function EdgeControllerSetupPage() {
 
             <div className="rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-xs text-slate-400">
               <p>Tenant ID</p>
-              <p className="mt-1 font-mono text-cyan-100">{tenantId}</p>
+              <p className="mt-1 break-all font-mono text-cyan-100">
+                {tenantId}
+              </p>
               <p className="mt-3">Site ID</p>
-              <p className="mt-1 font-mono text-cyan-100">{siteId}</p>
+              <p className="mt-1 break-all font-mono text-cyan-100">{siteId}</p>
             </div>
           </div>
-        </section>
+        </BmsCard>
 
         {copyMessage && (
-          <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <BmsCard
+            variant="section"
+            className="mt-4 border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100"
+          >
             {copyMessage}
-          </div>
+          </BmsCard>
         )}
 
         {error && (
-          <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+          <BmsCard
+            variant="section"
+            className="mt-4 border-rose-300/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100"
+          >
             {error}
-          </div>
+          </BmsCard>
         )}
 
         {loading ? (
-          <div className="mt-6 rounded-3xl border border-white/10 bg-white/6 p-8 text-center shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+          <BmsCard variant="section" className="mt-6 p-8 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-cyan-200" />
             <p className="mt-3 text-sm text-slate-300">
               Loading edge controller...
             </p>
-          </div>
+          </BmsCard>
         ) : (
           <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
-            <section className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+            <BmsCard variant="section" className="p-5">
               {edge ? (
                 <ExistingEdgePanel
                   edge={edge}
@@ -314,9 +329,9 @@ export default function EdgeControllerSetupPage() {
                   onSubmit={handleRegister}
                 />
               )}
-            </section>
+            </BmsCard>
 
-            <section className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-violet-500/10 backdrop-blur-2xl">
+            <BmsCard variant="section" className="p-5">
               {generated ? (
                 <GeneratedSecretPanel
                   generated={generated}
@@ -326,7 +341,7 @@ export default function EdgeControllerSetupPage() {
               ) : (
                 <HelpPanel />
               )}
-            </section>
+            </BmsCard>
           </div>
         )}
       </main>
@@ -353,10 +368,12 @@ function RegisterEdgePanel({
         <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-3 text-amber-100">
           <AlertTriangle className="h-5 w-5" />
         </div>
+
         <div>
           <h2 className="text-lg font-semibold text-white">
             No edge controller assigned
           </h2>
+
           <p className="mt-1 text-sm text-slate-300">
             Register an edge controller before using live telemetry,
             BACnet/Modbus scan, point mapping, or command polling.
@@ -389,6 +406,7 @@ function RegisterEdgePanel({
 
         <div>
           <label className="text-sm font-medium text-slate-300">Notes</label>
+
           <textarea
             value={form.notes}
             onChange={(event) =>
@@ -400,15 +418,20 @@ function RegisterEdgePanel({
           />
         </div>
 
-        <button
+        <BmsButton
           type="button"
+          variant="primary"
           disabled={!canSubmit}
           onClick={onSubmit}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-5 py-3 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full justify-center py-3"
         >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <KeyRound className="h-4 w-4" />
+          )}
           Register Edge Controller
-        </button>
+        </BmsButton>
       </div>
     </div>
   );
@@ -432,10 +455,12 @@ function ExistingEdgePanel({
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100">
             <ShieldCheck className="h-5 w-5" />
           </div>
+
           <div>
             <h2 className="text-lg font-semibold text-white">
               Edge controller assigned
             </h2>
+
             <p className="mt-1 text-sm text-slate-300">
               This site has an active edge controller assignment.
             </p>
@@ -463,25 +488,27 @@ function ExistingEdgePanel({
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
-        <button
+        <BmsButton
           type="button"
+          variant="warning"
           disabled={saving}
           onClick={onRotate}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:opacity-50"
+          className="justify-center py-3"
         >
           <RotateCw className="h-4 w-4" />
           Rotate Secret
-        </button>
+        </BmsButton>
 
-        <button
+        <BmsButton
           type="button"
+          variant="danger"
           disabled={saving}
           onClick={onRevoke}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-300/20 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:bg-rose-500/20 disabled:opacity-50"
+          className="justify-center py-3"
         >
           <Trash2 className="h-4 w-4" />
           Revoke
-        </button>
+        </BmsButton>
       </div>
     </div>
   );
@@ -502,10 +529,12 @@ function GeneratedSecretPanel({
         <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-3 text-rose-100">
           <ShieldAlert className="h-5 w-5" />
         </div>
+
         <div>
           <h2 className="text-lg font-semibold text-white">
             Save this secret now
           </h2>
+
           <p className="mt-1 text-sm text-slate-300">
             The edge secret is shown only once. Copy it into the Python edge
             computer config.
@@ -530,22 +559,28 @@ function GeneratedSecretPanel({
           <label className="text-sm font-medium text-slate-300">
             edge-config.yml
           </label>
+
           <div className="flex gap-2">
-            <button
+            <BmsButton
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => onCopy("Config", generated.configYaml)}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200 hover:bg-white/10"
+              className="rounded-xl px-3 py-2 text-xs"
             >
               <Copy className="h-3.5 w-3.5" />
               Copy
-            </button>
-            <button
+            </BmsButton>
+
+            <BmsButton
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={onDownload}
-              className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-xs text-cyan-100 hover:bg-cyan-300/20"
+              className="rounded-xl px-3 py-2 text-xs"
             >
               Download
-            </button>
+            </BmsButton>
           </div>
         </div>
 
@@ -564,10 +599,12 @@ function HelpPanel() {
         <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
           <TerminalSquare className="h-5 w-5" />
         </div>
+
         <div>
           <h2 className="text-lg font-semibold text-white">
             Installation flow
           </h2>
+
           <p className="mt-1 text-sm text-slate-300">
             Use this panel to prepare the Python edge computer for a physical
             customer site.
@@ -609,11 +646,12 @@ function Field({
       <label className="text-sm font-medium text-slate-300">
         {label} {required && <span className="text-rose-300">*</span>}
       </label>
-      <input
+
+      <BmsInput
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
+        className="mt-2"
       />
     </div>
   );
@@ -629,8 +667,9 @@ function InfoRow({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+    <BmsCard variant="glass" className="p-3">
       <p className="text-xs text-slate-500">{label}</p>
+
       <p
         className={`mt-1 break-all text-sm text-slate-100 ${
           mono ? "font-mono" : ""
@@ -638,7 +677,7 @@ function InfoRow({
       >
         {value}
       </p>
-    </div>
+    </BmsCard>
   );
 }
 
@@ -652,30 +691,35 @@ function SecretBox({
   onCopy: () => void;
 }) {
   return (
-    <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+    <BmsCard variant="glass" className="mt-4 p-4">
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-slate-300">{label}</p>
-        <button
+
+        <BmsButton
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={onCopy}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200 hover:bg-white/10"
+          className="rounded-xl px-3 py-2 text-xs"
         >
           <Copy className="h-3.5 w-3.5" />
           Copy
-        </button>
+        </BmsButton>
       </div>
+
       <p className="break-all font-mono text-sm text-cyan-100">{value}</p>
-    </div>
+    </BmsCard>
   );
 }
 
 function Step({ number, text }: { number: string; text: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3">
+    <BmsCard variant="glass" className="flex items-center gap-3 p-3">
       <div className="flex h-7 w-7 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-xs font-bold text-cyan-100">
         {number}
       </div>
+
       <p>{text}</p>
-    </div>
+    </BmsCard>
   );
 }

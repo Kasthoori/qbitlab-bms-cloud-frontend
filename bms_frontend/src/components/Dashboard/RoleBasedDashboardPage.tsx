@@ -16,12 +16,15 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
+
 import {
   BmsApi,
   type DashboardAiInsightDto,
   type DashboardOverviewResponse,
   type DashboardSiteCardDto,
 } from "@/api/bms";
+import { BmsButton, BmsCard } from "@/components/UI";
+
 import { DashboardChartsSection } from "./DashboardCharts";
 
 function formatNumber(value: number | null | undefined): string {
@@ -58,14 +61,6 @@ function roleTitle(role: string) {
   return "Technician Action Dashboard";
 }
 
-/**
- * ViewportReveal
- *
- * Immediate render + animation only.
- *
- * Use this for important above-the-fold dashboard content that should appear
- * immediately, such as the dashboard header and KPI cards.
- */
 function ViewportReveal({
   children,
   delay = 0,
@@ -93,26 +88,6 @@ function ViewportReveal({
   );
 }
 
-/**
- * ViewportLoadOnce
- *
- * Production-safe lazy loading for dashboard sections/cards.
- *
- * Behavior:
- * - Before entering viewport: shows skeleton fallback.
- * - First time entering viewport: mounts the real component.
- * - After first mount: keeps the component mounted forever.
- *
- * This avoids the dangerous pattern:
- *   {inView && <Component />}
- *
- * because that pattern unmounts the component when scrolling away and can cause:
- * - blank dashboard sections
- * - repeated chart mounting
- * - Recharts width/height calculation issues
- * - repeated animations
- * - bad UX when scrolling up and down
- */
 function ViewportLoadOnce({
   children,
   fallback,
@@ -127,22 +102,8 @@ function ViewportLoadOnce({
   className?: string;
 }) {
   const { ref, inView } = useInView({
-    /**
-     * triggerOnce true means:
-     * - starts as false
-     * - becomes true when entering viewport
-     * - stays true forever after first viewport entry
-     *
-     * This gives "load once when visible" behavior without setState/useEffect.
-     */
     triggerOnce: true,
-
-    /**
-     * Loads slightly before the user reaches the section.
-     * Use "0px" if you want it to load only when exactly visible.
-     */
     rootMargin: "350px 0px",
-
     threshold: 0.05,
   });
 
@@ -166,15 +127,14 @@ function ViewportLoadOnce({
     </div>
   );
 }
+
 function DashboardSkeletonCard({
   minHeight = "min-h-[220px]",
 }: {
   minHeight?: string;
 }) {
   return (
-    <div
-      className={`${minHeight} animate-pulse rounded-3xl border border-white/10 bg-white/4 p-5 shadow-2xl shadow-cyan-500/5 backdrop-blur-2xl`}
-    >
+    <BmsCard variant="section" className={`${minHeight} animate-pulse p-5`}>
       <div className="h-4 w-36 rounded-full bg-white/10" />
       <div className="mt-4 h-7 w-56 rounded-full bg-white/10" />
       <div className="mt-6 grid gap-3">
@@ -182,13 +142,13 @@ function DashboardSkeletonCard({
         <div className="h-16 rounded-2xl bg-white/10" />
         <div className="h-16 rounded-2xl bg-white/10" />
       </div>
-    </div>
+    </BmsCard>
   );
 }
 
 function SiteCardSkeleton() {
   return (
-    <div className="min-h-80 animate-pulse rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-xl shadow-black/20">
+    <BmsCard variant="glass" className="min-h-80 animate-pulse p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="h-5 w-40 rounded-full bg-white/10" />
@@ -206,7 +166,7 @@ function SiteCardSkeleton() {
         <div className="h-20 rounded-2xl bg-white/10" />
         <div className="h-20 rounded-2xl bg-white/10" />
       </div>
-    </div>
+    </BmsCard>
   );
 }
 
@@ -220,12 +180,6 @@ export default function RoleBasedDashboardPage() {
     "ALL" | "CRITICAL" | "WARNING" | "HEALTHY"
   >("ALL");
 
-  /**
-   * Loads role-based dashboard data once when the page opens.
-   *
-   * The viewport lazy loading below does NOT re-fetch data.
-   * It only controls when expensive UI sections are mounted.
-   */
   useEffect(() => {
     let cancelled = false;
 
@@ -278,14 +232,14 @@ export default function RoleBasedDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 px-6 py-8 text-slate-100">
+      <div className="bms-dashboard-bg min-h-screen px-6 py-8 text-slate-100">
         <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="rounded-3xl border border-white/10 bg-white/6 p-8 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+          <BmsCard variant="section" className="p-8 text-center">
             <Loader2 className="mx-auto h-9 w-9 animate-spin text-cyan-200" />
             <p className="mt-4 text-sm text-slate-300">
               Loading BMS intelligence dashboard...
             </p>
-          </div>
+          </BmsCard>
         </div>
       </div>
     );
@@ -293,11 +247,14 @@ export default function RoleBasedDashboardPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-slate-950 px-6 py-8 text-slate-100">
-        <div className="rounded-3xl border border-rose-300/20 bg-rose-500/10 p-6 text-rose-100 shadow-2xl shadow-rose-500/10 backdrop-blur-2xl">
+      <div className="bms-dashboard-bg min-h-screen px-6 py-8 text-slate-100">
+        <BmsCard
+          variant="section"
+          className="border-rose-300/20 bg-rose-500/10 p-6 text-rose-100"
+        >
           <h2 className="text-lg font-semibold">Dashboard unavailable</h2>
           <p className="mt-2 text-sm text-rose-100/80">{error}</p>
-        </div>
+        </BmsCard>
       </div>
     );
   }
@@ -307,14 +264,14 @@ export default function RoleBasedDashboardPage() {
   const riskSites = data.riskSites ?? [];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="bms-dashboard-bg min-h-screen text-slate-100">
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute left-[-10%] top-[-10%] h-80 w-80 rounded-full bg-cyan-500/20 blur-3xl" />
         <div className="absolute right-[-10%] top-[20%] h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
         <div className="absolute bottom-[-15%] left-[25%] h-96 w-96 rounded-full bg-emerald-500/10 blur-3xl" />
       </div>
 
-      <main className="relative z-10 px-5 py-6 pb-12 md:px-8 lg:px-10">
+      <main className="bms-dashboard-shell relative z-10 px-5 py-6 pb-12 md:px-8 lg:px-10">
         <ViewportReveal>
           <DashboardHeader role={data.role} generatedAt={data.generatedAt} />
         </ViewportReveal>
@@ -367,8 +324,10 @@ export default function RoleBasedDashboardPage() {
         </section>
 
         <section className="mt-6 grid gap-5 xl:grid-cols-[1.5fr_1fr]">
-          <ViewportLoadOnce fallback={<DashboardSkeletonCard minHeight="min-h-[520px]" />}>
-            <div className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+          <ViewportLoadOnce
+            fallback={<DashboardSkeletonCard minHeight="min-h-[520px]" />}
+          >
+            <BmsCard variant="section" className="p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-cyan-200/70">
@@ -394,40 +353,40 @@ export default function RoleBasedDashboardPage() {
                     fallback={<SiteCardSkeleton />}
                   >
                     <SiteHealthCard
-                        site={site}
-                        onOpen={() =>
-                          navigate(
-                            `/user/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`,
-                            {
-                              state: {
-                                tenantName: site.tenantName,
-                                siteName: site.siteName,
-                              },
-                            }
-                          )
-                        }
-                        onOpenEnergy={() =>
-                          navigate(
-                            `/user/tenants/${site.tenantId}/sites/${site.siteId}/energy`,
-                            {
-                              state: {
-                                tenantName: site.tenantName,
-                                siteName: site.siteName,
-                              },
-                            }
-                          )
-                        }
-                      />
+                      site={site}
+                      onOpen={() =>
+                        navigate(
+                          `/user/tenants/${site.tenantId}/sites/${site.siteId}/hvacs`,
+                          {
+                            state: {
+                              tenantName: site.tenantName,
+                              siteName: site.siteName,
+                            },
+                          }
+                        )
+                      }
+                      onOpenEnergy={() =>
+                        navigate(
+                          `/user/tenants/${site.tenantId}/sites/${site.siteId}/energy`,
+                          {
+                            state: {
+                              tenantName: site.tenantName,
+                              siteName: site.siteName,
+                            },
+                          }
+                        )
+                      }
+                    />
                   </ViewportLoadOnce>
                 ))}
 
                 {filteredSites.length === 0 && (
-                  <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 text-sm text-slate-300">
+                  <BmsCard variant="glass" className="p-6 text-sm text-slate-300">
                     No sites found for this filter.
-                  </div>
+                  </BmsCard>
                 )}
               </div>
-            </div>
+            </BmsCard>
           </ViewportLoadOnce>
 
           <ViewportLoadOnce
@@ -438,68 +397,23 @@ export default function RoleBasedDashboardPage() {
           </ViewportLoadOnce>
         </section>
 
-        <ViewportLoadOnce fallback={<DashboardSkeletonCard minHeight="min-h-[360px]" />}>
+        <ViewportLoadOnce
+          fallback={<DashboardSkeletonCard minHeight="min-h-[360px]" />}
+        >
           <DashboardChartsSection data={data} />
         </ViewportLoadOnce>
 
-        <ViewportLoadOnce fallback={<DashboardSkeletonCard minHeight="min-h-[520px]" />}>
+        <ViewportLoadOnce
+          fallback={<DashboardSkeletonCard minHeight="min-h-[520px]" />}
+        >
           <AiInsightsPanel insights={aiInsights} role={data.role} />
         </ViewportLoadOnce>
 
         {data.role === "BMS_ADMIN" && (
-          <ViewportLoadOnce fallback={<DashboardSkeletonCard minHeight="min-h-[360px]" />}>
-            <section className="mt-6 rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-violet-500/10 backdrop-blur-2xl">
-              <div className="mb-4 flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-violet-200" />
-                <div>
-                  <h2 className="text-lg font-semibold text-white">
-                    Tenant comparison
-                  </h2>
-                  <p className="text-sm text-slate-300">
-                    Global comparison for admin decision making.
-                  </p>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-2xl border border-white/10">
-                <table className="min-w-full divide-y divide-white/10 text-sm">
-                  <thead className="bg-white/4 text-left text-xs uppercase tracking-wider text-slate-400">
-                    <tr>
-                      <th className="px-4 py-3">Tenant</th>
-                      <th className="px-4 py-3">Sites</th>
-                      <th className="px-4 py-3">HVACs</th>
-                      <th className="px-4 py-3">Failed</th>
-                      <th className="px-4 py-3">Open alerts</th>
-                      <th className="px-4 py-3">Avg temp</th>
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-white/10">
-                    {(data.tenants ?? []).map((tenant) => (
-                      <tr
-                        key={tenant.tenantId}
-                        className="text-slate-200 hover:bg-white/4"
-                      >
-                        <td className="px-4 py-3 font-medium text-white">
-                          {tenant.tenantName}
-                        </td>
-                        <td className="px-4 py-3">{tenant.totalSites}</td>
-                        <td className="px-4 py-3">{tenant.totalHvacs}</td>
-                        <td className="px-4 py-3 text-rose-200">
-                          {tenant.failedHvacs}
-                        </td>
-                        <td className="px-4 py-3 text-amber-200">
-                          {tenant.openAlerts}
-                        </td>
-                        <td className="px-4 py-3">
-                          {formatTemp(tenant.averageTemperature)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+          <ViewportLoadOnce
+            fallback={<DashboardSkeletonCard minHeight="min-h-[360px]" />}
+          >
+            <TenantComparisonSection data={data} />
           </ViewportLoadOnce>
         )}
       </main>
@@ -515,7 +429,7 @@ function DashboardHeader({
   generatedAt: string;
 }) {
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.07] p-6 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+    <BmsCard variant="section" className="p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex items-center gap-3">
@@ -548,7 +462,7 @@ function DashboardHeader({
           </p>
         </div>
       </div>
-    </section>
+    </BmsCard>
   );
 }
 
@@ -566,11 +480,10 @@ function KpiCard({
   danger?: boolean;
 }) {
   return (
-    <div
-      className={`h-full rounded-3xl border p-5 shadow-2xl backdrop-blur-2xl ${
-        danger
-          ? "border-rose-300/20 bg-rose-500/10 shadow-rose-500/10"
-          : "border-white/10 bg-white/6 shadow-cyan-500/10"
+    <BmsCard
+      variant="section"
+      className={`h-full p-5 ${
+        danger ? "border-rose-300/20 bg-rose-500/10" : ""
       }`}
     >
       <div className="flex items-center justify-between">
@@ -583,7 +496,7 @@ function KpiCard({
       <p className="mt-5 text-sm text-slate-400">{label}</p>
       <p className="mt-2 text-3xl font-bold text-white">{value}</p>
       <p className="mt-2 text-xs text-slate-400">{hint}</p>
-    </div>
+    </BmsCard>
   );
 }
 
@@ -604,18 +517,20 @@ function RiskFilter({
   return (
     <div className="flex flex-wrap gap-2">
       {values.map((item) => (
-        <button
+        <BmsButton
           key={item}
           type="button"
+          variant={value === item ? "primary" : "ghost"}
+          size="sm"
           onClick={() => onChange(item)}
-          className={`rounded-2xl border px-4 py-2 text-xs font-medium transition ${
+          className={
             value === item
               ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100"
               : "border-white/10 bg-white/4 text-slate-300 hover:bg-white/8"
-          }`}
+          }
         >
           {item}
-        </button>
+        </BmsButton>
       ))}
     </div>
   );
@@ -631,7 +546,7 @@ function SiteHealthCard({
   onOpenEnergy: () => void;
 }) {
   return (
-    <div className="h-full rounded-3xl border border-white/10 bg-slate-950/50 p-5 shadow-xl shadow-black/20">
+    <BmsCard variant="glass" hover className="h-full p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-white">{site.siteName}</h3>
@@ -698,24 +613,6 @@ function SiteHealthCard({
         <p className="mt-1 text-sm text-slate-200">{site.riskReason}</p>
       </div>
 
-      {/* <div className="mt-5 flex items-center justify-between gap-3">
-        <div className="text-xs text-slate-400">
-          Avg temp:{" "}
-          <span className="text-cyan-100">
-            {formatTemp(site.averageTemperature)}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={onOpen}
-          className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-300/20"
-        >
-          Open site
-        </button>
-      </div> */}
-
-
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs text-slate-400">
           Avg temp:{" "}
@@ -725,24 +622,21 @@ function SiteHealthCard({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button
+          <BmsButton
             type="button"
+            variant="success"
+            size="sm"
             onClick={onOpenEnergy}
-            className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-2 text-xs font-medium text-emerald-100 transition hover:bg-emerald-300/20"
           >
             Energy
-          </button>
+          </BmsButton>
 
-          <button
-            type="button"
-            onClick={onOpen}
-            className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-300/20"
-          >
+          <BmsButton type="button" variant="secondary" size="sm" onClick={onOpen}>
             Open site
-          </button>
+          </BmsButton>
         </div>
       </div>
-    </div>
+    </BmsCard>
   );
 }
 
@@ -758,11 +652,12 @@ function MiniMetric({
   danger?: boolean;
 }) {
   return (
-    <div
-      className={`rounded-2xl border p-3 ${
+    <BmsCard
+      variant="glass"
+      className={`p-3 ${
         danger
           ? "border-rose-300/20 bg-rose-500/10 text-rose-100"
-          : "border-white/10 bg-white/4 text-slate-200"
+          : "text-slate-200"
       }`}
     >
       <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -770,7 +665,7 @@ function MiniMetric({
         {label}
       </div>
       <p className="mt-2 text-xl font-semibold text-white">{value}</p>
-    </div>
+    </BmsCard>
   );
 }
 
@@ -782,7 +677,10 @@ function AiInsightsPanel({
   role: string;
 }) {
   return (
-    <div className="mt-6 rounded-3xl border border-cyan-300/15 bg-cyan-300/[0.07] p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur-2xl">
+    <BmsCard
+      variant="section"
+      className="mt-6 border-cyan-300/15 bg-cyan-300/[0.07] p-5"
+    >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-cyan-100">
@@ -802,12 +700,9 @@ function AiInsightsPanel({
           </div>
         </div>
 
-        <button
-          type="button"
-          className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-300/20"
-        >
+        <BmsButton type="button" variant="secondary" size="sm">
           Ask OpenAI Assistant
-        </button>
+        </BmsButton>
       </div>
 
       <div className="mt-5 max-h-130 space-y-3 overflow-y-auto pr-2">
@@ -819,9 +714,10 @@ function AiInsightsPanel({
         )}
 
         {insights.map((insight, index) => (
-          <div
+          <BmsCard
             key={`${insight.title}-${insight.severity}-${index}`}
-            className="rounded-2xl border border-white/10 bg-slate-950/50 p-4"
+            variant="glass"
+            className="p-4"
           >
             <div className="flex items-center justify-between gap-3">
               <h3 className="font-semibold text-white">{insight.title}</h3>
@@ -837,10 +733,10 @@ function AiInsightsPanel({
                 : "Recommended action: "}
               {insight.recommendedAction}
             </p>
-          </div>
+          </BmsCard>
         ))}
       </div>
-    </div>
+    </BmsCard>
   );
 }
 
@@ -850,7 +746,7 @@ function RiskSitesPanel({
   sites: DashboardOverviewResponse["riskSites"];
 }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/6 p-5 shadow-2xl shadow-rose-500/10 backdrop-blur-2xl">
+    <BmsCard variant="section" className="p-5">
       <div className="mb-4 flex items-center gap-3">
         <Gauge className="h-5 w-5 text-amber-200" />
         <div>
@@ -869,10 +765,7 @@ function RiskSitesPanel({
         )}
 
         {sites.map((site) => (
-          <div
-            key={site.siteId}
-            className="rounded-2xl border border-white/10 bg-slate-950/50 p-4"
-          >
+          <BmsCard key={site.siteId} variant="glass" className="p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="font-medium text-white">{site.siteName}</h3>
@@ -911,9 +804,72 @@ function RiskSitesPanel({
                 <p>Due</p>
               </div>
             </div>
-          </div>
+          </BmsCard>
         ))}
       </div>
-    </div>
+    </BmsCard>
+  );
+}
+
+function TenantComparisonSection({
+  data,
+}: {
+  data: DashboardOverviewResponse;
+}) {
+  return (
+    <section className="mt-6">
+      <BmsCard variant="section" className="p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <ShieldCheck className="h-5 w-5 text-violet-200" />
+          <div>
+            <h2 className="text-lg font-semibold text-white">
+              Tenant comparison
+            </h2>
+            <p className="text-sm text-slate-300">
+              Global comparison for admin decision making.
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <table className="min-w-full divide-y divide-white/10 text-sm">
+            <thead className="bg-white/4 text-left text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th className="px-4 py-3">Tenant</th>
+                <th className="px-4 py-3">Sites</th>
+                <th className="px-4 py-3">HVACs</th>
+                <th className="px-4 py-3">Failed</th>
+                <th className="px-4 py-3">Open alerts</th>
+                <th className="px-4 py-3">Avg temp</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-white/10">
+              {(data.tenants ?? []).map((tenant) => (
+                <tr
+                  key={tenant.tenantId}
+                  className="text-slate-200 hover:bg-white/4"
+                >
+                  <td className="px-4 py-3 font-medium text-white">
+                    {tenant.tenantName}
+                  </td>
+                  <td className="px-4 py-3">{tenant.totalSites}</td>
+                  <td className="px-4 py-3">{tenant.totalHvacs}</td>
+                  <td className="px-4 py-3 text-rose-200">
+                    {tenant.failedHvacs}
+                  </td>
+                  <td className="px-4 py-3 text-amber-200">
+                    {tenant.openAlerts}
+                  </td>
+                  <td className="px-4 py-3">
+                    {formatTemp(tenant.averageTemperature)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </BmsCard>
+    </section>
   );
 }

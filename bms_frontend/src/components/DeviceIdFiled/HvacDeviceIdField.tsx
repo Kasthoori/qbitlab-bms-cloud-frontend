@@ -1,49 +1,66 @@
 import { useEffect, type FC } from "react";
+
+import { BmsInput } from "@/components/UI";
+
 import { useHvacDeviceIdAvailability } from "../../hooks/useHvacDeviceIdAvailability";
 
 type HvacDeviceIdFieldProps = {
-    id?: string;
-    protocol: string;
-    deviceId: string;
-    onDeviceIdChange: (v: string) => void;
-    onCanSaveChange?: (canSave: boolean) => void; // optional if parent needs it
+  id?: string;
+  protocol: string;
+  deviceId: string;
+  onDeviceIdChange: (v: string) => void;
+  onCanSaveChange?: (canSave: boolean) => void;
 };
 
 const HvacDeviceIdField: FC<HvacDeviceIdFieldProps> = ({
-    id,
+  id,
+  protocol,
+  deviceId,
+  onDeviceIdChange,
+  onCanSaveChange,
+}) => {
+  const { status, canSave } = useHvacDeviceIdAvailability({
     protocol,
     deviceId,
-    onDeviceIdChange,
-    onCanSaveChange,
-}) => {
+    enabled: protocol === "BACNET",
+  });
 
-    const {status, canSave} = useHvacDeviceIdAvailability({
-        protocol,
-        deviceId,
-        enabled: protocol === "BACNET",
-    });
+  useEffect(() => {
+    onCanSaveChange?.(canSave);
+  }, [canSave, onCanSaveChange]);
 
-    useEffect(() => {
-        onCanSaveChange?.(canSave);
+  return (
+    <div className="space-y-2">
+      <BmsInput
+        id={id}
+        value={deviceId}
+        onChange={(event) => onDeviceIdChange(event.target.value)}
+        placeholder="__MOCK_DEVICE_ID__"
+      />
 
-    }, [canSave, onCanSaveChange]);
+      {status === "checking" && (
+        <p className="text-xs font-medium text-cyan-300">Checking...</p>
+      )}
 
-    return (
-        <div>
-            <input
-                id={id}
-                className="w-full mt-1 rounded bg-slate-800 border border-slate-600 px-2 py-1 text-white"
-                value={deviceId}
-                onChange={(e) => onDeviceIdChange(e.target.value)}
-                placeholder="__MOCK_DEVICE_ID__"
-            />
+      {status === "available" && (
+        <p className="text-xs font-medium text-emerald-300">
+          Device ID is available.
+        </p>
+      )}
 
-            {status === "checking" && <div>Checking...</div>}
-            {status === "available" && <div style={{color: "green"}}>Device ID is available.</div>}
-            {status === "exists" && <div style={{color: "red"}}>Device ID already exists.</div>}
-            {status === "error" && <div style={{color: "red"}}>Error checking Device ID.</div>}
-        </div>
-    );
+      {status === "exists" && (
+        <p className="text-xs font-medium text-rose-300">
+          Device ID already exists.
+        </p>
+      )}
+
+      {status === "error" && (
+        <p className="text-xs font-medium text-rose-300">
+          Error checking Device ID.
+        </p>
+      )}
+    </div>
+  );
 };
 
 export default HvacDeviceIdField;
