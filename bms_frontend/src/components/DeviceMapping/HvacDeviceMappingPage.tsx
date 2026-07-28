@@ -212,6 +212,7 @@ const HvacDeviceMappingPage: FC = () => {
         const withoutSameHvac = previous.filter(
           (mapping) => mapping.hvacId !== created.hvacId
         );
+
         return [...withoutSameHvac, created];
       });
 
@@ -256,7 +257,7 @@ const HvacDeviceMappingPage: FC = () => {
     }
   };
 
-  const handleUnMap = async (mappingId: string) => {
+  const handleUnmap = async (mappingId: string) => {
     if (!tenantId || !siteId) return;
 
     setSaving(true);
@@ -416,8 +417,10 @@ const HvacDeviceMappingPage: FC = () => {
             </div>
 
             <ExistingMappingsPanel
+              tenantId={tenantId}
+              siteId={siteId}
               mappings={mappings}
-              onUnmap={handleUnMap}
+              onUnmap={handleUnmap}
               onConfigurePoints={handleConfigurePoints}
               busy={saving}
             />

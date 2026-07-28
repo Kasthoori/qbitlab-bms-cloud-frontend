@@ -38,6 +38,7 @@ import ComplianceEvidenceReportPage from "./components/Reports/ComplianceEvidenc
 import EnergyPowerDashboardPage from "./components/Energy/EnergyPowerDashboardPage";
 import EnergyMeterMappingPage from "./components/Energy/EnergyMeterMappingPage";
 import EnergyMeterPointMappingPage from "./components/Energy/EnergyMeterPointMappingPage";
+import { HvacFaultMappingRoute } from "./components/HvacFaults/HvacFaultMappingRoute";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -319,6 +320,12 @@ const AppRoutes: FC = () => {
       <Route path="/access-denied" element={<AccessDeniedPage />} />
 
       <Route path="*" element={<Navigate to="/access-denied" replace />} />
+
+
+      <Route
+        path="/tenants/:tenantId/sites/:siteId/hvacs/:hvacId/fault-mapping"
+        element={<HvacFaultMappingRoute />}
+      />
     </Routes>
   );
 };
