@@ -1,44 +1,55 @@
 import type { FC } from "react";
 import {
   BrowserRouter,
-  Routes,
-  Route,
-  useNavigate,
   Navigate,
+  Route,
+  Routes,
+  useNavigate,
 } from "react-router-dom";
 import { useEffect } from "react";
 
 import { setNavigator } from "./utils/navigation";
 
 import AppLayout from "./components/Layout/AppLayout";
+import ProtectedRoute from "./components/Auth/ProtectedRoute";
+
 import Hvac from "./components/Pages/Hvac";
+import DashboardWrapper from "./components/Pages/DashboardWrapper";
+import OnboardingPage from "./components/Pages/Onboarding/OnboardingPage";
+import AccessDeniedPage from "./components/Pages/AccessDenied/AccessDeniedPage";
+
 import ViewFloorPlan from "./components/FloorPlan/ViewFloorPlan";
 import UploadFloorPlanPage from "./components/FloorPlan/UploadFloorPlanPage";
+
 import UserViewFloorPlan from "./components/Buildings/FloorPlans/UserViewFloorPlan";
 import UserViewTenants from "./components/Buildings/Tenants/UserViewTenants";
 import UserViewSites from "./components/Buildings/Sites/UserViewSites";
+
 import HvacDeviceMappingPage from "./components/DeviceMapping/HvacDeviceMappingPage";
 import SiteHvacDetailsPage from "./components/ViewHvacDetails/SiteHvacDetailsPage";
-import DashboardWrapper from "./components/Pages/DashboardWrapper";
+
 import TenantsPage from "./components/Forms/UpdateTenants/TenantsPage";
 import SitesPage from "./components/Forms/UpdateTenants/SitesPage";
 import HvacsPages from "./components/Forms/UpdateTenants/HvacsPages";
-import OnboardingPage from "./components/Pages/Onboarding/OnboardingPage";
+
 import UserManagementPage from "./components/UserManagement/UserManagementPage";
-import AccessDeniedPage from "./components/Pages/AccessDenied/AccessDeniedPage";
-import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import UpdateUserProfile from "./components/UserManagement/UpdateUserProfile";
 import DeleteUserPage from "./components/UserManagement/DeleteUserPage";
 import ViewUsersPage from "./components/UserManagement/ViewUsersPage";
+
 import SimulatorHvacsRoute from "./components/Simulator/SimulatorHvacsRoute";
 import RoleBasedDashboardPage from "./components/RoleBaseDashboard/RoleBasedDashboardPage";
 import EdgeControllerSetupPage from "./components/Edge/EdgeControllerSetupPage";
+
 import CommandAuditReportPage from "./components/Reports/CommandAuditReportPage";
 import ComplianceEvidenceReportPage from "./components/Reports/ComplianceEvidenceReportPage";
+
 import EnergyPowerDashboardPage from "./components/Energy/EnergyPowerDashboardPage";
 import EnergyMeterMappingPage from "./components/Energy/EnergyMeterMappingPage";
 import EnergyMeterPointMappingPage from "./components/Energy/EnergyMeterPointMappingPage";
+
 import { HvacFaultMappingRoute } from "./components/HvacFaults/HvacFaultMappingRoute";
+import { HvacFaultAlarmsRoute } from "./components/HvacFaults/HvacFaultAlarmsRoute";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -56,7 +67,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/hvac"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}
+          >
             <Hvac />
           </ProtectedRoute>
         }
@@ -65,7 +78,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/buildings/user/tenants"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}
+          >
             <UserViewTenants />
           </ProtectedRoute>
         }
@@ -74,7 +89,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/user/tenants/:tenantId/sites"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}
+          >
             <UserViewSites />
           </ProtectedRoute>
         }
@@ -83,7 +100,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/user/tenants/:tenantId/sites/:siteId/dashboard"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}
+          >
             <DashboardWrapper />
           </ProtectedRoute>
         }
@@ -92,7 +111,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/buildings/user/tenants/:tenantId/sites/:siteId/floor-plans/view"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}
+          >
             <UserViewFloorPlan />
           </ProtectedRoute>
         }
@@ -101,7 +122,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/user/tenants/:tenantId/sites/:siteId/hvacs"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "TECHNICIAN"]}
+          >
             <SiteHvacDetailsPage />
           </ProtectedRoute>
         }
@@ -111,7 +134,12 @@ const AppRoutes: FC = () => {
         path="/user/tenants/:tenantId/sites/:siteId/energy"
         element={
           <ProtectedRoute
-            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER", "TECHNICIAN"]}
+            allowedRoles={[
+              "ADMIN",
+              "BMS_ADMIN",
+              "SITE_MANAGER",
+              "TECHNICIAN",
+            ]}
           >
             <EnergyPowerDashboardPage />
           </ProtectedRoute>
@@ -232,7 +260,12 @@ const AppRoutes: FC = () => {
         path="/admin/tenants/:tenantId/sites/:siteId/energy"
         element={
           <ProtectedRoute
-            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER", "TECHNICIAN"]}
+            allowedRoles={[
+              "ADMIN",
+              "BMS_ADMIN",
+              "SITE_MANAGER",
+              "TECHNICIAN",
+            ]}
           >
             <EnergyPowerDashboardPage />
           </ProtectedRoute>
@@ -242,7 +275,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/energy/mapping"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}
+          >
             <EnergyMeterMappingPage />
           </ProtectedRoute>
         }
@@ -251,7 +286,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/energy/meters/:energyMeterId/point-mapping"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}
+          >
             <EnergyMeterPointMappingPage />
           </ProtectedRoute>
         }
@@ -271,7 +308,14 @@ const AppRoutes: FC = () => {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER", "TECHNICIAN"]}>
+          <ProtectedRoute
+            allowedRoles={[
+              "ADMIN",
+              "BMS_ADMIN",
+              "SITE_MANAGER",
+              "TECHNICIAN",
+            ]}
+          >
             <RoleBasedDashboardPage />
           </ProtectedRoute>
         }
@@ -282,7 +326,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/reports/command-audit"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}
+          >
             <CommandAuditReportPage />
           </ProtectedRoute>
         }
@@ -291,7 +337,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/reports/command-audit"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}
+          >
             <CommandAuditReportPage />
           </ProtectedRoute>
         }
@@ -300,7 +348,9 @@ const AppRoutes: FC = () => {
       <Route
         path="/reports/compliance-evidence"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}
+          >
             <ComplianceEvidenceReportPage />
           </ProtectedRoute>
         }
@@ -309,8 +359,55 @@ const AppRoutes: FC = () => {
       <Route
         path="/admin/tenants/:tenantId/sites/:siteId/reports/compliance-evidence"
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}>
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}
+          >
             <ComplianceEvidenceReportPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ================= HVAC COMPONENT FAULT ROUTES ================= */}
+
+      <Route
+        path="/tenants/:tenantId/sites/:siteId/fault-alarms"
+        element={
+          <ProtectedRoute
+            allowedRoles={[
+              "ADMIN",
+              "BMS_ADMIN",
+              "SITE_MANAGER",
+              "TECHNICIAN",
+            ]}
+          >
+            <HvacFaultAlarmsRoute />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tenants/:tenantId/sites/:siteId/hvacs/:hvacId/fault-alarms"
+        element={
+          <ProtectedRoute
+            allowedRoles={[
+              "ADMIN",
+              "BMS_ADMIN",
+              "SITE_MANAGER",
+              "TECHNICIAN",
+            ]}
+          >
+            <HvacFaultAlarmsRoute />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tenants/:tenantId/sites/:siteId/hvacs/:hvacId/fault-mapping"
+        element={
+          <ProtectedRoute
+            allowedRoles={["ADMIN", "BMS_ADMIN", "SITE_MANAGER"]}
+          >
+            <HvacFaultMappingRoute />
           </ProtectedRoute>
         }
       />
@@ -319,12 +416,9 @@ const AppRoutes: FC = () => {
 
       <Route path="/access-denied" element={<AccessDeniedPage />} />
 
-      <Route path="*" element={<Navigate to="/access-denied" replace />} />
-
-
       <Route
-        path="/tenants/:tenantId/sites/:siteId/hvacs/:hvacId/fault-mapping"
-        element={<HvacFaultMappingRoute />}
+        path="*"
+        element={<Navigate to="/access-denied" replace />}
       />
     </Routes>
   );

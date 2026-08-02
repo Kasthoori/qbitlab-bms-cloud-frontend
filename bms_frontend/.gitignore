@@ -26,3 +26,20 @@ dist/
 
 *storybook.log
 storybook-static
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store

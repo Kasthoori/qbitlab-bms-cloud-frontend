@@ -376,6 +376,33 @@ const HvacsPages: FC = () => {
                   {
                     label: (
                       <>
+                        <AlertTriangle className="h-4 w-4" />
+                        Component Faults
+                      </>
+                    ),
+                    variant: "secondary",
+                    onClick: () =>
+                      nav(
+                        `/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/fault-alarms`
+                      ),
+                  },
+                  {
+                    label: (
+                      <>
+                        <Cpu className="h-4 w-4" />
+                        Fault Mapping
+                      </>
+                    ),
+                    variant: "secondary",
+                    onClick: () =>
+                      nav(
+                        `/tenants/${tenantId}/sites/${siteId}/hvacs/${hvacId}/fault-mapping` +
+                          `?externalDeviceId=${encodeURIComponent(getDeviceId(hvac))}`
+                      ),
+                  },
+                  {
+                    label: (
+                      <>
                         <Pencil className="h-4 w-4" />
                         Edit
                       </>
