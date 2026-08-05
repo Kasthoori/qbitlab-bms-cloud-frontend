@@ -1,8 +1,11 @@
 import type { HvacDeviceMappingDto } from "@/api/bms";
 import { BmsButton, BmsCard } from "@/components/UI";
-import { Link2, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Link2, ShieldAlert, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 type Props = {
+  tenantId: string;
+  siteId: string;
   mappings: HvacDeviceMappingDto[];
   onUnmap: (mappingId: string) => void;
   onConfigurePoints: (mapping: HvacDeviceMappingDto) => void;
@@ -10,6 +13,8 @@ type Props = {
 };
 
 export default function ExistingMappingsPanel({
+  tenantId,
+  siteId,
   mappings,
   onUnmap,
   onConfigurePoints,
@@ -28,7 +33,8 @@ export default function ExistingMappingsPanel({
           </h2>
 
           <p className="mt-1 text-sm text-slate-400">
-            Review logical-to-device mappings and configure point references.
+            Review logical-to-device mappings, configure point references, and
+            map component-level fault alarms.
           </p>
         </div>
 
@@ -57,61 +63,75 @@ export default function ExistingMappingsPanel({
             </thead>
 
             <tbody>
-              {mappings.map((mapping, index) => (
-                <tr
-                  key={mapping.mappingId}
-                  className={
-                    index % 2 === 0 ? "bg-slate-950/10" : "bg-white/3"
-                  }
-                >
-                  <td className="px-4 py-3 text-sm text-slate-100">
-                    <span className="inline-flex items-center gap-2">
-                      <Link2 className="h-4 w-4 text-blue-300" />
-                      {mapping.hvacName || "Unnamed HVAC"}
-                    </span>
-                  </td>
+              {mappings.map((mapping, index) => {
+                const faultMappingUrl = `/tenants/${tenantId}/sites/${siteId}/hvacs/${mapping.hvacId}/fault-mapping?externalDeviceId=${encodeURIComponent(
+                  mapping.externalDeviceId
+                )}`;
 
-                  <td className="px-4 py-3 text-sm text-slate-200">
-                    {mapping.unitName || "Unknown device"}
-                  </td>
+                return (
+                  <tr
+                    key={mapping.mappingId}
+                    className={
+                      index % 2 === 0 ? "bg-slate-950/10" : "bg-white/3"
+                    }
+                  >
+                    <td className="px-4 py-3 text-sm text-slate-100">
+                      <span className="inline-flex items-center gap-2">
+                        <Link2 className="h-4 w-4 text-blue-300" />
+                        {mapping.hvacName || "Unnamed HVAC"}
+                      </span>
+                    </td>
 
-                  <td className="px-4 py-3 text-sm text-slate-400">
-                    {mapping.externalDeviceId}
-                  </td>
+                    <td className="px-4 py-3 text-sm text-slate-200">
+                      {mapping.unitName || "Unknown device"}
+                    </td>
 
-                  <td className="px-4 py-3 text-sm text-slate-400">
-                    {mapping.mappedAt
-                      ? new Date(mapping.mappedAt).toLocaleString()
-                      : "-"}
-                  </td>
+                    <td className="px-4 py-3 text-sm text-slate-400">
+                      {mapping.externalDeviceId}
+                    </td>
 
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <BmsButton
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => onConfigurePoints(mapping)}
-                        disabled={busy}
-                      >
-                        <SlidersHorizontal className="h-4 w-4" />
-                        Configure Points
-                      </BmsButton>
+                    <td className="px-4 py-3 text-sm text-slate-400">
+                      {mapping.mappedAt
+                        ? new Date(mapping.mappedAt).toLocaleString()
+                        : "-"}
+                    </td>
 
-                      <BmsButton
-                        type="button"
-                        variant="danger"
-                        size="sm"
-                        onClick={() => onUnmap(mapping.mappingId)}
-                        disabled={busy}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Unmap
-                      </BmsButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <BmsButton
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => onConfigurePoints(mapping)}
+                          disabled={busy}
+                        >
+                          <SlidersHorizontal className="h-4 w-4" />
+                          Configure Points
+                        </BmsButton>
+
+                        <Link
+                          to={faultMappingUrl}
+                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 px-3 py-1.5 text-xs font-bold text-cyan-100 transition hover:bg-cyan-400/10"
+                        >
+                          <ShieldAlert className="h-4 w-4" />
+                          Fault Mapping
+                        </Link>
+
+                        <BmsButton
+                          type="button"
+                          variant="danger"
+                          size="sm"
+                          onClick={() => onUnmap(mapping.mappingId)}
+                          disabled={busy}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Unmap
+                        </BmsButton>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

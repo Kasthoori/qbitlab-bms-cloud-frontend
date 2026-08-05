@@ -2368,7 +2368,6 @@ export const BmsApi = {
 
         window.URL.revokeObjectURL(downloadUrl);
     },
-
-
     
 };
+

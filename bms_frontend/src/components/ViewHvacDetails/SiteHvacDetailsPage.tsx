@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Fan, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Fan, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 
@@ -310,15 +310,42 @@ export default function SiteHvacDetailsPage() {
 
         {selectedHvac ? (
           <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
-            <ViewportReveal delay={0.05}>
-              <div className="min-w-0 max-w-full overflow-x-hidden">
-                <HvacAiInsightPanel
-                  tenantId={tenantId}
-                  siteId={siteId}
-                  hvacId={selectedHvac.hvacId}
-                />
-              </div>
-            </ViewportReveal>
+            <ViewportReveal delay={0.03}>
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-amber-300/15 bg-amber-400/5 p-5 backdrop-blur-xl">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">
+                      {selectedHvac.unitName || "Selected HVAC"}
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-400">
+                      View active and resolved component-level fault alarms for this HVAC.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/tenants/${tenantId}/sites/${siteId}/hvacs/${selectedHvac.hvacId}/fault-alarms`
+                      )
+                    }
+                    className="inline-flex items-center gap-2 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-2.5 text-sm font-medium text-amber-100 transition hover:bg-amber-400/20"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    Component Faults
+                  </button>
+                </div>
+              </ViewportReveal>
+
+              <ViewportReveal delay={0.05}>
+                <div className="min-w-0 max-w-full overflow-x-hidden">
+                  <HvacAiInsightPanel
+                    tenantId={tenantId}
+                    siteId={siteId}
+                    hvacId={selectedHvac.hvacId}
+                  />
+                </div>
+              </ViewportReveal>
 
             {/*
             Maintenance Workflow is intentionally NOT wrapped in ViewportReveal.
