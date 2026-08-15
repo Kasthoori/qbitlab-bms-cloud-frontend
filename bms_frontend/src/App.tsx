@@ -50,6 +50,7 @@ import EnergyMeterPointMappingPage from "./components/Energy/EnergyMeterPointMap
 
 import { HvacFaultMappingRoute } from "./components/HvacFaults/HvacFaultMappingRoute";
 import { HvacFaultAlarmsRoute } from "./components/HvacFaults/HvacFaultAlarmsRoute";
+import { ContinuousCommissioningRoute } from "./components/continuousCommissioning/ContinuousCommissioningRoute";
 
 const AppRoutes: FC = () => {
   const navigate = useNavigate();
@@ -420,6 +421,27 @@ const AppRoutes: FC = () => {
         path="*"
         element={<Navigate to="/access-denied" replace />}
       />
+
+
+      {/* ================= CONTINUOUS COMMISSIONING ROUTE ================= */}
+
+      <Route
+        path="/tenants/:tenantId/sites/:siteId/continuous-commissioning"
+        element={
+          <ProtectedRoute
+            allowedRoles={[
+              "ADMIN",
+              "BMS_ADMIN",
+              "SITE_MANAGER",
+              "TECHNICIAN",
+            ]}
+          >
+            <ContinuousCommissioningRoute />
+          </ProtectedRoute>
+        }
+      />
+
+
     </Routes>
   );
 };

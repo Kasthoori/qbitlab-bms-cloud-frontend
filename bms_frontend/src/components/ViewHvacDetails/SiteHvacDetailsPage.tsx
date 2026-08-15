@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Fan, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Fan,
+  Sparkles,
+  Activity,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 
@@ -69,7 +75,11 @@ function normalizeRole(role: string): string {
 export default function SiteHvacDetailsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { tenantId, siteId } = useParams<{ tenantId: string; siteId: string }>();
+
+  const { tenantId, siteId } = useParams<{
+    tenantId: string;
+    siteId: string;
+  }>();
 
   const state = location.state as LocationState | null;
   const siteName = state?.siteName || "Selected Site";
@@ -89,6 +99,7 @@ export default function SiteHvacDetailsPage() {
    * - Maintenance review button visibility
    * - Technician name placeholder
    * - Admin-only Edge Controller button visibility
+   * - Continuous Commissioning permissions
    */
   useEffect(() => {
     BmsApi.getCurrentUser()
@@ -106,7 +117,9 @@ export default function SiteHvacDetailsPage() {
    * - This prevents duplicate command panels and duplicate recent-command loading.
    */
   useEffect(() => {
-    if (!tenantId || !siteId) return;
+    if (!tenantId || !siteId) {
+      return;
+    }
 
     const tenantIdValue = tenantId;
     const siteIdValue = siteId;
@@ -131,6 +144,7 @@ export default function SiteHvacDetailsPage() {
 
         if (!cancelled) {
           setEdgeControllerId("");
+
           setEdgeError(
             error?.response?.data?.message ||
               error?.response?.data?.error ||
@@ -145,7 +159,7 @@ export default function SiteHvacDetailsPage() {
       }
     }
 
-    loadEdgeAssignment();
+    void loadEdgeAssignment();
 
     return () => {
       cancelled = true;
@@ -167,10 +181,20 @@ export default function SiteHvacDetailsPage() {
   ) as UserRole | undefined;
 
   const currentUserName =
-    currentUser?.name || currentUser?.username || currentUser?.email || "";
+    currentUser?.name ||
+    currentUser?.username ||
+    currentUser?.email ||
+    "";
 
   const canManageEdgeController =
-    currentUserRoles.includes("ADMIN") || currentUserRoles.includes("BMS_ADMIN");
+    currentUserRoles.includes("ADMIN") ||
+    currentUserRoles.includes("BMS_ADMIN");
+
+  const canViewContinuousCommissioning =
+    currentUserRoles.includes("ADMIN") ||
+    currentUserRoles.includes("BMS_ADMIN") ||
+    currentUserRoles.includes("SITE_MANAGER") ||
+    currentUserRoles.includes("TECHNICIAN");
 
   function handleFailureResolved() {
     /*
@@ -193,6 +217,9 @@ export default function SiteHvacDetailsPage() {
   return (
     <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-slate-950 px-3 py-4 sm:px-4 sm:py-5">
       <div className="w-full min-w-0 max-w-full space-y-6 overflow-x-hidden">
+
+        {/* ================= Back Button ================= */}
+
         <ViewportReveal>
           <button
             type="button"
@@ -204,9 +231,12 @@ export default function SiteHvacDetailsPage() {
           </button>
         </ViewportReveal>
 
+        {/* ================= Hero ================= */}
+
         <ViewportReveal delay={0.05}>
           <div className="w-full min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(2,6,23,0.96),rgba(15,23,42,0.94),rgba(30,41,59,0.94))] p-6 text-white shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
             <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">
                   <Sparkles className="h-4 w-4 shrink-0" />
@@ -217,6 +247,7 @@ export default function SiteHvacDetailsPage() {
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-300">
                     <Fan className="h-6 w-6" />
                   </span>
+
                   HVAC Details
                 </h1>
 
@@ -225,13 +256,24 @@ export default function SiteHvacDetailsPage() {
                 </p>
 
                 <p className="mt-3 break-all text-xs text-slate-500">
-                  Tenant: <span className="text-slate-300">{tenantId}</span>
+                  Tenant:{" "}
+                  <span className="text-slate-300">
+                    {tenantId}
+                  </span>
+
                   <span className="mx-2">•</span>
-                  Site: <span className="text-slate-300">{siteId}</span>
+
+                  Site:{" "}
+                  <span className="text-slate-300">
+                    {siteId}
+                  </span>
                 </p>
               </div>
 
+              {/* ================= Site Actions ================= */}
+
               <div className="flex shrink-0 flex-wrap items-center gap-3">
+
                 {canManageEdgeController && (
                   <button
                     type="button"
@@ -245,6 +287,7 @@ export default function SiteHvacDetailsPage() {
                     Edge Controller
                   </button>
                 )}
+
                 <button
                   type="button"
                   onClick={() =>
@@ -257,6 +300,21 @@ export default function SiteHvacDetailsPage() {
                   Command Audit
                 </button>
 
+                {canViewContinuousCommissioning && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/tenants/${tenantId}/sites/${siteId}/continuous-commissioning`
+                      )
+                    }
+                    className="inline-flex items-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-400/10 px-4 py-2.5 text-sm font-medium text-violet-100 transition hover:bg-violet-400/20"
+                  >
+                    <Activity className="h-4 w-4" />
+                    Continuous Commissioning
+                  </button>
+                )}
+
                 <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-2.5 text-sm font-medium text-cyan-300">
                   Real-time telemetry view
                 </div>
@@ -264,6 +322,8 @@ export default function SiteHvacDetailsPage() {
             </div>
           </div>
         </ViewportReveal>
+
+        {/* ================= Edge Loading ================= */}
 
         {edgeLoading && (
           <ViewportReveal>
@@ -273,14 +333,23 @@ export default function SiteHvacDetailsPage() {
           </ViewportReveal>
         )}
 
+        {/* ================= Edge Error ================= */}
+
         {edgeError && (
           <ViewportReveal>
             <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-5 text-amber-100">
-              <p className="font-medium">Edge controller assignment missing</p>
-              <p className="mt-1 text-sm text-amber-200/80">{edgeError}</p>
+              <p className="font-medium">
+                Edge controller assignment missing
+              </p>
+
+              <p className="mt-1 text-sm text-amber-200/80">
+                {edgeError}
+              </p>
             </div>
           </ViewportReveal>
         )}
+
+        {/* ================= HVAC Live Table ================= */}
 
         {!edgeLoading && edgeControllerId && (
           <ViewportReveal delay={0.08}>
@@ -300,7 +369,10 @@ export default function SiteHvacDetailsPage() {
         {!edgeLoading && !edgeControllerId && !edgeError && (
           <ViewportReveal>
             <div className="rounded-3xl border border-amber-400/20 bg-amber-500/10 p-5 text-amber-100">
-              <p className="font-medium">No edge controller assigned</p>
+              <p className="font-medium">
+                No edge controller assigned
+              </p>
+
               <p className="mt-1 text-sm text-amber-200/80">
                 Assign an edge controller before opening live HVAC details.
               </p>
@@ -308,50 +380,64 @@ export default function SiteHvacDetailsPage() {
           </ViewportReveal>
         )}
 
+        {/* ================= Selected HVAC ================= */}
+
         {selectedHvac ? (
           <div className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
+
+            {/* ================= Component Faults ================= */}
+
             <ViewportReveal delay={0.03}>
-                <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-amber-300/15 bg-amber-400/5 p-5 backdrop-blur-xl">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">
-                      {selectedHvac.unitName || "Selected HVAC"}
-                    </p>
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-amber-300/15 bg-amber-400/5 p-5 backdrop-blur-xl">
 
-                    <p className="mt-1 text-xs text-slate-400">
-                      View active and resolved component-level fault alarms for this HVAC.
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {selectedHvac.unitName || "Selected HVAC"}
+                  </p>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(
-                        `/tenants/${tenantId}/sites/${siteId}/hvacs/${selectedHvac.hvacId}/fault-alarms`
-                      )
-                    }
-                    className="inline-flex items-center gap-2 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-2.5 text-sm font-medium text-amber-100 transition hover:bg-amber-400/20"
-                  >
-                    <AlertTriangle className="h-4 w-4" />
-                    Component Faults
-                  </button>
+                  <p className="mt-1 text-xs text-slate-400">
+                    View active and resolved component-level fault alarms for
+                    this HVAC.
+                  </p>
                 </div>
-              </ViewportReveal>
 
-              <ViewportReveal delay={0.05}>
-                <div className="min-w-0 max-w-full overflow-x-hidden">
-                  <HvacAiInsightPanel
-                    tenantId={tenantId}
-                    siteId={siteId}
-                    hvacId={selectedHvac.hvacId}
-                  />
-                </div>
-              </ViewportReveal>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      `/tenants/${tenantId}/sites/${siteId}/hvacs/${selectedHvac.hvacId}/fault-alarms`
+                    )
+                  }
+                  className="inline-flex items-center gap-2 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-2.5 text-sm font-medium text-amber-100 transition hover:bg-amber-400/20"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Component Faults
+                </button>
+              </div>
+            </ViewportReveal>
+
+            {/* ================= AI Insight ================= */}
+
+            <ViewportReveal delay={0.05}>
+              <div className="min-w-0 max-w-full overflow-x-hidden">
+                <HvacAiInsightPanel
+                  tenantId={tenantId}
+                  siteId={siteId}
+                  hvacId={selectedHvac.hvacId}
+                />
+              </div>
+            </ViewportReveal>
 
             {/*
-            Maintenance Workflow is intentionally NOT wrapped in ViewportReveal.
-            It contains filters, note cards, and a fixed drawer.
-            Wrapping long interactive panels in scroll animations can cause jumpy UX.
-          */}
+             * Maintenance Workflow is intentionally NOT wrapped in ViewportReveal.
+             *
+             * It contains filters, note cards, and a fixed drawer.
+             * Wrapping long interactive panels in scroll animations can cause
+             * jumpy UX.
+             */}
+
+            {/* ================= Maintenance Workflow ================= */}
+
             <div className="min-w-0 max-w-full overflow-x-hidden">
               <HvacMaintenanceNotesPanel
                 tenantId={tenantId}
